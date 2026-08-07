@@ -6,6 +6,7 @@ import { createRuntime } from "./runtime";
 const environment = parseApiEnvironment();
 const runtime = createRuntime(environment);
 const app = createApp({
+  authHandler: runtime.auth.handler,
   corsOrigins: environment.CORS_ORIGINS,
   readiness: runtime.readiness,
 }).listen({

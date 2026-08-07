@@ -15,7 +15,7 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "release": "changeset publish",
-    "test": "bun test tooling && turbo run test",
+    "test": "bun test tooling && turbo run test --concurrency=1",
     "typecheck": "turbo run typecheck",
     "version-packages": "changeset version"
   },

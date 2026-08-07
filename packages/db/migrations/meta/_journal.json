@@ -22,6 +22,13 @@
       "when": 1786139302174,
       "tag": "0002_cloudy_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786141355438,
+      "tag": "0003_cynical_expediter",
+      "breakpoints": true
     }
   ]
 }

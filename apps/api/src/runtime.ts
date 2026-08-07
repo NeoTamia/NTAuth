@@ -3,6 +3,7 @@ import { createClient } from "redis";
 
 import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
+import { createAuth } from "./auth/auth";
 
 export function createRuntime(environment: ApiEnvironment) {
   const database = createDatabase(environment.DATABASE_URL, { max: 5 });
@@ -17,6 +18,13 @@ export function createRuntime(environment: ApiEnvironment) {
 
   // Availability is exposed through /ready; Redis errors must not crash the process.
   redis.on("error", () => undefined);
+
+  const auth = createAuth({
+    baseURL: environment.AUTH_BASE_URL,
+    database: database.db,
+    secret: environment.BETTER_AUTH_SECRET,
+    trustedOrigins: environment.CORS_ORIGINS,
+  });
 
   const connectRedis = async () => {
     if (redis.isOpen) return;
@@ -38,6 +46,7 @@ export function createRuntime(environment: ApiEnvironment) {
   };
 
   return {
+    auth,
     readiness,
     async close() {
       const closures: Promise<unknown>[] = [database.close()];

@@ -30,6 +30,8 @@ docker compose exec redis redis-cli ping
 
 The API exposes `GET /health` for process liveness and `GET /ready` for PostgreSQL and Redis readiness. It returns HTTP `503` with per-dependency availability when either service is unavailable.
 
+Better Auth is mounted under `/api/auth` with persistent PostgreSQL sessions. Email/password authentication is enabled for accounts provisioned by NTAuth, but the public sign-up endpoint is disabled; account creation will be introduced only through the invitation flow. Email verification is required before authentication and passwords must contain between 12 and 128 characters.
+
 Apply or roll back the latest database migration with:
 
 ```bash

@@ -6,11 +6,18 @@ export type ReadinessChecks = {
   redis: () => Promise<void>;
 };
 
+type AuthHandler = (request: Request) => Promise<Response> | Response;
+
 const available = async () => undefined;
 
-export const createApp = (options: { corsOrigins?: string[]; readiness?: ReadinessChecks } = {}) =>
-  new Elysia()
-    .use(cors({ origin: options.corsOrigins }))
+export const createApp = (
+  options: { authHandler?: AuthHandler; corsOrigins?: string[]; readiness?: ReadinessChecks } = {},
+) => {
+  const app = new Elysia().use(cors({ origin: options.corsOrigins }));
+
+  if (options.authHandler) app.mount(options.authHandler);
+
+  return app
     .get("/health", () => ({ status: "ok" }))
     .get("/ready", async ({ set }) => {
       const checks = options.readiness ?? { postgres: available, redis: available };
@@ -27,3 +34,4 @@ export const createApp = (options: { corsOrigins?: string[]; readiness?: Readine
 
       return { checks: status, status: "ready" as const };
     });
+};

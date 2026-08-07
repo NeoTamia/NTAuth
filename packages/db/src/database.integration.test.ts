@@ -42,16 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0002_cloudy_sunfire");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0003_cynical_expediter");
 
-    const [constraint] = await connection.client<{ constraint_name: string | null }[]>`
-      select (
-        select conname from pg_constraint where conname = 'jobs_status_check' limit 1
-      ) as constraint_name
+    const [authTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.user') is not null as exists
     `;
-    expect(constraint?.constraint_name).toBeNull();
+    expect(authTable?.exists).toBe(false);
 
     await applyMigrations(connection);
+    const [restoredAuthTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.user') is not null as exists
+    `;
+    expect(restoredAuthTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

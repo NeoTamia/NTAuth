@@ -37,3 +37,19 @@ describe("health endpoints", () => {
     expect(body).not.toContain(secretError);
   });
 });
+
+describe("auth handler", () => {
+  it("mounts Better Auth without shadowing service endpoints", async () => {
+    const app = createApp({
+      authHandler: (request) => Response.json({ path: new URL(request.url).pathname }),
+    });
+
+    const authResponse = await app.handle(new Request("http://localhost/api/auth/get-session"));
+    expect(authResponse.status).toBe(200);
+    expect(await authResponse.json()).toEqual({ path: "/api/auth/get-session" });
+
+    const healthResponse = await app.handle(new Request("http://localhost/health"));
+    expect(healthResponse.status).toBe(200);
+    expect(await healthResponse.json()).toEqual({ status: "ok" });
+  });
+});
