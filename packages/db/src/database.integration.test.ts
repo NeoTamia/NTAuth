@@ -42,24 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0005_parched_madame_masque");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0006_abnormal_slapstick");
 
-    const [deduplicationColumn] = await connection.client<{ exists: boolean }[]>`
-      select exists (
-        select 1 from information_schema.columns
-        where table_schema = 'public' and table_name = 'jobs' and column_name = 'deduplication_key'
-      ) as exists
+    const [invitationTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.invitations') is not null as exists
     `;
-    expect(deduplicationColumn?.exists).toBe(false);
+    expect(invitationTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredDeduplicationColumn] = await connection.client<{ exists: boolean }[]>`
-      select exists (
-        select 1 from information_schema.columns
-        where table_schema = 'public' and table_name = 'jobs' and column_name = 'deduplication_key'
-      ) as exists
+    const [restoredInvitationTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.invitations') is not null as exists
     `;
-    expect(restoredDeduplicationColumn?.exists).toBe(true);
+    expect(restoredInvitationTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

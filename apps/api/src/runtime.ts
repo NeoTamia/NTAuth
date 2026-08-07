@@ -4,6 +4,7 @@ import { createClient } from "redis";
 import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
+import { createInvitationRoutes } from "./invitations";
 
 export function createRuntime(environment: ApiEnvironment) {
   const database = createDatabase(environment.DATABASE_URL, { max: 5 });
@@ -24,6 +25,11 @@ export function createRuntime(environment: ApiEnvironment) {
     database: database.db,
     secret: environment.BETTER_AUTH_SECRET,
     trustedOrigins: environment.CORS_ORIGINS,
+  });
+  const invitationRoutes = createInvitationRoutes({
+    acceptInvitationURL: `${environment.CORS_ORIGINS[0]}/auth/accept-invitation`,
+    auth,
+    database,
   });
 
   const connectRedis = async () => {
@@ -47,6 +53,7 @@ export function createRuntime(environment: ApiEnvironment) {
 
   return {
     auth,
+    invitationRoutes,
     readiness,
     async close() {
       const closures: Promise<unknown>[] = [database.close()];

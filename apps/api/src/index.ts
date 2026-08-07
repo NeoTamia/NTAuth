@@ -8,6 +8,7 @@ const runtime = createRuntime(environment);
 const app = createApp({
   authHandler: runtime.auth.handler,
   corsOrigins: environment.CORS_ORIGINS,
+  invitationRoutes: runtime.invitationRoutes,
   readiness: runtime.readiness,
 }).listen({
   hostname: environment.API_HOST,

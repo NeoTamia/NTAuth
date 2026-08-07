@@ -167,6 +167,40 @@ export const auditEvents = pgTable(
   ],
 );
 
+export type InvitationStatus = "accepted" | "cancelled" | "pending";
+
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: varchar("email", { length: 320 }).notNull(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 16 }).$type<OrganizationRole>().notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+    status: varchar("status", { length: 16 })
+      .$type<InvitationStatus>()
+      .notNull()
+      .default("pending"),
+    invitedByUserId: text("invited_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("invitations_email_idx").on(table.email),
+    index("invitations_organization_idx").on(table.organizationId),
+    check("invitations_email_normalized_check", sql`${table.email} = lower(trim(${table.email}))`),
+    check("invitations_role_check", sql`${table.role} in ('owner', 'admin', 'member')`),
+    check("invitations_status_check", sql`${table.status} in ('pending', 'accepted', 'cancelled')`),
+    check("invitations_token_hash_check", sql`length(${table.tokenHash}) = 64`),
+  ],
+);
+
 export const systemHealth = pgTable("system_health", {
   id: uuid("id").defaultRandom().primaryKey(),
   component: varchar("component", { length: 64 }).notNull().unique(),

@@ -45,6 +45,8 @@ The worker exposes liveness and database readiness on `http://localhost:3002/hea
 
 Application emails use the PostgreSQL outbox and are committed in the same transaction as their business mutation. A deduplication key returns the existing job, SMTP retries use bounded exponential backoff, stable `Message-ID` values make attempts identifiable, and exhausted messages remain visible as `failed` without persisting the SMTP error or credentials.
 
+Invitation creation is authenticated and authorized through `POST /api/v1/invitations`; cancellation uses `DELETE /api/v1/invitations/:id`. Tokens expire after 72 hours, only their SHA-256 hash is retained in the invitation table, and successful email jobs scrub their payload after delivery. `POST /api/v1/invitations/accept` uses a uniform error response for unknown, expired, cancelled, or reused tokens and atomically verifies the email and creates the organization membership.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

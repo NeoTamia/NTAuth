@@ -111,4 +111,20 @@ describeWithDatabase("persistent job queue", () => {
     `;
     expect(rolledBack?.count).toBe(0);
   });
+
+  test("scrubs an email payload after successful delivery", async () => {
+    const queue = new JobQueue(connection, 30_000);
+    const id = await queue.enqueue({
+      deduplicationKey: `scrub-${crypto.randomUUID()}`,
+      payload: { subject: "Secret", text: "Token", to: "user@example.test" },
+      type: "email",
+    });
+    const claimed = await queue.claim("delivery-worker");
+    await queue.complete(claimed!, "delivery-worker");
+
+    const [stored] = await connection.client<{ payload: unknown }[]>`
+      select payload from jobs where id = ${id}
+    `;
+    expect(stored?.payload).toEqual({ delivered: true });
+  });
 });

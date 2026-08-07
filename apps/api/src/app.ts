@@ -1,6 +1,8 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 
+import type { createInvitationRoutes } from "./invitations";
+
 export type ReadinessChecks = {
   postgres: () => Promise<void>;
   redis: () => Promise<void>;
@@ -11,11 +13,17 @@ type AuthHandler = (request: Request) => Promise<Response> | Response;
 const available = async () => undefined;
 
 export const createApp = (
-  options: { authHandler?: AuthHandler; corsOrigins?: string[]; readiness?: ReadinessChecks } = {},
+  options: {
+    authHandler?: AuthHandler;
+    corsOrigins?: string[];
+    invitationRoutes?: ReturnType<typeof createInvitationRoutes>;
+    readiness?: ReadinessChecks;
+  } = {},
 ) => {
   const app = new Elysia().use(cors({ origin: options.corsOrigins }));
 
   if (options.authHandler) app.mount(options.authHandler);
+  if (options.invitationRoutes) app.use(options.invitationRoutes);
 
   return app
     .get("/health", () => ({ status: "ok" }))

@@ -98,7 +98,11 @@ export class JobQueue implements JobQueueContract {
   async complete(job: QueuedJob, workerId: string): Promise<void> {
     await this.connection.client`
       update jobs
-      set status = 'completed', completed_at = now(), locked_at = null, locked_by = null
+      set status = 'completed',
+          payload = case when type = 'email' then '{"delivered":true}'::jsonb else payload end,
+          completed_at = now(),
+          locked_at = null,
+          locked_by = null
       where id = ${job.id} and status = 'running' and locked_by = ${workerId}
     `;
   }

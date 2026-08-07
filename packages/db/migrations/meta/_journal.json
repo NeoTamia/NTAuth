@@ -43,6 +43,13 @@
       "when": 1786142194219,
       "tag": "0005_parched_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786142452143,
+      "tag": "0006_abnormal_slapstick",
+      "breakpoints": true
     }
   ]
 }
