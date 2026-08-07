@@ -28,6 +28,7 @@ export function createRuntime(environment: ApiEnvironment) {
 
   const auth = createAuth({
     baseURL: environment.AUTH_BASE_URL,
+    connection: database,
     database: database.db,
     secret: environment.BETTER_AUTH_SECRET,
     trustedOrigins: environment.CORS_ORIGINS,

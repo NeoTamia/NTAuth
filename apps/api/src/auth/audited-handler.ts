@@ -7,12 +7,19 @@ type Auth = ReturnType<typeof createAuth>;
 
 const sensitiveEndpoints = new Set([
   "authorize",
+  "client",
   "consent",
   "continue",
+  "create-client",
+  "delete-client",
   "end-session",
+  "get-client",
+  "get-clients",
   "introspect",
   "revoke",
+  "rotate-secret",
   "token",
+  "update-client",
 ]);
 
 export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnection) {
@@ -30,6 +37,10 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     const current = await auth.api.getSession({ headers: request.headers });
     const response = await auth.handler(request);
+    if (response.ok && (endpoint === "create-client" || endpoint === "rotate-secret")) {
+      response.headers.set("cache-control", "no-store");
+      response.headers.set("pragma", "no-cache");
+    }
     await database.db.insert(auditEvents).values({
       action: `oauth.${endpoint}`,
       actorUserId: current?.user.id,

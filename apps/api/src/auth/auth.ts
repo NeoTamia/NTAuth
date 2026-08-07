@@ -14,6 +14,7 @@ import {
 
 type AuthOptions = {
   baseURL: string;
+  connection?: DatabaseConnection;
   database: DatabaseConnection["db"];
   secret: string;
   trustedOrigins: string[];
@@ -54,7 +55,11 @@ export function createAuth(options: AuthOptions) {
         jwks: { keyPairConfig: { alg: "ES256" } },
         jwt: { audience: options.baseURL, expirationTime: "15m", issuer: options.baseURL },
       }),
-      createOAuthProviderPlugin(),
+      createOAuthProviderPlugin(
+        options.connection
+          ? { applicationSecret: options.secret, database: options.connection }
+          : undefined,
+      ),
     ],
     databaseHooks: {
       session: {
