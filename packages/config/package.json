@@ -1,0 +1,15 @@
+{
+  "name": "@neotamia/config",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "tsconfig"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.14",
+    "typescript": "6.0.3"
+  }
+}

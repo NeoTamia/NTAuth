@@ -1,0 +1,22 @@
+{
+  "name": "@neotamia/ntauth-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun dist/index.js",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "1.4.2",
+    "elysia": "1.4.29"
+  },
+  "devDependencies": {
+    "@neotamia/config": "workspace:*",
+    "@types/bun": "1.3.14",
+    "typescript": "6.0.3"
+  }
+}
