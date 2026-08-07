@@ -1,0 +1,12 @@
+{
+  "plugins": ["typescript", "unicorn", "oxc", "vue"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {},
+  "env": {
+    "builtin": true
+  }
+}
