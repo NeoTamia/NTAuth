@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/oauth-provider": "1.6.26",
     "@elysiajs/cors": "1.4.2",
+    "better-auth": "1.6.26",
     "elysia": "1.4.29"
   },
   "devDependencies": {
