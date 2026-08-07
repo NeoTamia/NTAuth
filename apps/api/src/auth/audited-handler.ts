@@ -1,9 +1,16 @@
 import { auditEvents, type DatabaseConnection } from "@neotamia/db";
 
 import type { createAuth } from "./auth";
+import {
+  hasActiveOrganizationMembership,
+  organizationFromOAuthRequest,
+  resolveStoredGrantContext,
+  withOAuthOrganization,
+} from "./oauth-organization";
 import { withPublicMetadataCache } from "./public-cache";
 
 type Auth = ReturnType<typeof createAuth>;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const sensitiveEndpoints = new Set([
   "authorize",
@@ -59,7 +66,46 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
 
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     const current = await auth.api.getSession({ headers: request.headers });
-    const response = await auth.handler(request);
+    const requestedOrganizationId = await organizationFromOAuthRequest(request);
+    let organizationId =
+      requestedOrganizationId && uuidPattern.test(requestedOrganizationId)
+        ? requestedOrganizationId
+        : undefined;
+    let organizationDenied = false;
+    if (endpoint === "authorize" || endpoint === "consent" || endpoint === "continue") {
+      organizationDenied =
+        !organizationId ||
+        Boolean(
+          current &&
+          !(await hasActiveOrganizationMembership(database, current.user.id, organizationId)),
+        );
+    } else if (endpoint === "token" && request.method === "POST") {
+      const grant = await resolveStoredGrantContext(
+        database,
+        new URLSearchParams(await request.clone().text()),
+      );
+      if (grant.status === "valid") {
+        organizationId = grant.organizationId;
+        organizationDenied = !(await hasActiveOrganizationMembership(
+          database,
+          grant.userId,
+          grant.organizationId,
+        ));
+      } else if (grant.status === "invalid") {
+        organizationDenied = true;
+      }
+    }
+    const response = organizationDenied
+      ? Response.json(
+          {
+            error: endpoint === "token" ? "invalid_grant" : "invalid_request",
+            error_description: "organization context is invalid",
+          },
+          { status: 400 },
+        )
+      : organizationId
+        ? await withOAuthOrganization(organizationId, () => auth.handler(request))
+        : await auth.handler(request);
     if (
       response.ok &&
       (endpoint === "create-client" || endpoint === "rotate-secret" || endpoint === "token")
@@ -70,7 +116,12 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
     await database.db.insert(auditEvents).values({
       action: `oauth.${endpoint}`,
       actorUserId: current?.user.id,
-      metadata: { method: request.method, status: response.status },
+      metadata: {
+        method: request.method,
+        organizationId: organizationId ?? null,
+        status: response.status,
+      },
+      organizationId,
       outcome: await oauthOutcome(response),
       requestId,
       resourceType: "oauth_protocol",

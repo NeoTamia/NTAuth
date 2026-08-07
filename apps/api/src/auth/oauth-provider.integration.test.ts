@@ -15,6 +15,9 @@ import {
   NTSCOUT_CLIENT_ID,
   oauthClients,
   oauthConsents,
+  oauthRefreshTokens,
+  organizationMembers,
+  organizations,
   platformRoleAssignments,
   provisionNtscoutClient,
   totpCounter,
@@ -42,6 +45,7 @@ describeWithDatabase("OAuth provider integration", () => {
   let adminCookie: string;
   const runId = crypto.randomUUID();
   const adminId = crypto.randomUUID();
+  const organizationId = crypto.randomUUID();
   const applicationSecret = "oauth-provider-integration-secret-32-characters";
   const password = "OAuth-registry-admin-password-123!";
   const totpSecret = generateTotpSecret();
@@ -65,6 +69,16 @@ describeWithDatabase("OAuth provider integration", () => {
     await connection.db
       .insert(platformRoleAssignments)
       .values({ role: "platform_admin", userId: adminId });
+    await connection.db.insert(organizations).values({
+      id: organizationId,
+      name: "OAuth integration organization",
+      slug: `oauth-${runId}`,
+    });
+    await connection.db.insert(organizationMembers).values({
+      organizationId,
+      role: "owner",
+      userId: adminId,
+    });
     await connection.db.insert(mfaEnrollments).values({
       encryptedSecret: await encryptTotpSecret(totpSecret, applicationSecret),
       lastUsedCounter: totpCounter() - 1,
@@ -89,6 +103,7 @@ describeWithDatabase("OAuth provider integration", () => {
     await connection.client`delete from jwks where id = ${`expired-${runId}`}`;
     await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
     await connection.client`delete from "user" where id = ${adminId}`;
+    await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.close();
   });
 
@@ -140,6 +155,7 @@ describeWithDatabase("OAuth provider integration", () => {
       code_challenge: await pkceChallenge(input.verifier),
       code_challenge_method: "S256",
       nonce: input.nonce,
+      organization_id: organizationId,
       redirect_uri: input.redirectUri,
       response_type: "code",
       scope: input.scope ?? "openid profile",
@@ -375,13 +391,41 @@ describeWithDatabase("OAuth provider integration", () => {
     await connection.db.insert(oauthConsents).values({
       clientId: publicClient.client_id,
       id: crypto.randomUUID(),
+      referenceId: organizationId,
       scopes: ["openid", "profile"],
       userId: adminId,
+    });
+
+    const alteredOrganization = new URLSearchParams({
+      client_id: publicClient.client_id,
+      code_challenge: await pkceChallenge("altered-organization-verifier-1234567890123456789012"),
+      code_challenge_method: "S256",
+      nonce: "nonce-altered-organization",
+      organization_id: crypto.randomUUID(),
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid profile",
+      state: "state-altered-organization",
+    });
+    const rejectedOrganization = await handler()(
+      new Request(`${baseURL}/oauth2/authorize?${alteredOrganization}`, {
+        headers: {
+          accept: "application/json",
+          cookie: adminCookie,
+          "x-request-id": `${runId}-flow-authorize-altered-organization`,
+        },
+      }),
+    );
+    expect(rejectedOrganization.status).toBe(400);
+    expect(await rejectedOrganization.json()).toEqual({
+      error: "invalid_request",
+      error_description: "organization context is invalid",
     });
 
     const withoutPkce = new URLSearchParams({
       client_id: publicClient.client_id,
       nonce: "nonce-missing-pkce",
+      organization_id: organizationId,
       redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid profile",
@@ -416,6 +460,7 @@ describeWithDatabase("OAuth provider integration", () => {
       code_challenge: "plain-verifier",
       code_challenge_method: "plain",
       nonce: "nonce-plain-pkce",
+      organization_id: organizationId,
       redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid profile",
@@ -587,6 +632,7 @@ describeWithDatabase("OAuth provider integration", () => {
     await connection.db.insert(oauthConsents).values({
       clientId: NTSCOUT_CLIENT_ID,
       id: crypto.randomUUID(),
+      referenceId: organizationId,
       scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
       userId: adminId,
     });
@@ -617,6 +663,67 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(tokenSet.access_token).toBeTruthy();
     expect(tokenSet.id_token).toBeTruthy();
     expect(tokenSet.refresh_token).toStartWith("ntauth_refresh_");
+    const [storedRefresh] = await connection.db
+      .select({ organizationId: oauthRefreshTokens.referenceId })
+      .from(oauthRefreshTokens)
+      .where(eq(oauthRefreshTokens.clientId, NTSCOUT_CLIENT_ID))
+      .limit(1);
+    expect(storedRefresh?.organizationId).toBe(organizationId);
+
+    await connection.db
+      .update(organizations)
+      .set({ status: "suspended" })
+      .where(eq(organizations.id, organizationId));
+    const suspendedRefresh = await handler()(
+      new Request(`${baseURL}/oauth2/token`, {
+        body: new URLSearchParams({
+          client_id: NTSCOUT_CLIENT_ID,
+          grant_type: "refresh_token",
+          refresh_token: tokenSet.refresh_token,
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-request-id": `${runId}-ntscout-refresh-suspended`,
+        },
+        method: "POST",
+      }),
+    );
+    expect(suspendedRefresh.status).toBe(400);
+    expect(await suspendedRefresh.json()).toEqual({
+      error: "invalid_grant",
+      error_description: "organization context is invalid",
+    });
+    await connection.db
+      .update(organizations)
+      .set({ status: "active" })
+      .where(eq(organizations.id, organizationId));
+    await connection.db
+      .update(organizationMembers)
+      .set({ status: "suspended" })
+      .where(eq(organizationMembers.organizationId, organizationId));
+    const suspendedMembershipRefresh = await handler()(
+      new Request(`${baseURL}/oauth2/token`, {
+        body: new URLSearchParams({
+          client_id: NTSCOUT_CLIENT_ID,
+          grant_type: "refresh_token",
+          refresh_token: tokenSet.refresh_token,
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-request-id": `${runId}-ntscout-refresh-suspended-membership`,
+        },
+        method: "POST",
+      }),
+    );
+    expect(suspendedMembershipRefresh.status).toBe(400);
+    expect(await suspendedMembershipRefresh.json()).toEqual({
+      error: "invalid_grant",
+      error_description: "organization context is invalid",
+    });
+    await connection.db
+      .update(organizationMembers)
+      .set({ status: "active" })
+      .where(eq(organizationMembers.organizationId, organizationId));
 
     const [seedAudit] = await connection.db
       .select()
@@ -626,6 +733,15 @@ describeWithDatabase("OAuth provider integration", () => {
       action: "oauth.client.seed",
       outcome: "success",
       resourceId: NTSCOUT_CLIENT_ID,
+    });
+    const [refreshAudit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.requestId, `${runId}-ntscout-refresh-suspended-membership`));
+    expect(refreshAudit).toMatchObject({
+      action: "oauth.token",
+      organizationId,
+      outcome: "denied",
     });
     await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
   });

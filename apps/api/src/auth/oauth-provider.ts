@@ -2,6 +2,8 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import type { GrantType } from "@better-auth/oauth-provider";
 import { and, eq } from "drizzle-orm";
 
+import { currentOAuthOrganization } from "./oauth-organization";
+
 import {
   enforcePlatformAdminMfa,
   platformRoleAssignments,
@@ -37,6 +39,17 @@ export const createOAuthProviderPlugin = (options?: {
 }) =>
   oauthProvider({
     ...oauthProviderConfig,
+    postLogin: options
+      ? {
+          consentReferenceId: () => {
+            const organizationId = currentOAuthOrganization();
+            if (!organizationId) throw new Error("OAuth organization context is required");
+            return organizationId;
+          },
+          page: "/select-organization",
+          shouldRedirect: () => false,
+        }
+      : undefined,
     clientPrivileges: async ({ headers, session }) => {
       if (!options || !session) return false;
       const [administrator] = await options.database.db

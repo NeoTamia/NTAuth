@@ -61,6 +61,8 @@ OIDC discovery is available at `/.well-known/openid-configuration`, OAuth author
 
 Provision the stable public NTScout client after migrations with `bun --filter @neotamia/db db:seed:ntscout`. The command is idempotent and takes its exact environment-specific callbacks from `NTSCOUT_REDIRECT_URIS`; see [the NTScout OAuth client runbook](./docs/operations/ntscout-oauth-client.md).
 
+Every authorization request must include an explicit `organization_id` UUID selected by the client. NTAuth verifies that the signed-in user has an active membership in that active organization, binds the UUID to the authorization code and refresh-token family, and verifies it again before each token issuance. Invalid, altered, suspended, or missing organization contexts receive the same protocol-safe error.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation
