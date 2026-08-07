@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import {
   account,
@@ -13,9 +13,11 @@ import {
   jwks as jwksTable,
   mfaEnrollments,
   oauthClients,
+  oauthConsents,
   platformRoleAssignments,
   totpCounter,
   user,
+  verification,
   type DatabaseConnection,
 } from "@neotamia/db";
 
@@ -27,6 +29,11 @@ import { createApp } from "../app";
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
 const baseURL = "http://localhost/api/auth";
+
+async function pkceChallenge(verifier: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return Buffer.from(digest).toString("base64url");
+}
 
 describeWithDatabase("OAuth provider integration", () => {
   let connection: DatabaseConnection;
@@ -115,6 +122,63 @@ describeWithDatabase("OAuth provider integration", () => {
     headers.set("x-request-id", `${runId}-${requestId}`);
     return handler()(new Request(`${baseURL}${path}`, { ...init, headers }));
   }
+
+  async function authorizePublicClient(input: {
+    clientId: string;
+    nonce: string;
+    redirectUri: string;
+    requestId: string;
+    state: string;
+    verifier: string;
+  }) {
+    const query = new URLSearchParams({
+      client_id: input.clientId,
+      code_challenge: await pkceChallenge(input.verifier),
+      code_challenge_method: "S256",
+      nonce: input.nonce,
+      redirect_uri: input.redirectUri,
+      response_type: "code",
+      scope: "openid profile",
+      state: input.state,
+    });
+    const response = await handler()(
+      new Request(`${baseURL}/oauth2/authorize?${query}`, {
+        headers: {
+          accept: "application/json",
+          cookie: adminCookie,
+          "x-request-id": `${runId}-${input.requestId}`,
+        },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { redirect: boolean; url: string };
+    expect(payload.redirect).toBe(true);
+    return new URL(payload.url);
+  }
+
+  const exchangeCode = (input: {
+    clientId: string;
+    code: string;
+    redirectUri: string;
+    requestId: string;
+    verifier: string;
+  }) =>
+    handler()(
+      new Request(`${baseURL}/oauth2/token`, {
+        body: new URLSearchParams({
+          client_id: input.clientId,
+          code: input.code,
+          code_verifier: input.verifier,
+          grant_type: "authorization_code",
+          redirect_uri: input.redirectUri,
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-request-id": `${runId}-${input.requestId}`,
+        },
+        method: "POST",
+      }),
+    );
 
   test("mounts protocol endpoints on the Drizzle-backed provider", async () => {
     const response = await handler()(
@@ -277,6 +341,236 @@ describeWithDatabase("OAuth provider integration", () => {
         "oauth.update-client",
       ].toSorted(),
     );
+  });
+
+  test("enforces one-time Authorization Code with exact redirect URI and PKCE S256", async () => {
+    const redirectUri = "https://public-client.example/callback";
+    const created = await privilegedRequest(
+      "/oauth2/create-client",
+      {
+        body: JSON.stringify({
+          client_name: "Public PKCE client",
+          grant_types: ["authorization_code"],
+          redirect_uris: [redirectUri],
+          response_types: ["code"],
+          scope: "openid profile",
+          token_endpoint_auth_method: "none",
+          type: "native",
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      },
+      "flow-client-create",
+    );
+    expect(created.status).toBe(200);
+    const publicClient = (await created.json()) as {
+      client_id: string;
+      client_secret?: string;
+    };
+    expect(publicClient.client_secret).toBeUndefined();
+    await connection.db.insert(oauthConsents).values({
+      clientId: publicClient.client_id,
+      id: crypto.randomUUID(),
+      scopes: ["openid", "profile"],
+      userId: adminId,
+    });
+
+    const withoutPkce = new URLSearchParams({
+      client_id: publicClient.client_id,
+      nonce: "nonce-missing-pkce",
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid profile",
+      state: "state-missing-pkce",
+    });
+    const missingPkce = await handler()(
+      new Request(`${baseURL}/oauth2/authorize?${withoutPkce}`, {
+        headers: {
+          accept: "application/json",
+          cookie: adminCookie,
+          "x-request-id": `${runId}-flow-authorize-missing-pkce`,
+        },
+      }),
+    );
+    const missingPkceBody = (await missingPkce.json()) as { url: string };
+    expect(new URL(missingPkceBody.url).searchParams.get("error")).toBe("invalid_request");
+
+    const mismatchedRedirect = await authorizePublicClient({
+      clientId: publicClient.client_id,
+      nonce: "nonce-wrong-redirect",
+      redirectUri: `${redirectUri}/extra`,
+      requestId: "flow-authorize-wrong-redirect",
+      state: "state-wrong-redirect",
+      verifier: "wrong-redirect-verifier-that-is-long-enough-1234567890",
+    });
+    expect(mismatchedRedirect.origin + mismatchedRedirect.pathname).toBe(`${baseURL}/error`);
+    expect(mismatchedRedirect.searchParams.get("error")).toBe("invalid_redirect");
+    expect(mismatchedRedirect.searchParams.has("code")).toBe(false);
+
+    const plainPkce = new URLSearchParams({
+      client_id: publicClient.client_id,
+      code_challenge: "plain-verifier",
+      code_challenge_method: "plain",
+      nonce: "nonce-plain-pkce",
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid profile",
+      state: "state-plain-pkce",
+    });
+    const rejectedPlain = await handler()(
+      new Request(`${baseURL}/oauth2/authorize?${plainPkce}`, {
+        headers: {
+          accept: "application/json",
+          cookie: adminCookie,
+          "x-request-id": `${runId}-flow-authorize-plain-pkce`,
+        },
+      }),
+    );
+    expect(rejectedPlain.status).toBe(400);
+
+    const wrongVerifier = "correct-verifier-for-negative-flow-12345678901234567890";
+    const wrongVerifierAuthorization = await authorizePublicClient({
+      clientId: publicClient.client_id,
+      nonce: "nonce-wrong-verifier",
+      redirectUri,
+      requestId: "flow-authorize-wrong-verifier",
+      state: "state-wrong-verifier",
+      verifier: wrongVerifier,
+    });
+    const wrongVerifierCode = wrongVerifierAuthorization.searchParams.get("code")!;
+    const rejectedVerifier = await exchangeCode({
+      clientId: publicClient.client_id,
+      code: wrongVerifierCode,
+      redirectUri,
+      requestId: "flow-token-wrong-verifier",
+      verifier: "different-verifier-for-negative-flow-123456789012345",
+    });
+    expect(rejectedVerifier.status).toBe(401);
+    expect(await rejectedVerifier.text()).toContain("code verification failed");
+    const consumedAfterMismatch = await exchangeCode({
+      clientId: publicClient.client_id,
+      code: wrongVerifierCode,
+      redirectUri,
+      requestId: "flow-token-consumed-after-mismatch",
+      verifier: wrongVerifier,
+    });
+    expect(consumedAfterMismatch.status).toBe(401);
+    expect(await consumedAfterMismatch.text()).toContain("invalid_grant");
+
+    const redirectVerifier = "redirect-mismatch-verifier-123456789012345678901234";
+    const redirectAuthorization = await authorizePublicClient({
+      clientId: publicClient.client_id,
+      nonce: "nonce-token-redirect",
+      redirectUri,
+      requestId: "flow-authorize-token-redirect",
+      state: "state-token-redirect",
+      verifier: redirectVerifier,
+    });
+    const rejectedRedirect = await exchangeCode({
+      clientId: publicClient.client_id,
+      code: redirectAuthorization.searchParams.get("code")!,
+      redirectUri: "https://public-client.example/other-callback",
+      requestId: "flow-token-wrong-redirect",
+      verifier: redirectVerifier,
+    });
+    expect(rejectedRedirect.status).toBe(400);
+    expect(await rejectedRedirect.text()).toContain("redirect_uri mismatch");
+
+    const expiringVerifier = "expiring-verifier-123456789012345678901234567890";
+    const expiringAuthorization = await authorizePublicClient({
+      clientId: publicClient.client_id,
+      nonce: "nonce-expiring-code",
+      redirectUri,
+      requestId: "flow-authorize-expiring",
+      state: "state-expiring-code",
+      verifier: expiringVerifier,
+    });
+    const [storedCode] = await connection.db
+      .select()
+      .from(verification)
+      .orderBy(desc(verification.createdAt))
+      .limit(1);
+    expect(storedCode!.expiresAt.getTime() - storedCode!.createdAt.getTime()).toBe(5 * 60 * 1000);
+    await connection.db
+      .update(verification)
+      .set({ expiresAt: new Date(Date.now() - 1) })
+      .where(eq(verification.id, storedCode!.id));
+    const expired = await exchangeCode({
+      clientId: publicClient.client_id,
+      code: expiringAuthorization.searchParams.get("code")!,
+      redirectUri,
+      requestId: "flow-token-expired",
+      verifier: expiringVerifier,
+    });
+    expect(expired.status).toBe(401);
+    expect(await expired.text()).toContain("invalid_grant");
+
+    const verifier = "valid-verifier-123456789012345678901234567890123";
+    const nonce = `nonce-${runId}`;
+    const state = `state-${runId}`;
+    const authorization = await authorizePublicClient({
+      clientId: publicClient.client_id,
+      nonce,
+      redirectUri,
+      requestId: "flow-authorize-valid",
+      state,
+      verifier,
+    });
+    expect(authorization.searchParams.get("state")).toBe(state);
+    expect(authorization.searchParams.get("iss")).toBe(baseURL);
+    const code = authorization.searchParams.get("code")!;
+    const token = await exchangeCode({
+      clientId: publicClient.client_id,
+      code,
+      redirectUri,
+      requestId: "flow-token-valid",
+      verifier,
+    });
+    expect(token.status).toBe(200);
+    expect(token.headers.get("cache-control")).toBe("no-store");
+    const tokenSet = (await token.json()) as {
+      access_token: string;
+      id_token: string;
+      token_type: string;
+    };
+    expect(tokenSet.access_token).toBeTruthy();
+    expect(tokenSet.token_type).toBe("Bearer");
+    const idTokenPayload = JSON.parse(
+      Buffer.from(tokenSet.id_token.split(".")[1]!, "base64url").toString("utf8"),
+    ) as Record<string, unknown>;
+    expect(idTokenPayload.nonce).toBe(nonce);
+
+    const replay = await exchangeCode({
+      clientId: publicClient.client_id,
+      code,
+      redirectUri,
+      requestId: "flow-token-replay",
+      verifier,
+    });
+    expect(replay.status).toBe(401);
+    expect(await replay.text()).toContain("invalid_grant");
+
+    const protocolAudits = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.actorUserId, adminId));
+    expect(
+      protocolAudits.find((event) => event.requestId === `${runId}-flow-authorize-wrong-redirect`),
+    ).toMatchObject({ action: "oauth.authorize", outcome: "denied" });
+    expect(
+      protocolAudits.find((event) => event.requestId === `${runId}-flow-authorize-valid`),
+    ).toMatchObject({ action: "oauth.authorize", outcome: "success" });
+
+    const deleted = await privilegedRequest(
+      "/oauth2/delete-client",
+      {
+        body: JSON.stringify({ client_id: publicClient.client_id }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      },
+      "flow-client-delete",
+    );
+    expect(deleted.status).toBe(200);
   });
 
   test("publishes strict root discovery and cacheable public JWKS", async () => {

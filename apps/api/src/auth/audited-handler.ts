@@ -22,6 +22,29 @@ const sensitiveEndpoints = new Set([
   "update-client",
 ]);
 
+async function oauthOutcome(response: Response): Promise<"denied" | "success"> {
+  if (!response.ok) return "denied";
+  const location = response.headers.get("location");
+  if (location) {
+    try {
+      if (new URL(location).searchParams.has("error")) return "denied";
+    } catch {
+      return "denied";
+    }
+  }
+  if (response.headers.get("content-type")?.includes("application/json")) {
+    try {
+      const body = (await response.clone().json()) as { url?: unknown };
+      if (typeof body.url === "string" && new URL(body.url).searchParams.has("error")) {
+        return "denied";
+      }
+    } catch {
+      // A successful non-redirect JSON response has no protocol error to classify.
+    }
+  }
+  return "success";
+}
+
 export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnection) {
   return async (request: Request) => {
     const pathname = new URL(request.url).pathname;
@@ -37,7 +60,10 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     const current = await auth.api.getSession({ headers: request.headers });
     const response = await auth.handler(request);
-    if (response.ok && (endpoint === "create-client" || endpoint === "rotate-secret")) {
+    if (
+      response.ok &&
+      (endpoint === "create-client" || endpoint === "rotate-secret" || endpoint === "token")
+    ) {
       response.headers.set("cache-control", "no-store");
       response.headers.set("pragma", "no-cache");
     }
@@ -45,7 +71,7 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
       action: `oauth.${endpoint}`,
       actorUserId: current?.user.id,
       metadata: { method: request.method, status: response.status },
-      outcome: response.status < 400 ? "success" : "denied",
+      outcome: await oauthOutcome(response),
       requestId,
       resourceType: "oauth_protocol",
     });
