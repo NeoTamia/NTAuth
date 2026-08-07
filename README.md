@@ -55,6 +55,8 @@ Platform administrators enroll TOTP through `POST /api/v1/mfa/enroll` and confir
 
 Invitation acceptance verifies the invited address immediately. Other unverified accounts request or resend verification through `POST /api/v1/email-verification/request` and consume the link through `/verify`. Responses do not reveal account existence; SHA-256 token hashes expire after 24 hours, resending invalidates the prior link, and verified or suspended accounts receive no new token. Authentication and password recovery reject unverified identities.
 
+The Better Auth OAuth provider is mounted under `/api/auth/oauth2` and persists its clients, consents, tokens, and signing keys through the shared Drizzle adapter. V1 enables only authorization code and refresh token grants, keeps dynamic registration and public pre-login disabled, hashes stored tokens and client secrets, issues asymmetric JWTs, and fixes authorization codes to 5 minutes, access/ID tokens to 15 minutes, and refresh tokens to 30 days. Sensitive protocol requests receive a correlation ID and a metadata-only audit event.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

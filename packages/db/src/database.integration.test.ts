@@ -42,18 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0010_opposite_blizzard");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0011_solid_kylun");
 
-    const [verificationTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.email_verification_requests') is not null as exists
+    const [oauthTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.oauth_clients') is not null as exists
     `;
-    expect(verificationTable?.exists).toBe(false);
+    expect(oauthTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredVerificationTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.email_verification_requests') is not null as exists
+    const [restoredOauthTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.oauth_clients') is not null as exists
     `;
-    expect(restoredVerificationTable?.exists).toBe(true);
+    expect(restoredOauthTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

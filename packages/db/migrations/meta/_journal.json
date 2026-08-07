@@ -78,6 +78,13 @@
       "when": 1786144190007,
       "tag": "0010_opposite_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786144516336,
+      "tag": "0011_solid_kylun",
+      "breakpoints": true
     }
   ]
 }

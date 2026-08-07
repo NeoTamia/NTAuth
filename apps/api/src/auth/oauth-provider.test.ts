@@ -22,10 +22,14 @@ describe("Better Auth provider decision", () => {
       allowUnauthenticatedClientRegistration: false,
       codeExpiresIn: 300,
       disableJwtPlugin: false,
+      grantTypes: ["authorization_code", "refresh_token"],
+      idTokenExpiresIn: 900,
       refreshTokenExpiresIn: 2_592_000,
+      scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
       storeClientSecret: "hashed",
       storeTokens: "hashed",
     });
+    expect(oauthProviderConfig.grantTypes).not.toContain("client_credentials");
   });
 
   it("demonstrates the missing protocol endpoints in the deprecated plugin", () => {

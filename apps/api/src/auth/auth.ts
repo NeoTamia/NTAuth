@@ -1,6 +1,9 @@
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { jwt } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
+
+import { createOAuthProviderPlugin } from "./oauth-provider";
 
 import {
   betterAuthSchema,
@@ -45,6 +48,14 @@ export function createAuth(options: AuthOptions) {
       minPasswordLength: 12,
       requireEmailVerification: true,
     },
+    plugins: [
+      jwt({
+        disableSettingJwtHeader: true,
+        jwks: { keyPairConfig: { alg: "ES256" } },
+        jwt: { audience: options.baseURL, expirationTime: "15m", issuer: options.baseURL },
+      }),
+      createOAuthProviderPlugin(),
+    ],
     databaseHooks: {
       session: {
         create: {

@@ -4,6 +4,7 @@ import { createClient } from "redis";
 import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
+import { createAuditedAuthHandler } from "./auth/audited-handler";
 import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
 import { createMfaRoutes } from "./mfa";
@@ -30,6 +31,7 @@ export function createRuntime(environment: ApiEnvironment) {
     secret: environment.BETTER_AUTH_SECRET,
     trustedOrigins: environment.CORS_ORIGINS,
   });
+  const authHandler = createAuditedAuthHandler(auth, database);
   const invitationRoutes = createInvitationRoutes({
     acceptInvitationURL: `${environment.CORS_ORIGINS[0]}/auth/accept-invitation`,
     applicationSecret: environment.BETTER_AUTH_SECRET,
@@ -77,6 +79,7 @@ export function createRuntime(environment: ApiEnvironment) {
 
   return {
     auth,
+    authHandler,
     emailVerificationRoutes,
     invitationRoutes,
     mfaRoutes,
