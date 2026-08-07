@@ -1,0 +1,115 @@
+import { z } from "zod";
+
+const optionalString = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
+
+const optionalBoolean = z.preprocess(
+  (value) => (typeof value === "string" ? value.toLowerCase() : value),
+  z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
+);
+
+function usesProtocol(value: string, protocol: RegExp): boolean {
+  try {
+    return protocol.test(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+const httpUrl = z
+  .string()
+  .url()
+  .refine((value) => usesProtocol(value, /^https?:$/), {
+    message: "URL must use HTTP or HTTPS",
+  });
+const postgresUrl = z
+  .string()
+  .url()
+  .refine((value) => usesProtocol(value, /^postgres(?:ql)?:$/), {
+    message: "URL must use PostgreSQL",
+  });
+const redisUrl = z
+  .string()
+  .url()
+  .refine((value) => usesProtocol(value, /^rediss?:$/), {
+    message: "URL must use Redis",
+  });
+
+const sharedEnvironmentSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]),
+  DATABASE_URL: postgresUrl,
+  REDIS_URL: redisUrl,
+});
+
+const apiEnvironmentSchema = sharedEnvironmentSchema.extend({
+  API_HOST: z.string().trim().min(1),
+  API_PORT: z.coerce.number().int().min(1).max(65_535),
+  AUTH_BASE_URL: httpUrl,
+  BETTER_AUTH_SECRET: z.string().min(32),
+  CORS_ORIGINS: z
+    .string()
+    .transform((value) => value.split(",").map((origin) => origin.trim()))
+    .pipe(z.array(httpUrl).min(1)),
+});
+
+const workerEnvironmentSchema = sharedEnvironmentSchema.extend({
+  EMAIL_OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(300_000),
+  SMTP_FROM: z.string().trim().min(1),
+  SMTP_HOST: z.string().trim().min(1),
+  SMTP_PASSWORD: optionalString,
+  SMTP_PORT: z.coerce.number().int().min(1).max(65_535),
+  SMTP_SECURE: optionalBoolean.default(false),
+  SMTP_USER: optionalString,
+});
+
+const publicWebEnvironmentSchema = z.object({
+  NUXT_PUBLIC_API_BASE_URL: httpUrl,
+});
+
+export class EnvironmentValidationError extends Error {
+  readonly issues: ReadonlyArray<{ path: string; message: string }>;
+
+  constructor(issues: z.core.$ZodIssue[]) {
+    const safeIssues = issues.map((issue) => ({
+      path: issue.path.join(".") || "environment",
+      message: issue.message,
+    }));
+
+    super(
+      `Invalid environment: ${safeIssues.map(({ path, message }) => `${path}: ${message}`).join("; ")}`,
+    );
+    this.name = "EnvironmentValidationError";
+    this.issues = safeIssues;
+  }
+}
+
+function parseEnvironment<T>(schema: z.ZodType<T>, environment: unknown): T {
+  const result = schema.safeParse(environment);
+
+  if (!result.success) {
+    throw new EnvironmentValidationError(result.error.issues);
+  }
+
+  return result.data;
+}
+
+export function parseApiEnvironment(environment: unknown = process.env) {
+  return parseEnvironment(apiEnvironmentSchema, environment);
+}
+
+export function parseWorkerEnvironment(environment: unknown = process.env) {
+  return parseEnvironment(workerEnvironmentSchema, environment);
+}
+
+export function parsePublicWebEnvironment(environment: unknown = process.env) {
+  return parseEnvironment(publicWebEnvironmentSchema, environment);
+}
+
+export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;
+export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
+export type PublicWebEnvironment = z.infer<typeof publicWebEnvironmentSchema>;
