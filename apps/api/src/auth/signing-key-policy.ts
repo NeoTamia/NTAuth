@@ -1,0 +1,2 @@
+export const SIGNING_KEY_ROTATION_SECONDS = 90 * 24 * 60 * 60;
+export const SIGNING_KEY_GRACE_SECONDS = 24 * 60 * 60;

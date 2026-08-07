@@ -4,6 +4,7 @@ import { jwt } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 import { createOAuthProviderPlugin } from "./oauth-provider";
+import { SIGNING_KEY_GRACE_SECONDS, SIGNING_KEY_ROTATION_SECONDS } from "./signing-key-policy";
 
 import {
   betterAuthSchema,
@@ -52,7 +53,11 @@ export function createAuth(options: AuthOptions) {
     plugins: [
       jwt({
         disableSettingJwtHeader: true,
-        jwks: { keyPairConfig: { alg: "ES256" } },
+        jwks: {
+          gracePeriod: SIGNING_KEY_GRACE_SECONDS,
+          keyPairConfig: { alg: "ES256" },
+          rotationInterval: SIGNING_KEY_ROTATION_SECONDS,
+        },
         jwt: { audience: options.baseURL, expirationTime: "15m", issuer: options.baseURL },
       }),
       createOAuthProviderPlugin(

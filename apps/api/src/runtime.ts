@@ -10,6 +10,7 @@ import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
 import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
+import { createSigningKeyRoutes } from "./signing-keys";
 import { createUserRoutes } from "./users";
 
 export function createRuntime(environment: ApiEnvironment) {
@@ -60,6 +61,11 @@ export function createRuntime(environment: ApiEnvironment) {
     database,
     resetPasswordURL: `${environment.CORS_ORIGINS[0]}/auth/reset-password`,
   });
+  const signingKeyRoutes = createSigningKeyRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
 
   const connectRedis = async () => {
     if (redis.isOpen) return;
@@ -89,6 +95,7 @@ export function createRuntime(environment: ApiEnvironment) {
     mfaRoutes,
     passwordRoutes,
     readiness,
+    signingKeyRoutes,
     userRoutes,
     async close() {
       const closures: Promise<unknown>[] = [database.close()];

@@ -29,7 +29,9 @@ import {
 import { createAuditedAuthHandler } from "./audited-handler";
 import { createAuth } from "./auth";
 import { createDiscoveryRoutes } from "./discovery";
+import { SIGNING_KEY_GRACE_SECONDS, SIGNING_KEY_ROTATION_SECONDS } from "./signing-key-policy";
 import { createApp } from "../app";
+import { createSigningKeyRoutes } from "../signing-keys";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
@@ -43,6 +45,9 @@ async function pkceChallenge(verifier: string) {
 describeWithDatabase("OAuth provider integration", () => {
   let connection: DatabaseConnection;
   let adminCookie: string;
+  let emergencyKeyId: string | undefined;
+  let emergencyPreviousExpiration: Date | null | undefined;
+  let emergencyPreviousKeyId: string | undefined;
   const runId = crypto.randomUUID();
   const adminId = crypto.randomUUID();
   const organizationId = crypto.randomUUID();
@@ -100,6 +105,14 @@ describeWithDatabase("OAuth provider integration", () => {
 
   afterAll(async () => {
     await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    if (emergencyKeyId)
+      await connection.db.delete(jwksTable).where(eq(jwksTable.id, emergencyKeyId));
+    if (emergencyPreviousKeyId) {
+      await connection.db
+        .update(jwksTable)
+        .set({ expiresAt: emergencyPreviousExpiration })
+        .where(eq(jwksTable.id, emergencyPreviousKeyId));
+    }
     await connection.client`delete from jwks where id = ${`expired-${runId}`}`;
     await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
     await connection.client`delete from "user" where id = ${adminId}`;
@@ -125,10 +138,15 @@ describeWithDatabase("OAuth provider integration", () => {
     return createApp({
       authHandler: createAuditedAuthHandler(currentAuth, connection),
       discoveryRoutes: createDiscoveryRoutes(currentAuth),
+      signingKeyRoutes: createSigningKeyRoutes({
+        applicationSecret,
+        auth: currentAuth,
+        database: connection,
+      }),
     });
   };
 
-  async function privilegedRequest(path: string, init: RequestInit, requestId: string) {
+  async function privilegedHeaders(init: RequestInit, requestId: string) {
     const counter = totpCounter();
     await connection.db
       .update(mfaEnrollments)
@@ -138,6 +156,11 @@ describeWithDatabase("OAuth provider integration", () => {
     headers.set("cookie", adminCookie);
     headers.set("x-ntauth-totp", await generateTotpCode(totpSecret, counter));
     headers.set("x-request-id", `${runId}-${requestId}`);
+    return headers;
+  }
+
+  async function privilegedRequest(path: string, init: RequestInit, requestId: string) {
+    const headers = await privilegedHeaders(init, requestId);
     return handler()(new Request(`${baseURL}${path}`, { ...init, headers }));
   }
 
@@ -820,5 +843,102 @@ describeWithDatabase("OAuth provider integration", () => {
       new Request(`${baseURL}/jwks`, { headers: { "if-none-match": etag } }),
     );
     expect(cached.status).toBe(304);
+  });
+
+  test("rotates ES256 signing keys immediately while retaining the previous public key", async () => {
+    const app = application();
+    await app.handle(new Request(`${baseURL}/jwks`));
+    const currentAuth = auth();
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const tokenBeforeRotation = await currentAuth.api.signJWT({
+      body: {
+        payload: {
+          exp: issuedAt + 15 * 60,
+          iat: issuedAt,
+          sub: adminId,
+        },
+      },
+    });
+    const previousHeader = JSON.parse(
+      Buffer.from(tokenBeforeRotation.token.split(".")[0]!, "base64url").toString("utf8"),
+    ) as { alg: string; kid: string };
+    expect(previousHeader.alg).toBe("ES256");
+    const [previous] = await connection.db
+      .select()
+      .from(jwksTable)
+      .where(eq(jwksTable.id, previousHeader.kid))
+      .limit(1);
+    emergencyPreviousKeyId = previous!.id;
+    emergencyPreviousExpiration = previous!.expiresAt;
+
+    const unauthorized = await app.handle(
+      new Request("http://localhost/api/v1/oauth/signing-keys/rotate", {
+        body: JSON.stringify({ reason: "emergency" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const rotation = await app.handle(
+      new Request("http://localhost/api/v1/oauth/signing-keys/rotate", {
+        body: JSON.stringify({ reason: "emergency" }),
+        headers: await privilegedHeaders(
+          { headers: { "content-type": "application/json" } },
+          "signing-key-emergency",
+        ),
+        method: "POST",
+      }),
+    );
+    expect(rotation.status).toBe(200);
+    const rotated = (await rotation.json()) as { currentKid: string; previousKid: string };
+    expect(rotated.previousKid).toBe(previous!.id);
+    expect(rotated.currentKid).not.toBe(rotated.previousKid);
+    emergencyKeyId = rotated.currentKid;
+
+    const [next] = await connection.db
+      .select()
+      .from(jwksTable)
+      .where(eq(jwksTable.id, rotated.currentKid))
+      .limit(1);
+    expect(next?.expiresAt).toBeInstanceOf(Date);
+    expect(
+      Math.abs(
+        next!.expiresAt!.getTime() -
+          next!.createdAt.getTime() -
+          SIGNING_KEY_ROTATION_SECONDS * 1000,
+      ),
+    ).toBeLessThan(100);
+
+    const verifiedPrevious = await currentAuth.api.verifyJWT({
+      body: { token: tokenBeforeRotation.token },
+    });
+    expect(verifiedPrevious.payload?.sub).toBe(adminId);
+    const overlap = (await (await app.handle(new Request(`${baseURL}/jwks`))).json()) as {
+      keys: Array<{ kid: string }>;
+    };
+    expect(overlap.keys.map((key) => key.kid)).toContain(previous!.id);
+    expect(overlap.keys.map((key) => key.kid)).toContain(next!.id);
+
+    await connection.db
+      .update(jwksTable)
+      .set({ expiresAt: new Date(Date.now() - SIGNING_KEY_GRACE_SECONDS * 1000 - 1) })
+      .where(eq(jwksTable.id, previous!.id));
+    const afterGrace = (await (await app.handle(new Request(`${baseURL}/jwks`))).json()) as {
+      keys: Array<{ kid: string }>;
+    };
+    expect(afterGrace.keys.map((key) => key.kid)).not.toContain(previous!.id);
+    expect(afterGrace.keys.map((key) => key.kid)).toContain(next!.id);
+
+    const [audit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.requestId, `${runId}-signing-key-emergency`));
+    expect(audit).toMatchObject({
+      action: "oauth.signing-key.rotate",
+      actorUserId: adminId,
+      outcome: "success",
+      resourceId: next!.id,
+    });
   });
 });

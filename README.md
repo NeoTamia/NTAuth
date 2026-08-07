@@ -65,6 +65,8 @@ Every authorization request must include an explicit `organization_id` UUID sele
 
 The closed V1 scope catalogue and minimal claim contract are documented in [OAuth scopes and claims](./docs/oauth/scopes-and-claims.md). Unknown scopes, client-disallowed scopes, and refresh-time scope escalation are rejected.
 
+ES256 signing keys rotate lazily every 90 days and remain published for a 24-hour grace window, which exceeds the 15-minute JWT lifetime. An authenticated platform administrator can force an immediate replacement with `POST /api/v1/oauth/signing-keys/rotate`, body `{ "reason": "emergency" }`, and a fresh `X-NTAuth-TOTP`; the operation returns only the old and new public `kid` values and is audited.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation
