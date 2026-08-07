@@ -17,4 +17,14 @@ export {
   OrganizationAuthorizationError,
 } from "./organizations";
 export { revokeUserSessions, SessionRevocationAuthorizationError } from "./sessions";
+export {
+  deleteUser,
+  InvalidUserLifecycleTransitionError,
+  isUserActive,
+  permitsAuthentication,
+  setUserStatus,
+  UserLifecycleAuthorizationError,
+  UserLifecycleNotFoundError,
+  type ReversibleUserStatus,
+} from "./user-lifecycle";
 export * from "./schema";

@@ -1,7 +1,13 @@
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { eq } from "drizzle-orm";
 
-import { betterAuthSchema, type DatabaseConnection } from "@neotamia/db";
+import {
+  betterAuthSchema,
+  permitsAuthentication,
+  user,
+  type DatabaseConnection,
+} from "@neotamia/db";
 
 type AuthOptions = {
   baseURL: string;
@@ -42,9 +48,21 @@ export function createAuth(options: AuthOptions) {
     databaseHooks: {
       session: {
         create: {
-          before: async (session) => ({
-            data: { ...session, ipAddress: null, userAgent: minimizeUserAgent(session.userAgent) },
-          }),
+          before: async (session) => {
+            const [identity] = await options.database
+              .select({ status: user.status })
+              .from(user)
+              .where(eq(user.id, session.userId))
+              .limit(1);
+            if (!identity || !permitsAuthentication(identity.status)) return false;
+            return {
+              data: {
+                ...session,
+                ipAddress: null,
+                userAgent: minimizeUserAgent(session.userAgent),
+              },
+            };
+          },
         },
       },
     },

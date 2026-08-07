@@ -10,6 +10,7 @@ const app = createApp({
   corsOrigins: environment.CORS_ORIGINS,
   invitationRoutes: runtime.invitationRoutes,
   readiness: runtime.readiness,
+  userRoutes: runtime.userRoutes,
 }).listen({
   hostname: environment.API_HOST,
   port: environment.API_PORT,

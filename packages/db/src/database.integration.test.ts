@@ -42,18 +42,24 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0006_abnormal_slapstick");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0007_complete_tomas");
 
-    const [invitationTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.invitations') is not null as exists
+    const [statusColumn] = await connection.client<{ exists: boolean }[]>`
+      select exists(
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'user' and column_name = 'status'
+      ) as exists
     `;
-    expect(invitationTable?.exists).toBe(false);
+    expect(statusColumn?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredInvitationTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.invitations') is not null as exists
+    const [restoredStatusColumn] = await connection.client<{ exists: boolean }[]>`
+      select exists(
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'user' and column_name = 'status'
+      ) as exists
     `;
-    expect(restoredInvitationTable?.exists).toBe(true);
+    expect(restoredStatusColumn?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

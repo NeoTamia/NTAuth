@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
 
 import {
   account,
   applyMigrations,
   createDatabase,
+  session,
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
@@ -137,6 +139,41 @@ describeWithDatabase("Better Auth persistence", () => {
         update session set expires_at = now() - interval '1 second' where id = ${firstBody.session.id}
       `;
       expect(await (await getSession(firstCookie!)).json()).toBeNull();
+    } finally {
+      await connection.client`delete from "user" where id = ${id}`;
+    }
+  });
+
+  test("refuses to create a session for a suspended identity", async () => {
+    const id = crypto.randomUUID();
+    const email = `suspended-${id}@example.test`;
+    const password = "Suspended-user-password-123!";
+    await connection.db.insert(user).values({
+      email,
+      emailVerified: true,
+      id,
+      name: "Suspended user",
+      status: "suspended",
+    });
+    await connection.db.insert(account).values({
+      accountId: id,
+      id: crypto.randomUUID(),
+      password: await hashPassword(password),
+      providerId: "credential",
+      userId: id,
+    });
+
+    try {
+      const response = await auth().handler(
+        new Request(`${baseURL}/sign-in/email`, {
+          body: JSON.stringify({ email, password }),
+          headers: { "content-type": "application/json", origin },
+          method: "POST",
+        }),
+      );
+      expect(response.status).not.toBe(200);
+      const sessions = await connection.db.select().from(session).where(eq(session.userId, id));
+      expect(sessions).toHaveLength(0);
     } finally {
       await connection.client`delete from "user" where id = ${id}`;
     }

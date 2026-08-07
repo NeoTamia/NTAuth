@@ -14,15 +14,34 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export type UserStatus = "active" | "deactivated" | "deleted" | "suspended";
+
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    status: varchar("status", { length: 16 }).$type<UserStatus>().notNull().default("active"),
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("user_status_idx").on(table.status),
+    check(
+      "user_status_check",
+      sql`${table.status} in ('active', 'suspended', 'deactivated', 'deleted')`,
+    ),
+    check(
+      "user_deleted_at_check",
+      sql`(${table.status} = 'deleted' and ${table.deletedAt} is not null) or (${table.status} <> 'deleted' and ${table.deletedAt} is null)`,
+    ),
+  ],
+);
 
 export const session = pgTable(
   "session",

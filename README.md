@@ -47,6 +47,8 @@ Application emails use the PostgreSQL outbox and are committed in the same trans
 
 Invitation creation is authenticated and authorized through `POST /api/v1/invitations`; cancellation uses `DELETE /api/v1/invitations/:id`. Tokens expire after 72 hours, only their SHA-256 hash is retained in the invitation table, and successful email jobs scrub their payload after delivery. `POST /api/v1/invitations/accept` uses a uniform error response for unknown, expired, cancelled, or reused tokens and atomically verifies the email and creates the organization membership.
 
+Platform administrators manage the user lifecycle with `PATCH /api/v1/users/:id/status` (`active`, `suspended`, or `deactivated`) and `DELETE /api/v1/users/:id`. Every transition is audited and immediately revokes existing sessions; non-active identities cannot create new sessions. Deletion is terminal: credentials, memberships, roles, sessions, and personal profile fields are removed while an anonymized identity row remains to preserve audit and referential integrity.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

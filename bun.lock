@@ -23,6 +23,7 @@
         "@neotamia/config": "workspace:*",
         "@neotamia/db": "workspace:*",
         "better-auth": "1.6.26",
+        "drizzle-orm": "0.45.2",
         "elysia": "1.4.29",
         "redis": "5.8.2",
       },

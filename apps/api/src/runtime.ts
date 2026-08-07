@@ -5,6 +5,7 @@ import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
 import { createInvitationRoutes } from "./invitations";
+import { createUserRoutes } from "./users";
 
 export function createRuntime(environment: ApiEnvironment) {
   const database = createDatabase(environment.DATABASE_URL, { max: 5 });
@@ -31,6 +32,7 @@ export function createRuntime(environment: ApiEnvironment) {
     auth,
     database,
   });
+  const userRoutes = createUserRoutes({ auth, database });
 
   const connectRedis = async () => {
     if (redis.isOpen) return;
@@ -55,6 +57,7 @@ export function createRuntime(environment: ApiEnvironment) {
     auth,
     invitationRoutes,
     readiness,
+    userRoutes,
     async close() {
       const closures: Promise<unknown>[] = [database.close()];
 
