@@ -46,6 +46,10 @@ const sharedEnvironmentSchema = z.object({
   REDIS_URL: redisUrl,
 });
 
+const databaseEnvironmentSchema = z.object({
+  DATABASE_URL: postgresUrl,
+});
+
 const apiEnvironmentSchema = sharedEnvironmentSchema.extend({
   API_HOST: z.string().trim().min(1),
   API_PORT: z.coerce.number().int().min(1).max(65_535),
@@ -110,6 +114,11 @@ export function parsePublicWebEnvironment(environment: unknown = process.env) {
   return parseEnvironment(publicWebEnvironmentSchema, environment);
 }
 
+export function parseDatabaseEnvironment(environment: unknown = process.env) {
+  return parseEnvironment(databaseEnvironmentSchema, environment);
+}
+
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;
 export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
 export type PublicWebEnvironment = z.infer<typeof publicWebEnvironmentSchema>;
+export type DatabaseEnvironment = z.infer<typeof databaseEnvironmentSchema>;

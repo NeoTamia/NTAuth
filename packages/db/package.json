@@ -8,15 +8,17 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "bun src/migrate.ts up",
+    "db:rollback": "bun src/migrate.ts down",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@neotamia/config": "workspace:*",
     "drizzle-orm": "0.45.2",
     "postgres": "3.4.9"
   },
   "devDependencies": {
-    "@neotamia/config": "workspace:*",
     "@types/bun": "1.3.14",
     "drizzle-kit": "0.31.10",
     "typescript": "6.0.3"

@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   EnvironmentValidationError,
   parseApiEnvironment,
+  parseDatabaseEnvironment,
   parsePublicWebEnvironment,
   parseWorkerEnvironment,
 } from "./env";
@@ -36,6 +37,12 @@ describe("runtime environment validation", () => {
 
     expect(environment).toEqual({ NUXT_PUBLIC_API_BASE_URL: "https://auth.example.com" });
     expect(environment).not.toHaveProperty("BETTER_AUTH_SECRET");
+  });
+
+  test("validates database tooling without requiring another service", () => {
+    expect(parseDatabaseEnvironment({ DATABASE_URL: sharedEnvironment.DATABASE_URL })).toEqual({
+      DATABASE_URL: sharedEnvironment.DATABASE_URL,
+    });
   });
 
   test("normalizes optional SMTP credentials", () => {

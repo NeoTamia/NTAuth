@@ -26,6 +26,13 @@ docker compose exec postgres pg_isready -U ntauth -d ntauth
 docker compose exec redis redis-cli ping
 ```
 
+Apply or roll back the latest database migration with:
+
+```bash
+bun --filter @neotamia/db db:migrate
+bun --filter @neotamia/db db:rollback
+```
+
 To stop the services while keeping their data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes.
 
 ## Validation

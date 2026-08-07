@@ -1,13 +1,13 @@
 import { defineConfig } from "drizzle-kit";
+import { parseDatabaseEnvironment } from "@neotamia/config";
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL is required");
+const environment = parseDatabaseEnvironment();
 
 export default defineConfig({
   dialect: "postgresql",
   out: "./migrations",
   schema: "./src/schema.ts",
-  dbCredentials: { url },
+  dbCredentials: { url: environment.DATABASE_URL },
   strict: true,
   verbose: true,
 });
