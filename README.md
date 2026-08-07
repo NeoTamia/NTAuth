@@ -16,6 +16,8 @@ docker compose up -d postgres redis mailpit
 bun run dev
 ```
 
+To run the complete stack in containers instead, use `docker compose up --build -d`. Compose waits for PostgreSQL, applies migrations once, waits for Redis and Mailpit, then starts the API, worker, and web application in dependency order. Inspect it with `docker compose ps` and `docker compose logs --tail=100 <service>`.
+
 PostgreSQL is exposed on `localhost:5432`, Redis on `localhost:6379`, and the Mailpit inbox is available at [http://localhost:8025](http://localhost:8025). Their data is persisted in named Docker volumes. The host ports can be changed with `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `SMTP_HOST_PORT`, and `MAILPIT_HTTP_PORT`; keep the corresponding application URLs and ports aligned.
 
 Check the local services with:
@@ -37,7 +39,7 @@ bun --filter @neotamia/db db:rollback
 
 The worker exposes liveness and database readiness on `http://localhost:3002/health` and `/ready`. Enqueue a persistent test job with `bun --filter @neotamia/ntauth-worker enqueue:test`; pass a number from `1` to `4` to exercise retries, for example `enqueue:test 2`.
 
-To stop the services while keeping their data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes.
+To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation
 

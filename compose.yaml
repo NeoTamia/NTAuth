@@ -52,6 +52,110 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgres://ntauth:ntauth@postgres:5432/ntauth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      AUTH_BASE_URL: ${AUTH_BASE_URL:-http://localhost:3001/api/auth}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-development-secret-change-me-123456}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      DATABASE_URL: postgres://ntauth:ntauth@postgres:5432/ntauth
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${API_HOST_PORT:-3001}:3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r=await fetch('http://localhost:3001/ready');process.exit(r.ok?0:1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      DATABASE_URL: postgres://ntauth:ntauth@postgres:5432/ntauth
+      EMAIL_OUTBOX_POLL_INTERVAL_MS: 1000
+      JOB_LOCK_TIMEOUT_MS: 30000
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
+      SMTP_FROM: NTAuth <no-reply@neotamia.re>
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      WORKER_HOST: 0.0.0.0
+      WORKER_PORT: 3002
+    ports:
+      - "${WORKER_HOST_PORT:-3002}:3002"
+    depends_on:
+      mailpit:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r=await fetch('http://localhost:3002/ready');process.exit(r.ok?0:1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+    environment:
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+      NUXT_PUBLIC_API_BASE_URL: ${NUXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "bun", "-e", "const r=await fetch('http://localhost:3000/');process.exit(r.ok?0:1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
 volumes:
   mailpit-data:
   postgres-data:

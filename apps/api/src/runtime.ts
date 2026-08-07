@@ -6,8 +6,17 @@ import type { ReadinessChecks } from "./app";
 
 export function createRuntime(environment: ApiEnvironment) {
   const database = createDatabase(environment.DATABASE_URL, { max: 5 });
-  const redis = createClient({ url: environment.REDIS_URL });
+  const redis = createClient({
+    socket: {
+      connectTimeout: 1_000,
+      reconnectStrategy: false,
+    },
+    url: environment.REDIS_URL,
+  });
   let redisConnection: Promise<void> | undefined;
+
+  // Availability is exposed through /ready; Redis errors must not crash the process.
+  redis.on("error", () => undefined);
 
   const connectRedis = async () => {
     if (redis.isOpen) return;
