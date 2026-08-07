@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "access": "public",
+  "baseBranch": "main",
+  "bumpVersionsWithWorkspaceProtocolOnly": true,
+  "changelog": ["@changesets/changelog-github", { "repo": "NeoTamia/NTAuth" }],
+  "commit": false,
+  "fixed": [],
+  "ignore": ["@neotamia/ntauth-api", "@neotamia/ntauth-web", "@neotamia/ntauth-worker"],
+  "linked": [],
+  "privatePackages": {
+    "tag": false,
+    "version": false
+  },
+  "snapshot": {
+    "prereleaseTemplate": "{tag}-{datetime}"
+  },
+  "updateInternalDependencies": "patch"
+}
