@@ -32,6 +32,8 @@ The API exposes `GET /health` for process liveness and `GET /ready` for PostgreS
 
 Better Auth is mounted under `/api/auth` with persistent PostgreSQL sessions. Email/password authentication is enabled for accounts provisioned by NTAuth, but the public sign-up endpoint is disabled; account creation will be introduced only through the invitation flow. Email verification is required before authentication and passwords must contain between 12 and 128 characters.
 
+Authenticated users can list and revoke sessions through Better Auth's `/api/auth/list-sessions`, `/revoke-session`, `/revoke-other-sessions`, and `/revoke-sessions` endpoints. Session cookie caching is explicitly disabled so revocation takes effect on the next request. NTAuth does not retain session IP addresses and reduces user agents to a browser family; administrative or compromise-driven global revocations are audited without recording tokens.
+
 Apply or roll back the latest database migration with:
 
 ```bash

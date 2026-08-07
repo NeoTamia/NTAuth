@@ -54,7 +54,7 @@ describeWithDatabase("Better Auth persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
-  test("persists a server-provisioned user's session across auth instances", async () => {
+  test("lists, minimizes, revokes, and expires persistent sessions immediately", async () => {
     const id = crypto.randomUUID();
     const email = `invited-${id}@example.test`;
     const password = "Invited-user-password-123!";
@@ -74,31 +74,69 @@ describeWithDatabase("Better Auth persistence", () => {
     });
 
     try {
-      const signIn = await auth().handler(
-        new Request(`${baseURL}/sign-in/email`, {
-          body: JSON.stringify({ email, password }),
-          headers: { "content-type": "application/json", origin },
+      const signIn = async () =>
+        auth().handler(
+          new Request(`${baseURL}/sign-in/email`, {
+            body: JSON.stringify({ email, password }),
+            headers: {
+              "content-type": "application/json",
+              origin,
+              "user-agent":
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36",
+              "x-forwarded-for": "203.0.113.42",
+            },
+            method: "POST",
+          }),
+        );
+      const firstSignIn = await signIn();
+      const secondSignIn = await signIn();
+
+      expect(firstSignIn.status).toBe(200);
+      expect(secondSignIn.status).toBe(200);
+      const firstCookie = firstSignIn.headers.get("set-cookie")?.split(";")[0];
+      const secondCookie = secondSignIn.headers.get("set-cookie")?.split(";")[0];
+      expect(firstCookie).toBeTruthy();
+      expect(secondCookie).toBeTruthy();
+
+      const getSession = (cookie: string) =>
+        auth().handler(new Request(`${baseURL}/get-session`, { headers: { cookie } }));
+      const secondSession = await getSession(secondCookie!);
+      const secondBody = (await secondSession.json()) as { session: { id: string } };
+
+      const listed = await auth().handler(
+        new Request(`${baseURL}/list-sessions`, { headers: { cookie: firstCookie! } }),
+      );
+      expect(listed.status).toBe(200);
+      const sessions = (await listed.json()) as Array<{
+        id: string;
+        ipAddress: string | null;
+        token: string;
+        userAgent: string | null;
+      }>;
+      expect(sessions).toHaveLength(2);
+      expect(sessions.every(({ ipAddress }) => ipAddress === null)).toBe(true);
+      expect(sessions.every(({ userAgent }) => userAgent === "Chrome")).toBe(true);
+
+      const secondToken = sessions.find(
+        ({ id: sessionId }) => sessionId === secondBody.session.id,
+      )!.token;
+      const revoke = await auth().handler(
+        new Request(`${baseURL}/revoke-session`, {
+          body: JSON.stringify({ token: secondToken }),
+          headers: { "content-type": "application/json", cookie: firstCookie!, origin },
           method: "POST",
         }),
       );
+      expect(revoke.status).toBe(200);
+      expect(await (await getSession(secondCookie!)).json()).toBeNull();
 
-      expect(signIn.status).toBe(200);
-      const cookie = signIn.headers.get("set-cookie");
-      expect(cookie).toBeTruthy();
-
-      const persistedSession = await auth().handler(
-        new Request(`${baseURL}/get-session`, {
-          headers: { cookie: cookie!.split(";")[0]! },
-        }),
-      );
-
-      expect(persistedSession.status).toBe(200);
-      const body = (await persistedSession.json()) as {
+      const firstBody = (await (await getSession(firstCookie!)).json()) as {
         session: { id: string };
-        user: { email: string };
       };
-      expect(body.user.email).toBe(email);
-      expect(body.session.id).toBeTruthy();
+      await connection.client`
+        update session set expires_at = now() - interval '1 second' where id = ${firstBody.session.id}
+      `;
+      expect(await (await getSession(firstCookie!)).json()).toBeNull();
     } finally {
       await connection.client`delete from "user" where id = ${id}`;
     }

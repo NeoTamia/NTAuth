@@ -10,8 +10,21 @@ type AuthOptions = {
   trustedOrigins: string[];
 };
 
+export function minimizeUserAgent(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  if (/Edg\//.test(value)) return "Edge";
+  if (/Firefox\//.test(value)) return "Firefox";
+  if (/Chrome\//.test(value)) return "Chrome";
+  if (/Safari\//.test(value)) return "Safari";
+  return "Other";
+}
+
 export function createAuth(options: AuthOptions) {
   return betterAuth({
+    advanced: {
+      ipAddress: { disableIpTracking: true },
+    },
     appName: "NTAuth",
     baseURL: options.baseURL,
     database: drizzleAdapter(options.database, {
@@ -25,6 +38,20 @@ export function createAuth(options: AuthOptions) {
       maxPasswordLength: 128,
       minPasswordLength: 12,
       requireEmailVerification: true,
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => ({
+            data: { ...session, ipAddress: null, userAgent: minimizeUserAgent(session.userAgent) },
+          }),
+        },
+      },
+    },
+    session: {
+      cookieCache: { enabled: false },
+      expiresIn: 7 * 24 * 60 * 60,
+      updateAge: 24 * 60 * 60,
     },
     secret: options.secret,
     trustedOrigins: options.trustedOrigins,
