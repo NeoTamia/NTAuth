@@ -422,6 +422,30 @@ describeWithDatabase("OAuth provider integration", () => {
       error_description: "organization context is invalid",
     });
 
+    const disallowedScope = new URLSearchParams({
+      client_id: publicClient.client_id,
+      code_challenge: await pkceChallenge("disallowed-scope-verifier-123456789012345678901234"),
+      code_challenge_method: "S256",
+      nonce: "nonce-disallowed-scope",
+      organization_id: organizationId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email",
+      state: "state-disallowed-scope",
+    });
+    const rejectedScope = await handler()(
+      new Request(`${baseURL}/oauth2/authorize?${disallowedScope}`, {
+        headers: {
+          accept: "application/json",
+          cookie: adminCookie,
+          "x-request-id": `${runId}-flow-authorize-disallowed-scope`,
+        },
+      }),
+    );
+    expect(rejectedScope.status).toBe(200);
+    const rejectedScopeBody = (await rejectedScope.json()) as { url: string };
+    expect(new URL(rejectedScopeBody.url).searchParams.get("error")).toBe("invalid_scope");
+
     const withoutPkce = new URLSearchParams({
       client_id: publicClient.client_id,
       nonce: "nonce-missing-pkce",
@@ -609,6 +633,11 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(
       protocolAudits.find((event) => event.requestId === `${runId}-flow-authorize-valid`),
     ).toMatchObject({ action: "oauth.authorize", outcome: "success" });
+    expect(
+      protocolAudits.find(
+        (event) => event.requestId === `${runId}-flow-authorize-disallowed-scope`,
+      ),
+    ).toMatchObject({ action: "oauth.authorize", outcome: "denied" });
 
     const deleted = await privilegedRequest(
       "/oauth2/delete-client",
@@ -663,6 +692,18 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(tokenSet.access_token).toBeTruthy();
     expect(tokenSet.id_token).toBeTruthy();
     expect(tokenSet.refresh_token).toStartWith("ntauth_refresh_");
+    const ntscoutIdToken = JSON.parse(
+      Buffer.from(tokenSet.id_token.split(".")[1]!, "base64url").toString("utf8"),
+    ) as Record<string, unknown>;
+    expect(ntscoutIdToken).toMatchObject({
+      email: `oauth-registry-admin-${runId}@example.test`,
+      email_verified: true,
+      name: "OAuth registry administrator",
+    });
+    expect(ntscoutIdToken).not.toHaveProperty("environment");
+    expect(ntscoutIdToken).not.toHaveProperty("managedBy");
+    expect(ntscoutIdToken).not.toHaveProperty("metadata");
+    expect(ntscoutIdToken).not.toHaveProperty("role");
     const [storedRefresh] = await connection.db
       .select({ organizationId: oauthRefreshTokens.referenceId })
       .from(oauthRefreshTokens)

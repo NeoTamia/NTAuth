@@ -9,6 +9,7 @@ import {
   platformRoleAssignments,
   type DatabaseConnection,
 } from "@neotamia/db";
+import { OAUTH_SCOPES } from "@neotamia/permissions";
 
 export const oauthProviderConfig = {
   accessTokenExpiresIn: 15 * 60,
@@ -27,7 +28,7 @@ export const oauthProviderConfig = {
     refreshToken: "ntauth_refresh_",
   },
   refreshTokenExpiresIn: 30 * 24 * 60 * 60,
-  scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
+  scopes: [...OAUTH_SCOPES],
   silenceWarnings: { oauthAuthServerConfig: true, openidConfig: true },
   storeClientSecret: "hashed" as const,
   storeTokens: "hashed" as const,

@@ -22,6 +22,7 @@
         "@elysiajs/cors": "1.4.2",
         "@neotamia/config": "workspace:*",
         "@neotamia/db": "workspace:*",
+        "@neotamia/permissions": "workspace:*",
         "better-auth": "1.6.26",
         "drizzle-orm": "0.45.2",
         "elysia": "1.4.29",
@@ -77,6 +78,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@neotamia/config": "workspace:*",
+        "@neotamia/permissions": "workspace:*",
         "drizzle-orm": "0.45.2",
         "postgres": "3.4.9",
       },

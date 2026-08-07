@@ -1,18 +1,13 @@
 import { eq } from "drizzle-orm";
 
 import type { NtscoutSeedEnvironment } from "@neotamia/config";
+import { NTSCOUT_SCOPES } from "@neotamia/permissions";
 
 import type { DatabaseConnection } from "./client";
 import { auditEvents, oauthClients } from "./schema";
 
 export const NTSCOUT_CLIENT_ID = "ntscout";
-export const NTSCOUT_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "offline_access",
-  "ntscout:access",
-] as const;
+export { NTSCOUT_SCOPES };
 
 export async function provisionNtscoutClient(
   connection: DatabaseConnection,

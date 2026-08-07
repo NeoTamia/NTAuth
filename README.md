@@ -63,6 +63,8 @@ Provision the stable public NTScout client after migrations with `bun --filter @
 
 Every authorization request must include an explicit `organization_id` UUID selected by the client. NTAuth verifies that the signed-in user has an active membership in that active organization, binds the UUID to the authorization code and refresh-token family, and verifies it again before each token issuance. Invalid, altered, suspended, or missing organization contexts receive the same protocol-safe error.
 
+The closed V1 scope catalogue and minimal claim contract are documented in [OAuth scopes and claims](./docs/oauth/scopes-and-claims.md). Unknown scopes, client-disallowed scopes, and refresh-time scope escalation are rejected.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

@@ -12,3 +12,5 @@ export interface PolicyDocument {
   version: "2026-01-01";
   statements: PolicyStatement[];
 }
+
+export * from "./oauth";
