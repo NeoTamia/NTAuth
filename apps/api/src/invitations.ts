@@ -12,6 +12,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import { enforceRequestMfa, mfaProblem } from "./mfa";
 
 type Auth = ReturnType<typeof createAuth>;
 
@@ -33,6 +34,7 @@ async function actorFrom(auth: Auth, headers: Headers, requestId: string) {
 
 export function createInvitationRoutes(options: {
   acceptInvitationURL: string;
+  applicationSecret: string;
   auth: Auth;
   database: DatabaseConnection;
 }) {
@@ -41,6 +43,13 @@ export function createInvitationRoutes(options: {
       const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
       const actor = await actorFrom(options.auth, request.headers, requestId);
       if (!actor) return problem(401, "authentication_required", "Authentication required");
+      try {
+        await enforceRequestMfa(options.database, options.applicationSecret, request, actor);
+      } catch (error) {
+        const response = mfaProblem(error);
+        if (response) return response;
+        throw error;
+      }
 
       const input = objectBody(body);
       const email = input?.email;
@@ -102,6 +111,13 @@ export function createInvitationRoutes(options: {
       const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
       const actor = await actorFrom(options.auth, request.headers, requestId);
       if (!actor) return problem(401, "authentication_required", "Authentication required");
+      try {
+        await enforceRequestMfa(options.database, options.applicationSecret, request, actor);
+      } catch (error) {
+        const response = mfaProblem(error);
+        if (response) return response;
+        throw error;
+      }
 
       try {
         await cancelInvitation(options.database, params.id, actor);

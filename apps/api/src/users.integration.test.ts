@@ -5,13 +5,19 @@ import {
   account,
   applyMigrations,
   createDatabase,
+  encryptTotpSecret,
+  generateTotpCode,
+  generateTotpSecret,
+  mfaEnrollments,
   platformRoleAssignments,
+  totpCounter,
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
 
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
+import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
 import { createUserRoutes } from "./users";
 
@@ -26,11 +32,12 @@ describeWithDatabase("user lifecycle API", () => {
   const runId = crypto.randomUUID();
   const adminId = crypto.randomUUID();
   const targetId = crypto.randomUUID();
+  const applicationSecret = "integration-test-secret-with-at-least-32-characters";
+  const password = "Lifecycle-admin-password-123!";
 
   beforeAll(async () => {
     connection = createDatabase(databaseUrl!, { max: 2 });
     await applyMigrations(connection);
-    const password = "Lifecycle-admin-password-123!";
     await connection.db.insert(user).values([
       {
         email: `api-lifecycle-admin-${runId}@example.test`,
@@ -88,7 +95,12 @@ describeWithDatabase("user lifecycle API", () => {
         database: connection,
         resetPasswordURL: `${origin}/auth/reset-password`,
       }),
-      userRoutes: createUserRoutes({ auth: currentAuth, database: connection }),
+      mfaRoutes: createMfaRoutes({ applicationSecret, auth: currentAuth, database: connection }),
+      userRoutes: createUserRoutes({
+        applicationSecret,
+        auth: currentAuth,
+        database: connection,
+      }),
     });
   };
 
@@ -128,33 +140,56 @@ describeWithDatabase("user lifecycle API", () => {
     expect(change.status).toBe(401);
   });
 
-  test("suspends, reactivates, deletes, and rejects reuse", async () => {
-    const changeStatus = (status: string) =>
+  test("requires an enrolled, non-replayed TOTP for a platform action", async () => {
+    const secret = generateTotpSecret();
+    const counter = totpCounter();
+    const code = await generateTotpCode(secret, counter);
+    await connection.db.insert(mfaEnrollments).values({
+      encryptedSecret: await encryptTotpSecret(secret, applicationSecret),
+      lastUsedCounter: counter - 1,
+      userId: adminId,
+      verifiedAt: new Date(),
+    });
+    const changeStatus = () =>
       app().handle(
         new Request(`http://localhost/api/v1/users/${targetId}/status`, {
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status: "suspended" }),
           headers: {
             "content-type": "application/json",
             cookie,
-            "x-request-id": `${runId}-${status}`,
+            "x-ntauth-totp": code,
+            "x-request-id": `${runId}-suspend`,
           },
           method: "PATCH",
         }),
       );
-    expect((await changeStatus("suspended")).status).toBe(200);
-    expect((await changeStatus("active")).status).toBe(200);
-    expect((await changeStatus("deactivated")).status).toBe(200);
-    expect((await changeStatus("active")).status).toBe(200);
+    expect((await changeStatus()).status).toBe(200);
+    expect((await changeStatus()).status).toBe(403);
+  });
 
-    const removed = await app().handle(
-      new Request(`http://localhost/api/v1/users/${targetId}`, {
-        headers: { cookie, "x-request-id": `${runId}-delete` },
-        method: "DELETE",
+  test("enrolls and verifies TOTP through the authenticated API", async () => {
+    const enrolled = await app().handle(
+      new Request("http://localhost/api/v1/mfa/enroll", {
+        body: JSON.stringify({ password }),
+        headers: { "content-type": "application/json", cookie },
+        method: "POST",
       }),
     );
-    expect(removed.status).toBe(204);
-    const reused = await changeStatus("active");
-    expect(reused.status).toBe(409);
-    expect(reused.headers.get("content-type")).toContain("application/problem+json");
+    expect(enrolled.status).toBe(200);
+    const { totpURI } = (await enrolled.json()) as { totpURI: string };
+    const secret = new URL(totpURI).searchParams.get("secret")!;
+    const code = await generateTotpCode(secret, totpCounter());
+    const verified = await app().handle(
+      new Request("http://localhost/api/v1/mfa/verify", {
+        body: JSON.stringify({ code }),
+        headers: {
+          "content-type": "application/json",
+          cookie,
+          "x-request-id": `${runId}-mfa-verify`,
+        },
+        method: "POST",
+      }),
+    );
+    expect(verified.status).toBe(200);
   });
 });

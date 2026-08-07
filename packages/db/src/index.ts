@@ -1,6 +1,18 @@
 export { createDatabase, type DatabaseConnection } from "./client";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {
+  beginMfaEnrollment,
+  encryptTotpSecret,
+  enforcePlatformAdminMfa,
+  generateTotpCode,
+  generateTotpSecret,
+  InvalidMfaChallengeError,
+  MfaEnrollmentAuthorizationError,
+  MfaEnrollmentRequiredError,
+  totpCounter,
+  verifyMfaEnrollment,
+} from "./mfa";
+export {
   acceptInvitation,
   cancelInvitation,
   createInvitation,

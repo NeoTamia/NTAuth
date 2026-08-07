@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 
 import type { createInvitationRoutes } from "./invitations";
+import type { createMfaRoutes } from "./mfa";
 import type { createPasswordRoutes } from "./passwords";
 import type { createUserRoutes } from "./users";
 
@@ -19,6 +20,7 @@ export const createApp = (
     authHandler?: AuthHandler;
     corsOrigins?: string[];
     invitationRoutes?: ReturnType<typeof createInvitationRoutes>;
+    mfaRoutes?: ReturnType<typeof createMfaRoutes>;
     passwordRoutes?: ReturnType<typeof createPasswordRoutes>;
     readiness?: ReadinessChecks;
     userRoutes?: ReturnType<typeof createUserRoutes>;
@@ -28,6 +30,7 @@ export const createApp = (
 
   if (options.authHandler) app.mount(options.authHandler);
   if (options.invitationRoutes) app.use(options.invitationRoutes);
+  if (options.mfaRoutes) app.use(options.mfaRoutes);
   if (options.passwordRoutes) app.use(options.passwordRoutes);
   if (options.userRoutes) app.use(options.userRoutes);
 

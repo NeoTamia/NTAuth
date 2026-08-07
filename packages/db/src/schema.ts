@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  bigint,
   pgTable,
   primaryKey,
   text,
@@ -235,6 +236,26 @@ export const passwordResetRequests = pgTable(
   (table) => [
     index("password_reset_requests_user_idx").on(table.userId),
     check("password_reset_token_hash_check", sql`length(${table.tokenHash}) = 64`),
+  ],
+);
+
+export const mfaEnrollments = pgTable(
+  "mfa_enrollments",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    encryptedSecret: text("encrypted_secret").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    lastUsedCounter: bigint("last_used_counter", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "mfa_last_used_counter_check",
+      sql`${table.lastUsedCounter} is null or ${table.lastUsedCounter} >= 0`,
+    ),
   ],
 );
 

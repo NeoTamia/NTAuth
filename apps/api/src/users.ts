@@ -11,6 +11,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import { enforceRequestMfa, mfaProblem } from "./mfa";
 
 type Auth = ReturnType<typeof createAuth>;
 
@@ -36,12 +37,23 @@ function lifecycleProblem(error: unknown) {
   return problem(500, "internal_error", "User lifecycle change failed");
 }
 
-export function createUserRoutes(options: { auth: Auth; database: DatabaseConnection }) {
+export function createUserRoutes(options: {
+  applicationSecret: string;
+  auth: Auth;
+  database: DatabaseConnection;
+}) {
   return new Elysia({ prefix: "/api/v1/users" })
     .patch("/:id/status", async ({ body, params, request }) => {
       const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
       const actor = await actorFrom(options.auth, request.headers, requestId);
       if (!actor) return problem(401, "authentication_required", "Authentication required");
+      try {
+        await enforceRequestMfa(options.database, options.applicationSecret, request, actor);
+      } catch (error) {
+        const response = mfaProblem(error);
+        if (response) return response;
+        throw error;
+      }
 
       const input =
         body && typeof body === "object" ? (body as Record<string, unknown>) : undefined;
@@ -63,6 +75,13 @@ export function createUserRoutes(options: { auth: Auth; database: DatabaseConnec
       const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
       const actor = await actorFrom(options.auth, request.headers, requestId);
       if (!actor) return problem(401, "authentication_required", "Authentication required");
+      try {
+        await enforceRequestMfa(options.database, options.applicationSecret, request, actor);
+      } catch (error) {
+        const response = mfaProblem(error);
+        if (response) return response;
+        throw error;
+      }
 
       try {
         await deleteUser(options.database, params.id, actor);

@@ -5,7 +5,12 @@ import {
   account,
   applyMigrations,
   createDatabase,
+  encryptTotpSecret,
+  generateTotpCode,
+  generateTotpSecret,
+  mfaEnrollments,
   platformRoleAssignments,
+  totpCounter,
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
@@ -25,6 +30,7 @@ describeWithDatabase("invitation API", () => {
   const adminId = crypto.randomUUID();
   const password = "Platform-admin-password-123!";
   let organizationId: string;
+  let totpCode: string;
   let app: ReturnType<typeof createApp>;
   let cookie: string;
 
@@ -62,6 +68,7 @@ describeWithDatabase("invitation API", () => {
       authHandler: auth.handler,
       invitationRoutes: createInvitationRoutes({
         acceptInvitationURL: `${origin}/auth/accept-invitation`,
+        applicationSecret: "integration-test-secret-with-at-least-32-characters",
         auth,
         database: connection,
       }),
@@ -74,6 +81,18 @@ describeWithDatabase("invitation API", () => {
       }),
     );
     cookie = signIn.headers.get("set-cookie")!.split(";")[0]!;
+    const secret = generateTotpSecret();
+    const counter = totpCounter();
+    totpCode = await generateTotpCode(secret, counter);
+    await connection.db.insert(mfaEnrollments).values({
+      encryptedSecret: await encryptTotpSecret(
+        secret,
+        "integration-test-secret-with-at-least-32-characters",
+      ),
+      lastUsedCounter: counter - 1,
+      userId: adminId,
+      verifiedAt: new Date(),
+    });
   });
 
   afterAll(async () => {
@@ -99,7 +118,11 @@ describeWithDatabase("invitation API", () => {
       );
     expect((await request({})).status).toBe(401);
 
-    const created = await request({ cookie, "x-request-id": `${runId}-create` });
+    const created = await request({
+      cookie,
+      "x-ntauth-totp": totpCode,
+      "x-request-id": `${runId}-create`,
+    });
     expect(created.status).toBe(201);
     const body = await created.text();
     expect(body).not.toContain("token");

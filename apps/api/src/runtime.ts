@@ -5,6 +5,7 @@ import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
 import { createInvitationRoutes } from "./invitations";
+import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
 import { createUserRoutes } from "./users";
 
@@ -30,10 +31,20 @@ export function createRuntime(environment: ApiEnvironment) {
   });
   const invitationRoutes = createInvitationRoutes({
     acceptInvitationURL: `${environment.CORS_ORIGINS[0]}/auth/accept-invitation`,
+    applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
   });
-  const userRoutes = createUserRoutes({ auth, database });
+  const userRoutes = createUserRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
+  const mfaRoutes = createMfaRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
   const passwordRoutes = createPasswordRoutes({
     auth,
     database,
@@ -62,6 +73,7 @@ export function createRuntime(environment: ApiEnvironment) {
   return {
     auth,
     invitationRoutes,
+    mfaRoutes,
     passwordRoutes,
     readiness,
     userRoutes,
