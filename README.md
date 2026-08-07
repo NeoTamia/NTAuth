@@ -59,6 +59,8 @@ The Better Auth OAuth provider is mounted under `/api/auth/oauth2` and persists 
 
 OIDC discovery is available at `/.well-known/openid-configuration`, OAuth authorization-server metadata at `/.well-known/oauth-authorization-server/api/auth`, and public keys at `/api/auth/jwks`. These responses expose only the configured V1 endpoints, grants, scopes, S256 challenge method, and active public ES256 keys. They carry a five-minute public cache policy, stale-while-revalidate allowance, and an ETag supporting conditional `304` responses.
 
+Provision the stable public NTScout client after migrations with `bun --filter @neotamia/db db:seed:ntscout`. The command is idempotent and takes its exact environment-specific callbacks from `NTSCOUT_REDIRECT_URIS`; see [the NTScout OAuth client runbook](./docs/operations/ntscout-oauth-client.md).
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

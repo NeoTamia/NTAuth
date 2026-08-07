@@ -78,6 +78,47 @@ const publicWebEnvironmentSchema = z.object({
   NUXT_PUBLIC_API_BASE_URL: httpUrl,
 });
 
+const ntscoutSeedEnvironmentSchema = z
+  .object({
+    NTSCOUT_ENVIRONMENT: z.enum(["development", "staging", "production"]),
+    NTSCOUT_REDIRECT_URIS: z
+      .string()
+      .transform((value) => value.split(",").map((uri) => uri.trim()))
+      .pipe(z.array(httpUrl).min(1)),
+  })
+  .superRefine((environment, context) => {
+    const uniqueUris = new Set(environment.NTSCOUT_REDIRECT_URIS);
+    if (uniqueUris.size !== environment.NTSCOUT_REDIRECT_URIS.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Redirect URIs must be unique",
+        path: ["NTSCOUT_REDIRECT_URIS"],
+      });
+    }
+    for (const [index, value] of environment.NTSCOUT_REDIRECT_URIS.entries()) {
+      const uri = new URL(value);
+      const loopback =
+        uri.hostname === "localhost" || uri.hostname === "127.0.0.1" || uri.hostname === "[::1]";
+      if (uri.hash || uri.username || uri.password || uri.hostname.includes("*")) {
+        context.addIssue({
+          code: "custom",
+          message: "Redirect URI must be exact and contain no fragment, credentials, or wildcard",
+          path: ["NTSCOUT_REDIRECT_URIS", index],
+        });
+      }
+      if (
+        uri.protocol !== "https:" &&
+        !(environment.NTSCOUT_ENVIRONMENT === "development" && loopback)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Redirect URI must use HTTPS outside a development loopback",
+          path: ["NTSCOUT_REDIRECT_URIS", index],
+        });
+      }
+    }
+  });
+
 export class EnvironmentValidationError extends Error {
   readonly issues: ReadonlyArray<{ path: string; message: string }>;
 
@@ -121,7 +162,12 @@ export function parseDatabaseEnvironment(environment: unknown = process.env) {
   return parseEnvironment(databaseEnvironmentSchema, environment);
 }
 
+export function parseNtscoutSeedEnvironment(environment: unknown = process.env) {
+  return parseEnvironment(ntscoutSeedEnvironmentSchema, environment);
+}
+
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;
 export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
 export type PublicWebEnvironment = z.infer<typeof publicWebEnvironmentSchema>;
 export type DatabaseEnvironment = z.infer<typeof databaseEnvironmentSchema>;
+export type NtscoutSeedEnvironment = z.infer<typeof ntscoutSeedEnvironmentSchema>;

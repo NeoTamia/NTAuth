@@ -12,9 +12,11 @@ import {
   generateTotpSecret,
   jwks as jwksTable,
   mfaEnrollments,
+  NTSCOUT_CLIENT_ID,
   oauthClients,
   oauthConsents,
   platformRoleAssignments,
+  provisionNtscoutClient,
   totpCounter,
   user,
   verification,
@@ -85,6 +87,7 @@ describeWithDatabase("OAuth provider integration", () => {
   afterAll(async () => {
     await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
     await connection.client`delete from jwks where id = ${`expired-${runId}`}`;
+    await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
     await connection.client`delete from "user" where id = ${adminId}`;
     await connection.close();
   });
@@ -128,6 +131,7 @@ describeWithDatabase("OAuth provider integration", () => {
     nonce: string;
     redirectUri: string;
     requestId: string;
+    scope?: string;
     state: string;
     verifier: string;
   }) {
@@ -138,7 +142,7 @@ describeWithDatabase("OAuth provider integration", () => {
       nonce: input.nonce,
       redirect_uri: input.redirectUri,
       response_type: "code",
-      scope: "openid profile",
+      scope: input.scope ?? "openid profile",
       state: input.state,
     });
     const response = await handler()(
@@ -571,6 +575,59 @@ describeWithDatabase("OAuth provider integration", () => {
       "flow-client-delete",
     );
     expect(deleted.status).toBe(200);
+  });
+
+  test("interoperates end to end with the seeded NTScout public client", async () => {
+    const redirectUri = "https://ntscout.example/auth/callback";
+    await provisionNtscoutClient(connection, {
+      NTSCOUT_ENVIRONMENT: "production",
+      NTSCOUT_REDIRECT_URIS: [redirectUri],
+      requestId: `${runId}-ntscout-seed`,
+    });
+    await connection.db.insert(oauthConsents).values({
+      clientId: NTSCOUT_CLIENT_ID,
+      id: crypto.randomUUID(),
+      scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
+      userId: adminId,
+    });
+
+    const verifier = "ntscout-verifier-1234567890123456789012345678901234";
+    const authorization = await authorizePublicClient({
+      clientId: NTSCOUT_CLIENT_ID,
+      nonce: `ntscout-nonce-${runId}`,
+      redirectUri,
+      requestId: "ntscout-authorize",
+      scope: "openid profile email offline_access ntscout:access",
+      state: `ntscout-state-${runId}`,
+      verifier,
+    });
+    const token = await exchangeCode({
+      clientId: NTSCOUT_CLIENT_ID,
+      code: authorization.searchParams.get("code")!,
+      redirectUri,
+      requestId: "ntscout-token",
+      verifier,
+    });
+    expect(token.status).toBe(200);
+    const tokenSet = (await token.json()) as {
+      access_token: string;
+      id_token: string;
+      refresh_token: string;
+    };
+    expect(tokenSet.access_token).toBeTruthy();
+    expect(tokenSet.id_token).toBeTruthy();
+    expect(tokenSet.refresh_token).toStartWith("ntauth_refresh_");
+
+    const [seedAudit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.requestId, `${runId}-ntscout-seed`));
+    expect(seedAudit).toMatchObject({
+      action: "oauth.client.seed",
+      outcome: "success",
+      resourceId: NTSCOUT_CLIENT_ID,
+    });
+    await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
   });
 
   test("publishes strict root discovery and cacheable public JWKS", async () => {

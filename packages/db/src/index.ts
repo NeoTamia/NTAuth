@@ -6,6 +6,12 @@ export {
 } from "./email-verification";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {
+  getNtscoutClient,
+  NTSCOUT_CLIENT_ID,
+  NTSCOUT_SCOPES,
+  provisionNtscoutClient,
+} from "./oauth-clients";
+export {
   beginMfaEnrollment,
   encryptTotpSecret,
   enforcePlatformAdminMfa,

@@ -4,6 +4,7 @@ import {
   EnvironmentValidationError,
   parseApiEnvironment,
   parseDatabaseEnvironment,
+  parseNtscoutSeedEnvironment,
   parsePublicWebEnvironment,
   parseWorkerEnvironment,
 } from "./env";
@@ -63,6 +64,35 @@ describe("runtime environment validation", () => {
     expect(environment.SMTP_PASSWORD).toBeUndefined();
     expect(environment.SMTP_SECURE).toBe(false);
     expect(environment.SMTP_USER).toBeUndefined();
+  });
+
+  test("validates exact NTScout redirect URIs per environment", () => {
+    expect(
+      parseNtscoutSeedEnvironment({
+        NTSCOUT_ENVIRONMENT: "development",
+        NTSCOUT_REDIRECT_URIS:
+          "http://127.0.0.1:3003/auth/callback, https://preview.ntscout.example/auth/callback",
+      }),
+    ).toEqual({
+      NTSCOUT_ENVIRONMENT: "development",
+      NTSCOUT_REDIRECT_URIS: [
+        "http://127.0.0.1:3003/auth/callback",
+        "https://preview.ntscout.example/auth/callback",
+      ],
+    });
+
+    for (const redirectUri of [
+      "http://ntscout.example/auth/callback",
+      "https://*.ntscout.example/auth/callback",
+      "https://ntscout.example/auth/callback#fragment",
+    ]) {
+      expect(() =>
+        parseNtscoutSeedEnvironment({
+          NTSCOUT_ENVIRONMENT: "production",
+          NTSCOUT_REDIRECT_URIS: redirectUri,
+        }),
+      ).toThrow(EnvironmentValidationError);
+    }
   });
 
   test("reports invalid fields without leaking their values", () => {
