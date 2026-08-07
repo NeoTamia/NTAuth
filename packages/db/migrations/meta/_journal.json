@@ -36,6 +36,13 @@
       "when": 1786141691617,
       "tag": "0004_open_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786142194219,
+      "tag": "0005_parched_madame_masque",
+      "breakpoints": true
     }
   ]
 }

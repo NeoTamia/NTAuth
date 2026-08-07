@@ -43,6 +43,8 @@ bun --filter @neotamia/db db:rollback
 
 The worker exposes liveness and database readiness on `http://localhost:3002/health` and `/ready`. Enqueue a persistent test job with `bun --filter @neotamia/ntauth-worker enqueue:test`; pass a number from `1` to `4` to exercise retries, for example `enqueue:test 2`.
 
+Application emails use the PostgreSQL outbox and are committed in the same transaction as their business mutation. A deduplication key returns the existing job, SMTP retries use bounded exponential backoff, stable `Message-ID` values make attempts identifiable, and exhausted messages remain visible as `failed` without persisting the SMTP error or credentials.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

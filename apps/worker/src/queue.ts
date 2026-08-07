@@ -18,6 +18,7 @@ export type QueuedJob = {
 };
 
 export type NewJob = {
+  deduplicationKey?: string;
   maxAttempts?: number;
   payload: JobPayload;
   type: string;
@@ -37,8 +38,15 @@ export class JobQueue implements JobQueueContract {
 
   async enqueue(job: NewJob): Promise<string> {
     const [created] = await this.connection.client<{ id: string }[]>`
-      insert into jobs (type, payload, max_attempts)
-      values (${job.type}, ${JSON.stringify(job.payload)}::jsonb, ${job.maxAttempts ?? 5})
+      insert into jobs (type, deduplication_key, payload, max_attempts)
+      values (
+        ${job.type},
+        ${job.deduplicationKey ?? null},
+        ${JSON.stringify(job.payload)}::jsonb,
+        ${job.maxAttempts ?? 5}
+      )
+      on conflict (deduplication_key)
+      do update set deduplication_key = excluded.deduplication_key
       returning id
     `;
 

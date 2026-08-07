@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { applyMigrations, createDatabase, type DatabaseConnection } from "@neotamia/db";
+import {
+  applyMigrations,
+  createDatabase,
+  transactWithEmail,
+  type DatabaseConnection,
+} from "@neotamia/db";
 
 import { JobQueue } from "./queue";
 
@@ -49,5 +54,61 @@ describeWithDatabase("persistent job queue", () => {
     const reclaimed = await queue.claim("replacement-worker");
 
     expect(reclaimed).toMatchObject({ attempts: 2, id });
+  });
+
+  test("deduplicates an outbox message and exposes terminal failure", async () => {
+    const queue = new JobQueue(connection, 30_000);
+    const job = {
+      deduplicationKey: "invitation:test@example.test",
+      maxAttempts: 1,
+      payload: { subject: "Invitation", text: "Body", to: "test@example.test" },
+      type: "email",
+    } as const;
+    const firstId = await queue.enqueue(job);
+    const duplicateId = await queue.enqueue(job);
+    expect(duplicateId).toBe(firstId);
+
+    const claimed = await queue.claim("smtp-worker");
+    await queue.retry(claimed!, "smtp-worker", 0);
+    const [stored] = await connection.client<{ lastError: string; status: string }[]>`
+      select status, last_error as "lastError" from jobs where id = ${firstId}
+    `;
+    expect(stored).toEqual({ lastError: "handler_failed", status: "failed" });
+  });
+
+  test("commits or rolls back business data and its email atomically", async () => {
+    const component = `outbox-${crypto.randomUUID()}`;
+    const message = {
+      deduplicationKey: component,
+      subject: "Invitation",
+      text: "Body",
+      to: "test@example.test",
+    };
+    await transactWithEmail(connection, message, async (transaction) => {
+      await transaction`insert into system_health (component) values (${component})`;
+    });
+
+    const [committed] = await connection.client<{ count: number }[]>`
+      select count(*)::int as count from jobs where deduplication_key = ${component}
+    `;
+    expect(committed?.count).toBe(1);
+
+    const rolledBackComponent = `${component}-rollback`;
+    await expect(
+      transactWithEmail(
+        connection,
+        { ...message, deduplicationKey: rolledBackComponent },
+        async (transaction) => {
+          await transaction`insert into system_health (component) values (${rolledBackComponent})`;
+          throw new Error("business_mutation_failed");
+        },
+      ),
+    ).rejects.toThrow("business_mutation_failed");
+    const [rolledBack] = await connection.client<{ count: number }[]>`
+      select count(*)::int as count
+      from jobs
+      where deduplication_key = ${rolledBackComponent}
+    `;
+    expect(rolledBack?.count).toBe(0);
   });
 });

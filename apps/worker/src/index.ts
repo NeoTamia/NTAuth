@@ -1,15 +1,27 @@
 import { parseWorkerEnvironment } from "@neotamia/config";
 import { createDatabase } from "@neotamia/db";
+import nodemailer from "nodemailer";
 
+import { createEmailHandler } from "./email";
 import { JobQueue } from "./queue";
 import { WorkerProcessor } from "./worker";
 
 const environment = parseWorkerEnvironment();
 const connection = createDatabase(environment.DATABASE_URL, { max: 5 });
 const queue = new JobQueue(connection, environment.JOB_LOCK_TIMEOUT_MS);
+const emailTransport = nodemailer.createTransport({
+  auth:
+    environment.SMTP_USER && environment.SMTP_PASSWORD
+      ? { pass: environment.SMTP_PASSWORD, user: environment.SMTP_USER }
+      : undefined,
+  host: environment.SMTP_HOST,
+  port: environment.SMTP_PORT,
+  secure: environment.SMTP_SECURE,
+});
 const worker = new WorkerProcessor(
   queue,
   {
+    email: createEmailHandler(emailTransport, environment.SMTP_FROM),
     test: async (job) => {
       const failUntilAttempt = Number(job.payload.failUntilAttempt ?? 0);
       if (job.attempts <= failUntilAttempt) throw new Error("planned_test_failure");

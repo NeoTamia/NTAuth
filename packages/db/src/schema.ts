@@ -180,6 +180,7 @@ export const jobs = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     type: varchar("type", { length: 128 }).notNull(),
+    deduplicationKey: varchar("deduplication_key", { length: 160 }),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     status: varchar("status", { length: 16 }).$type<JobStatus>().notNull().default("available"),
     attempts: integer("attempts").notNull().default(0),
@@ -193,6 +194,7 @@ export const jobs = pgTable(
   },
   (table) => [
     index("jobs_available_idx").on(table.status, table.availableAt),
+    uniqueIndex("jobs_deduplication_key_unique").on(table.deduplicationKey),
     check("jobs_attempts_check", sql`${table.attempts} >= 0`),
     check("jobs_max_attempts_check", sql`${table.maxAttempts} > 0`),
     check(

@@ -42,18 +42,24 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0004_open_colleen_wing");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0005_parched_madame_masque");
 
-    const [organizationTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.organizations') is not null as exists
+    const [deduplicationColumn] = await connection.client<{ exists: boolean }[]>`
+      select exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'jobs' and column_name = 'deduplication_key'
+      ) as exists
     `;
-    expect(organizationTable?.exists).toBe(false);
+    expect(deduplicationColumn?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredOrganizationTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.organizations') is not null as exists
+    const [restoredDeduplicationColumn] = await connection.client<{ exists: boolean }[]>`
+      select exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'jobs' and column_name = 'deduplication_key'
+      ) as exists
     `;
-    expect(restoredOrganizationTable?.exists).toBe(true);
+    expect(restoredDeduplicationColumn?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

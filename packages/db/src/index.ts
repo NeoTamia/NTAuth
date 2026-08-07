@@ -1,5 +1,6 @@
 export { createDatabase, type DatabaseConnection } from "./client";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
+export { transactWithEmail, type OutboxTransaction } from "./outbox";
 export {
   addOrganizationMember,
   changeOrganizationMemberRole,
