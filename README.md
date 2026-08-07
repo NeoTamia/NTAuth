@@ -57,6 +57,8 @@ Invitation acceptance verifies the invited address immediately. Other unverified
 
 The Better Auth OAuth provider is mounted under `/api/auth/oauth2` and persists its clients, consents, tokens, and signing keys through the shared Drizzle adapter. V1 enables only authorization code and refresh token grants, keeps dynamic registration and public pre-login disabled, hashes stored tokens and client secrets, issues asymmetric JWTs, and fixes authorization codes to 5 minutes, access/ID tokens to 15 minutes, and refresh tokens to 30 days. Sensitive protocol requests receive a correlation ID and a metadata-only audit event.
 
+OIDC discovery is available at `/.well-known/openid-configuration`, OAuth authorization-server metadata at `/.well-known/oauth-authorization-server/api/auth`, and public keys at `/api/auth/jwks`. These responses expose only the configured V1 endpoints, grants, scopes, S256 challenge method, and active public ES256 keys. They carry a five-minute public cache policy, stale-while-revalidate allowance, and an ETag supporting conditional `304` responses.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

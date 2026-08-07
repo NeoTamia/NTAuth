@@ -19,6 +19,7 @@ export const oauthProviderConfig = {
   },
   refreshTokenExpiresIn: 30 * 24 * 60 * 60,
   scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
+  silenceWarnings: { oauthAuthServerConfig: true, openidConfig: true },
   storeClientSecret: "hashed" as const,
   storeTokens: "hashed" as const,
 };

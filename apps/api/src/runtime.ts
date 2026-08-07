@@ -5,6 +5,7 @@ import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
 import { createAuditedAuthHandler } from "./auth/audited-handler";
+import { createDiscoveryRoutes } from "./auth/discovery";
 import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
 import { createMfaRoutes } from "./mfa";
@@ -32,6 +33,7 @@ export function createRuntime(environment: ApiEnvironment) {
     trustedOrigins: environment.CORS_ORIGINS,
   });
   const authHandler = createAuditedAuthHandler(auth, database);
+  const discoveryRoutes = createDiscoveryRoutes(auth);
   const invitationRoutes = createInvitationRoutes({
     acceptInvitationURL: `${environment.CORS_ORIGINS[0]}/auth/accept-invitation`,
     applicationSecret: environment.BETTER_AUTH_SECRET,
@@ -80,6 +82,7 @@ export function createRuntime(environment: ApiEnvironment) {
   return {
     auth,
     authHandler,
+    discoveryRoutes,
     emailVerificationRoutes,
     invitationRoutes,
     mfaRoutes,
