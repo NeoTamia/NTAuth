@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun",
+    "enqueue:test": "bun src/enqueue-test.ts",
     "dev": "bun --watch src/index.ts",
     "start": "bun dist/index.js",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@neotamia/config": "workspace:*",
+    "@neotamia/db": "workspace:*",
     "nodemailer": "7.0.5"
   },
   "devDependencies": {

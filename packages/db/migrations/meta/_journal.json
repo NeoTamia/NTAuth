@@ -8,6 +8,20 @@
       "when": 1786138363698,
       "tag": "0000_spooky_dorian_gray",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786139272050,
+      "tag": "0001_light_betty_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786139302174,
+      "tag": "0002_cloudy_sunfire",
+      "breakpoints": true
     }
   ]
 }

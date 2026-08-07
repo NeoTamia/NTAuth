@@ -63,12 +63,15 @@ const apiEnvironmentSchema = sharedEnvironmentSchema.extend({
 
 const workerEnvironmentSchema = sharedEnvironmentSchema.extend({
   EMAIL_OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(300_000),
+  JOB_LOCK_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(3_600_000),
   SMTP_FROM: z.string().trim().min(1),
   SMTP_HOST: z.string().trim().min(1),
   SMTP_PASSWORD: optionalString,
   SMTP_PORT: z.coerce.number().int().min(1).max(65_535),
   SMTP_SECURE: optionalBoolean.default(false),
   SMTP_USER: optionalString,
+  WORKER_HOST: z.string().trim().min(1),
+  WORKER_PORT: z.coerce.number().int().min(1).max(65_535),
 });
 
 const publicWebEnvironmentSchema = z.object({

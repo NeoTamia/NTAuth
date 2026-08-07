@@ -49,12 +49,15 @@ describe("runtime environment validation", () => {
     const environment = parseWorkerEnvironment({
       ...sharedEnvironment,
       EMAIL_OUTBOX_POLL_INTERVAL_MS: "1000",
+      JOB_LOCK_TIMEOUT_MS: "30000",
       SMTP_FROM: "NTAuth <no-reply@example.com>",
       SMTP_HOST: "localhost",
       SMTP_PASSWORD: "",
       SMTP_PORT: "1025",
       SMTP_SECURE: "false",
       SMTP_USER: "",
+      WORKER_HOST: "127.0.0.1",
+      WORKER_PORT: "3002",
     });
 
     expect(environment.SMTP_PASSWORD).toBeUndefined();

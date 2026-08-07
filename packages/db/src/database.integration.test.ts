@@ -42,12 +42,14 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0000_spooky_dorian_gray");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0002_cloudy_sunfire");
 
-    const [table] = await connection.client<{ table_name: string | null }[]>`
-      select to_regclass('public.system_health')::text as table_name
+    const [constraint] = await connection.client<{ constraint_name: string | null }[]>`
+      select (
+        select conname from pg_constraint where conname = 'jobs_status_check' limit 1
+      ) as constraint_name
     `;
-    expect(table?.table_name).toBeNull();
+    expect(constraint?.constraint_name).toBeNull();
 
     await applyMigrations(connection);
     await expect(connection.ping()).resolves.toBeUndefined();

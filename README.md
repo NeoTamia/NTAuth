@@ -35,6 +35,8 @@ bun --filter @neotamia/db db:migrate
 bun --filter @neotamia/db db:rollback
 ```
 
+The worker exposes liveness and database readiness on `http://localhost:3002/health` and `/ready`. Enqueue a persistent test job with `bun --filter @neotamia/ntauth-worker enqueue:test`; pass a number from `1` to `4` to exercise retries, for example `enqueue:test 2`.
+
 To stop the services while keeping their data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes.
 
 ## Validation
