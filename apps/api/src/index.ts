@@ -8,6 +8,7 @@ const runtime = createRuntime(environment);
 const app = createApp({
   authHandler: runtime.auth.handler,
   corsOrigins: environment.CORS_ORIGINS,
+  emailVerificationRoutes: runtime.emailVerificationRoutes,
   invitationRoutes: runtime.invitationRoutes,
   mfaRoutes: runtime.mfaRoutes,
   passwordRoutes: runtime.passwordRoutes,

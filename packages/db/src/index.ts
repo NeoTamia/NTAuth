@@ -1,4 +1,9 @@
 export { createDatabase, type DatabaseConnection } from "./client";
+export {
+  completeEmailVerification,
+  InvalidEmailVerificationError,
+  requestEmailVerification,
+} from "./email-verification";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {
   beginMfaEnrollment,

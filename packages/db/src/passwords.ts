@@ -30,7 +30,9 @@ export async function requestPasswordReset(
 
   return connection.client.begin(async (transaction) => {
     const [identity] = await transaction<{ id: string }[]>`
-      select id from "user" where email = ${email} and status = 'active' for update
+      select id from "user"
+      where email = ${email} and status = 'active' and email_verified = true
+      for update
     `;
     if (!identity) return undefined;
 

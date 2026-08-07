@@ -42,18 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0009_grey_the_initiative");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0010_opposite_blizzard");
 
-    const [mfaTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.mfa_enrollments') is not null as exists
+    const [verificationTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.email_verification_requests') is not null as exists
     `;
-    expect(mfaTable?.exists).toBe(false);
+    expect(verificationTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredMfaTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.mfa_enrollments') is not null as exists
+    const [restoredVerificationTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.email_verification_requests') is not null as exists
     `;
-    expect(restoredMfaTable?.exists).toBe(true);
+    expect(restoredVerificationTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

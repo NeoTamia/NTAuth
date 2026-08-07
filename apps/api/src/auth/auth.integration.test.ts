@@ -178,4 +178,34 @@ describeWithDatabase("Better Auth persistence", () => {
       await connection.client`delete from "user" where id = ${id}`;
     }
   });
+
+  test("refuses to create a session before email verification", async () => {
+    const id = crypto.randomUUID();
+    const email = `unverified-${id}@example.test`;
+    const password = "Unverified-user-password-123!";
+    await connection.db.insert(user).values({ email, id, name: "Unverified user" });
+    await connection.db.insert(account).values({
+      accountId: id,
+      id: crypto.randomUUID(),
+      password: await hashPassword(password),
+      providerId: "credential",
+      userId: id,
+    });
+
+    try {
+      const response = await auth().handler(
+        new Request(`${baseURL}/sign-in/email`, {
+          body: JSON.stringify({ email, password }),
+          headers: { "content-type": "application/json", origin },
+          method: "POST",
+        }),
+      );
+      expect(response.status).not.toBe(200);
+      expect(await connection.db.select().from(session).where(eq(session.userId, id))).toHaveLength(
+        0,
+      );
+    } finally {
+      await connection.client`delete from "user" where id = ${id}`;
+    }
+  });
 });

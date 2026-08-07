@@ -4,6 +4,7 @@ import { createClient } from "redis";
 import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
+import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
 import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
@@ -34,6 +35,10 @@ export function createRuntime(environment: ApiEnvironment) {
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
+  });
+  const emailVerificationRoutes = createEmailVerificationRoutes({
+    database,
+    verificationURL: `${environment.CORS_ORIGINS[0]}/auth/verify-email`,
   });
   const userRoutes = createUserRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
@@ -72,6 +77,7 @@ export function createRuntime(environment: ApiEnvironment) {
 
   return {
     auth,
+    emailVerificationRoutes,
     invitationRoutes,
     mfaRoutes,
     passwordRoutes,

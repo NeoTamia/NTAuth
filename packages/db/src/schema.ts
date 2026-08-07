@@ -259,6 +259,29 @@ export const mfaEnrollments = pgTable(
   ],
 );
 
+export const emailVerificationRequests = pgTable(
+  "email_verification_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 320 }).notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("email_verification_requests_user_idx").on(table.userId),
+    check(
+      "email_verification_email_normalized_check",
+      sql`${table.email} = lower(trim(${table.email}))`,
+    ),
+    check("email_verification_token_hash_check", sql`length(${table.tokenHash}) = 64`),
+  ],
+);
+
 export const systemHealth = pgTable("system_health", {
   id: uuid("id").defaultRandom().primaryKey(),
   component: varchar("component", { length: 64 }).notNull().unique(),

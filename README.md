@@ -53,6 +53,8 @@ Password recovery uses `POST /api/v1/password/forgot` and `/reset`; its response
 
 Platform administrators enroll TOTP through `POST /api/v1/mfa/enroll` and confirm the initial provisioning URI with `/api/v1/mfa/verify`. TOTP secrets are encrypted with AES-GCM at rest and are never logged or returned after enrollment. Privileged requests must send a fresh six-digit code in `X-NTAuth-TOTP`; each 30-second counter is consumed atomically, so an expired or replayed code is rejected. Non-platform organization administrators are not subject to this platform step-up.
 
+Invitation acceptance verifies the invited address immediately. Other unverified accounts request or resend verification through `POST /api/v1/email-verification/request` and consume the link through `/verify`. Responses do not reveal account existence; SHA-256 token hashes expire after 24 hours, resending invalidates the prior link, and verified or suspended accounts receive no new token. Authentication and password recovery reject unverified identities.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation
