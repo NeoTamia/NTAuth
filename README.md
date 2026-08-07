@@ -26,6 +26,8 @@ docker compose exec postgres pg_isready -U ntauth -d ntauth
 docker compose exec redis redis-cli ping
 ```
 
+The API exposes `GET /health` for process liveness and `GET /ready` for PostgreSQL and Redis readiness. It returns HTTP `503` with per-dependency availability when either service is unavailable.
+
 Apply or roll back the latest database migration with:
 
 ```bash
