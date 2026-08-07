@@ -11,6 +11,13 @@ export {
 } from "./invitations";
 export { transactWithEmail, type OutboxTransaction } from "./outbox";
 export {
+  changePassword,
+  completePasswordReset,
+  InvalidCurrentPasswordError,
+  InvalidPasswordResetError,
+  requestPasswordReset,
+} from "./passwords";
+export {
   addOrganizationMember,
   changeOrganizationMemberRole,
   createOrganization,

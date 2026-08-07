@@ -49,6 +49,8 @@ Invitation creation is authenticated and authorized through `POST /api/v1/invita
 
 Platform administrators manage the user lifecycle with `PATCH /api/v1/users/:id/status` (`active`, `suspended`, or `deactivated`) and `DELETE /api/v1/users/:id`. Every transition is audited and immediately revokes existing sessions; non-active identities cannot create new sessions. Deletion is terminal: credentials, memberships, roles, sessions, and personal profile fields are removed while an anonymized identity row remains to preserve audit and referential integrity.
 
+Password recovery uses `POST /api/v1/password/forgot` and `/reset`; its response does not reveal whether an address exists. Reset tokens expire after 30 minutes, are stored only as SHA-256 hashes, become unusable after one attempt, and revoke every session after success. Authenticated password changes use `/api/v1/password/change`, verify the current password, and also revoke existing sessions.
+
 To stop the stack while keeping its data, run `docker compose down`. To deliberately reset all local data, run `docker compose down --volumes`; this permanently deletes the three development volumes. After a reset, the next `docker compose up --build -d` recreates and migrates the database automatically.
 
 ## Validation

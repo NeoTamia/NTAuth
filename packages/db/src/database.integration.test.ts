@@ -42,24 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0007_complete_tomas");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0008_gifted_darkstar");
 
-    const [statusColumn] = await connection.client<{ exists: boolean }[]>`
-      select exists(
-        select 1 from information_schema.columns
-        where table_schema = 'public' and table_name = 'user' and column_name = 'status'
-      ) as exists
+    const [resetTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.password_reset_requests') is not null as exists
     `;
-    expect(statusColumn?.exists).toBe(false);
+    expect(resetTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredStatusColumn] = await connection.client<{ exists: boolean }[]>`
-      select exists(
-        select 1 from information_schema.columns
-        where table_schema = 'public' and table_name = 'user' and column_name = 'status'
-      ) as exists
+    const [restoredResetTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.password_reset_requests') is not null as exists
     `;
-    expect(restoredStatusColumn?.exists).toBe(true);
+    expect(restoredResetTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

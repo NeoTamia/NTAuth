@@ -9,6 +9,7 @@ const app = createApp({
   authHandler: runtime.auth.handler,
   corsOrigins: environment.CORS_ORIGINS,
   invitationRoutes: runtime.invitationRoutes,
+  passwordRoutes: runtime.passwordRoutes,
   readiness: runtime.readiness,
   userRoutes: runtime.userRoutes,
 }).listen({

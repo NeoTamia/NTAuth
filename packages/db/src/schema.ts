@@ -220,6 +220,24 @@ export const invitations = pgTable(
   ],
 );
 
+export const passwordResetRequests = pgTable(
+  "password_reset_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("password_reset_requests_user_idx").on(table.userId),
+    check("password_reset_token_hash_check", sql`length(${table.tokenHash}) = 64`),
+  ],
+);
+
 export const systemHealth = pgTable("system_health", {
   id: uuid("id").defaultRandom().primaryKey(),
   component: varchar("component", { length: 64 }).notNull().unique(),

@@ -5,6 +5,7 @@ import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
 import { createInvitationRoutes } from "./invitations";
+import { createPasswordRoutes } from "./passwords";
 import { createUserRoutes } from "./users";
 
 export function createRuntime(environment: ApiEnvironment) {
@@ -33,6 +34,11 @@ export function createRuntime(environment: ApiEnvironment) {
     database,
   });
   const userRoutes = createUserRoutes({ auth, database });
+  const passwordRoutes = createPasswordRoutes({
+    auth,
+    database,
+    resetPasswordURL: `${environment.CORS_ORIGINS[0]}/auth/reset-password`,
+  });
 
   const connectRedis = async () => {
     if (redis.isOpen) return;
@@ -56,6 +62,7 @@ export function createRuntime(environment: ApiEnvironment) {
   return {
     auth,
     invitationRoutes,
+    passwordRoutes,
     readiness,
     userRoutes,
     async close() {

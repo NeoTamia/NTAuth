@@ -12,6 +12,7 @@ import {
 
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
+import { createPasswordRoutes } from "./passwords";
 import { createUserRoutes } from "./users";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -81,7 +82,14 @@ describeWithDatabase("user lifecycle API", () => {
 
   const app = () => {
     const currentAuth = auth();
-    return createApp({ userRoutes: createUserRoutes({ auth: currentAuth, database: connection }) });
+    return createApp({
+      passwordRoutes: createPasswordRoutes({
+        auth: currentAuth,
+        database: connection,
+        resetPasswordURL: `${origin}/auth/reset-password`,
+      }),
+      userRoutes: createUserRoutes({ auth: currentAuth, database: connection }),
+    });
   };
 
   test("requires authentication for status changes", async () => {
@@ -94,6 +102,30 @@ describeWithDatabase("user lifecycle API", () => {
     );
     expect(response.status).toBe(401);
     expect(response.headers.get("content-type")).toContain("application/problem+json");
+  });
+
+  test("keeps forgot-password enumeration-safe and protects authenticated changes", async () => {
+    const forgot = (email: string) =>
+      app().handle(
+        new Request("http://localhost/api/v1/password/forgot", {
+          body: JSON.stringify({ email }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        }),
+      );
+    const known = await forgot(`api-lifecycle-target-${runId}@example.test`);
+    const unknown = await forgot(`missing-${runId}@example.test`);
+    expect(known.status).toBe(202);
+    expect(await known.text()).toBe(await unknown.text());
+
+    const change = await app().handle(
+      new Request("http://localhost/api/v1/password/change", {
+        body: JSON.stringify({ currentPassword: "anything", password: "Valid-password-123!" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+    expect(change.status).toBe(401);
   });
 
   test("suspends, reactivates, deletes, and rejects reuse", async () => {
