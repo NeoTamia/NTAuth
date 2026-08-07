@@ -49,4 +49,6 @@ bun run check
 
 This command checks Oxc formatting and linting, TypeScript, tests, and production builds across the workspaces. External dependencies are always added with an explicit version and `--exact`.
 
+GitHub Actions runs the same command after a frozen install, with healthy PostgreSQL and Redis services. The workflow pins Bun, service images, and every third-party action; it caches only Bun's download cache using the exact lockfile hash. New pushes cancel an older run for the same branch, and each validation job has a 20-minute timeout.
+
 The implementation roadmap is available in [PROJECT_PLAN.md](./PROJECT_PLAN.md).
