@@ -42,18 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0003_cynical_expediter");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0004_open_colleen_wing");
 
-    const [authTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.user') is not null as exists
+    const [organizationTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.organizations') is not null as exists
     `;
-    expect(authTable?.exists).toBe(false);
+    expect(organizationTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredAuthTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.user') is not null as exists
+    const [restoredOrganizationTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.organizations') is not null as exists
     `;
-    expect(restoredAuthTable?.exists).toBe(true);
+    expect(restoredOrganizationTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

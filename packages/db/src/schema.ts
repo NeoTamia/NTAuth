@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -79,6 +80,92 @@ export const verification = pgTable(
 );
 
 export const betterAuthSchema = { account, session, user, verification };
+
+export type OrganizationStatus = "active" | "suspended";
+export type OrganizationRole = "admin" | "member" | "owner";
+export type MembershipStatus = "active" | "suspended";
+export type PlatformRole = "platform_admin";
+
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    slug: varchar("slug", { length: 80 }).notNull().unique(),
+    status: varchar("status", { length: 16 })
+      .$type<OrganizationStatus>()
+      .notNull()
+      .default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("organizations_name_check", sql`length(trim(${table.name})) > 0`),
+    check("organizations_slug_check", sql`${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+    check("organizations_status_check", sql`${table.status} in ('active', 'suspended')`),
+  ],
+);
+
+export const organizationMembers = pgTable(
+  "organization_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 16 }).$type<OrganizationRole>().notNull(),
+    status: varchar("status", { length: 16 }).$type<MembershipStatus>().notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("organization_members_org_user_unique").on(table.organizationId, table.userId),
+    index("organization_members_user_id_idx").on(table.userId),
+    check("organization_members_role_check", sql`${table.role} in ('owner', 'admin', 'member')`),
+    check("organization_members_status_check", sql`${table.status} in ('active', 'suspended')`),
+  ],
+);
+
+export const platformRoleAssignments = pgTable(
+  "platform_role_assignments",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 32 }).$type<PlatformRole>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.role] }),
+    check("platform_role_assignments_role_check", sql`${table.role} in ('platform_admin')`),
+  ],
+);
+
+export type AuditOutcome = "denied" | "success";
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actorUserId: text("actor_user_id"),
+    action: varchar("action", { length: 128 }).notNull(),
+    resourceType: varchar("resource_type", { length: 64 }).notNull(),
+    resourceId: text("resource_id"),
+    organizationId: uuid("organization_id"),
+    outcome: varchar("outcome", { length: 16 }).$type<AuditOutcome>().notNull(),
+    requestId: varchar("request_id", { length: 128 }).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, string | boolean | number | null>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("audit_events_actor_idx").on(table.actorUserId, table.createdAt),
+    index("audit_events_organization_idx").on(table.organizationId, table.createdAt),
+    check("audit_events_outcome_check", sql`${table.outcome} in ('success', 'denied')`),
+  ],
+);
 
 export const systemHealth = pgTable("system_health", {
   id: uuid("id").defaultRandom().primaryKey(),
