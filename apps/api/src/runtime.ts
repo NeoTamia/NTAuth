@@ -15,6 +15,7 @@ import { createIamCatalogRoutes } from "./iam-catalog";
 import { createIamPermissionCache } from "./iam-cache";
 import { createIamPolicyRoutes } from "./iam-policies";
 import { createMfaRoutes } from "./mfa";
+import { createOrganizationRoutes } from "./organizations";
 import { createPasswordRoutes } from "./passwords";
 import { createSigningKeyRoutes } from "./signing-keys";
 import { createServiceGrantRoutes } from "./service-grants";
@@ -97,6 +98,11 @@ export function createRuntime(environment: ApiEnvironment) {
     database,
     resetPasswordURL: `${environment.CORS_ORIGINS[0]}/auth/reset-password`,
   });
+  const organizationRoutes = createOrganizationRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
   const signingKeyRoutes = createSigningKeyRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
@@ -140,6 +146,7 @@ export function createRuntime(environment: ApiEnvironment) {
     iamCatalogRoutes,
     iamPolicyRoutes,
     mfaRoutes,
+    organizationRoutes,
     passwordRoutes,
     readiness,
     signingKeyRoutes,

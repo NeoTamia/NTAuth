@@ -7,7 +7,12 @@ import {
   addOrganizationMember,
   changeOrganizationMemberRole,
   createOrganization,
+  getOrganizationAdministration,
+  listManagedOrganizations,
   OrganizationAuthorizationError,
+  OrganizationConflictError,
+  updateOrganization,
+  updateOrganizationMember,
 } from "./organizations";
 import { auditEvents, organizationMembers, platformRoleAssignments, user } from "./schema";
 
@@ -108,6 +113,55 @@ describeWithDatabase("organization domain", () => {
         and(eq(auditEvents.organizationId, organization.id), eq(auditEvents.outcome, "success")),
       );
     expect(successfulAudits).toHaveLength(4);
+
+    const visibleOrganizations = await listManagedOrganizations(connection, {
+      requestId: `${runId}-list`,
+      userId: organizationAdminId,
+    });
+    expect(visibleOrganizations).toContainEqual(
+      expect.objectContaining({
+        administratorCount: 2,
+        id: organization.id,
+        memberCount: 2,
+      }),
+    );
+
+    const administration = await getOrganizationAdministration(connection, organization.id, {
+      requestId: `${runId}-read`,
+      userId: organizationAdminId,
+    });
+    expect(administration.members).toHaveLength(2);
+    expect(administration.organization.name).toBe("NeoTamia Test");
+
+    const updated = await updateOrganization(
+      connection,
+      { id: organization.id, name: "NeoTamia Updated", status: "active" },
+      { requestId: `${runId}-update`, userId: organizationAdminId },
+    );
+    expect(updated.name).toBe("NeoTamia Updated");
+
+    await updateOrganizationMember(
+      connection,
+      {
+        organizationId: organization.id,
+        role: "member",
+        status: "active",
+        userId: organizationAdminId,
+      },
+      { requestId: `${runId}-demote-admin`, userId: platformAdminId },
+    );
+    await expect(
+      updateOrganizationMember(
+        connection,
+        {
+          organizationId: organization.id,
+          role: "member",
+          status: "active",
+          userId: memberId,
+        },
+        { requestId: `${runId}-last-admin`, userId: platformAdminId },
+      ),
+    ).rejects.toBeInstanceOf(OrganizationConflictError);
   });
 
   test("audits a denied mutation without creating a membership", async () => {

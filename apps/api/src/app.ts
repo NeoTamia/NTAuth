@@ -10,6 +10,7 @@ import type { createIamPolicyRoutes } from "./iam-policies";
 import type { createDiscoveryRoutes } from "./auth/discovery";
 import type { createEmailVerificationRoutes } from "./email-verification";
 import type { createMfaRoutes } from "./mfa";
+import type { createOrganizationRoutes } from "./organizations";
 import type { createPasswordRoutes } from "./passwords";
 import type { createSigningKeyRoutes } from "./signing-keys";
 import type { createServiceGrantRoutes } from "./service-grants";
@@ -37,6 +38,7 @@ export const createApp = (
     iamCatalogRoutes?: ReturnType<typeof createIamCatalogRoutes>;
     iamPolicyRoutes?: ReturnType<typeof createIamPolicyRoutes>;
     mfaRoutes?: ReturnType<typeof createMfaRoutes>;
+    organizationRoutes?: ReturnType<typeof createOrganizationRoutes>;
     passwordRoutes?: ReturnType<typeof createPasswordRoutes>;
     readiness?: ReadinessChecks;
     signingKeyRoutes?: ReturnType<typeof createSigningKeyRoutes>;
@@ -56,6 +58,7 @@ export const createApp = (
   if (options.iamCatalogRoutes) app.use(options.iamCatalogRoutes);
   if (options.iamPolicyRoutes) app.use(options.iamPolicyRoutes);
   if (options.mfaRoutes) app.use(options.mfaRoutes);
+  if (options.organizationRoutes) app.use(options.organizationRoutes);
   if (options.passwordRoutes) app.use(options.passwordRoutes);
   if (options.signingKeyRoutes) app.use(options.signingKeyRoutes);
   if (options.serviceGrantRoutes) app.use(options.serviceGrantRoutes);

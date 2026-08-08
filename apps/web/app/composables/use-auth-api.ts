@@ -1,7 +1,7 @@
 type RequestOptions = {
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
-  method?: "GET" | "POST";
+  method?: "DELETE" | "GET" | "PATCH" | "POST";
   query?: Record<string, string>;
 };
 

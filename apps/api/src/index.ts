@@ -17,6 +17,7 @@ const app = createApp({
   iamCatalogRoutes: runtime.iamCatalogRoutes,
   iamPolicyRoutes: runtime.iamPolicyRoutes,
   mfaRoutes: runtime.mfaRoutes,
+  organizationRoutes: runtime.organizationRoutes,
   passwordRoutes: runtime.passwordRoutes,
   readiness: runtime.readiness,
   serviceGrantRoutes: runtime.serviceGrantRoutes,

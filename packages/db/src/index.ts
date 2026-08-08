@@ -98,7 +98,13 @@ export {
   addOrganizationMember,
   changeOrganizationMemberRole,
   createOrganization,
+  getOrganizationAdministration,
+  listManagedOrganizations,
   OrganizationAuthorizationError,
+  OrganizationConflictError,
+  OrganizationNotFoundError,
+  updateOrganization,
+  updateOrganizationMember,
 } from "./organizations";
 export { revokeUserSessions, SessionRevocationAuthorizationError } from "./sessions";
 export {

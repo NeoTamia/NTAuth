@@ -10,13 +10,14 @@ related_targets:
     "app/layouts/admin.vue",
     "app/pages/admin/security/mfa.vue",
     "app/pages/admin/oauth-clients.vue",
+    "app/pages/admin/organizations.vue",
   ]
 ---
 
 ## Scope and mode
 
 Operate flow covering sign-in, password recovery, password reset, invitation acceptance, sign-out,
-MFA enrollment and the MFA-gated OAuth client registry.
+MFA enrollment, the MFA-gated OAuth client registry and tenant administration.
 
 ## Audience and job
 
@@ -29,6 +30,10 @@ The surface presents a persistent access-path register beside one active form.
 It explains invitation-only accounts, 12-character password requirements,
 anti-enumeration behavior and session revocation after reset without exposing
 identity existence.
+
+Administrators also navigate an isolated tenant register, unlock identity details
+with a fresh MFA challenge, and manage organization state, memberships and
+invitations without losing the last active administrator.
 
 ## Constraints
 

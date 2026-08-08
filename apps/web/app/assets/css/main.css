@@ -726,6 +726,192 @@ button:not(:disabled):hover,
   padding-block: 3rem;
   border-block: 1px solid #cbd3cc;
 }
+
+.organization-admin {
+  max-width: 82rem;
+}
+.organization-admin__header,
+.organization-detail > header,
+.organization-creation > header,
+.member-section > header,
+.invitation-section > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.organization-admin__header p,
+.detail-gate > p,
+.organization-detail--empty > p,
+.empty-line {
+  max-width: 65ch;
+  color: #45544c;
+  line-height: 1.6;
+}
+.organization-workspace {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.65fr) minmax(34rem, 1.35fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+.organization-workspace h2 {
+  margin-top: 0;
+}
+.organization-list,
+.member-list,
+.invitation-list {
+  padding: 0;
+  border-top: 1px solid #cbd3cc;
+  list-style: none;
+}
+.organization-list li,
+.member-list li,
+.invitation-list li {
+  border-bottom: 1px solid #cbd3cc;
+}
+.organization-list button,
+.member-list button {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem;
+  padding: 1rem 0;
+  border: 0;
+  border-radius: 0;
+  color: #14201b;
+  text-align: left;
+  background: transparent;
+}
+.organization-list button:hover,
+.organization-list button[aria-current="true"],
+.member-list button:hover,
+.member-list button[aria-current="true"] {
+  padding-inline: 0.75rem;
+  background: #e7ece7;
+}
+.organization-list button > span,
+.member-list strong,
+.invitation-list strong {
+  font-weight: 800;
+}
+.organization-list small,
+.member-list small,
+.invitation-list small {
+  display: block;
+  color: #526158;
+  line-height: 1.45;
+}
+.organization-list button > strong {
+  width: fit-content;
+  color: #1c5941;
+  font-size: 0.8rem;
+}
+.state-text--suspended {
+  color: #8d321c !important;
+}
+.organization-detail,
+.organization-creation {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.organization-detail > header code {
+  overflow-wrap: anywhere;
+  color: #6c4736;
+}
+.organization-detail--empty {
+  min-height: 17rem;
+  align-content: center;
+}
+.detail-gate,
+.organization-settings,
+.member-editor,
+.invitation-form,
+.cancel-invitation,
+.organization-creation form {
+  display: grid;
+  gap: 1.1rem;
+  margin-top: 1.75rem;
+}
+.organization-settings,
+.member-editor,
+.invitation-form,
+.cancel-invitation {
+  padding-block: 1.5rem;
+  border-top: 1px solid #c1cac3;
+}
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #8f9c94;
+  border-radius: 0.75rem;
+  color: #14201b;
+  background: #f5f7f3;
+  font: inherit;
+}
+.inline-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.member-section,
+.invitation-section {
+  margin-top: 2.5rem;
+}
+.member-section > header,
+.invitation-section > header {
+  align-items: baseline;
+  border-bottom: 1px solid #7f8d84;
+}
+.member-section h3,
+.invitation-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.45rem;
+}
+.member-section > header span,
+.invitation-section > header span {
+  color: #526158;
+  font-weight: 750;
+}
+.member-list {
+  margin-top: 0;
+  border-top: 0;
+}
+.member-list button {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+.member-list button > span:last-child {
+  text-align: right;
+}
+.member-editor h4,
+.cancel-invitation h4 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.invitation-list {
+  margin-top: 1.25rem;
+  border-top: 0;
+}
+.invitation-list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-block: 0.9rem;
+}
+.cancel-invitation {
+  border-top-color: #b56b4d;
+}
+.organization-creation {
+  width: min(100%, 52rem);
+  margin-top: 3rem;
+}
+.organization-creation h2 {
+  margin: 0;
+}
 .error-page {
   width: min(100% - 2rem, 48rem);
   margin: 0 auto;
@@ -849,13 +1035,26 @@ button:not(:disabled):hover,
   }
   .oauth-admin__header,
   .oauth-detail > header,
-  .oauth-creation > header {
+  .oauth-creation > header,
+  .organization-admin__header,
+  .organization-detail > header,
+  .organization-creation > header {
     align-items: flex-start;
     flex-direction: column;
     gap: 1rem;
   }
   .choice-field--inline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .organization-workspace,
+  .inline-fields {
+    grid-template-columns: 1fr;
+  }
+  .member-list button {
+    grid-template-columns: 1fr;
+  }
+  .member-list button > span:last-child {
+    text-align: left;
   }
 }
 
