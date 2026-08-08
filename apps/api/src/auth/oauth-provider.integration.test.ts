@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 
 import { NTSCOUT_AUDIENCE, NTSCOUT_SERVICE } from "@neotamia/permissions";
 
@@ -715,18 +715,35 @@ describeWithDatabase("OAuth provider integration", () => {
     const protocolAudits = await connection.db
       .select()
       .from(auditEvents)
-      .where(eq(auditEvents.actorUserId, adminId));
-    expect(
-      protocolAudits.find((event) => event.requestId === `${runId}-flow-authorize-wrong-redirect`),
-    ).toMatchObject({ action: "oauth.authorize", outcome: "denied" });
-    expect(
-      protocolAudits.find((event) => event.requestId === `${runId}-flow-authorize-valid`),
-    ).toMatchObject({ action: "oauth.authorize", outcome: "success" });
-    expect(
-      protocolAudits.find(
-        (event) => event.requestId === `${runId}-flow-authorize-disallowed-scope`,
-      ),
-    ).toMatchObject({ action: "oauth.authorize", outcome: "denied" });
+      .where(like(auditEvents.requestId, `${runId}-flow-%`));
+    const expectedProtocolOutcomes = new Map<string, [string, "denied" | "success"]>([
+      ["authorize-altered-organization", ["oauth.authorize", "denied"]],
+      ["authorize-disallowed-scope", ["oauth.authorize", "denied"]],
+      ["authorize-missing-pkce", ["oauth.authorize", "denied"]],
+      ["authorize-plain-pkce", ["oauth.authorize", "denied"]],
+      ["authorize-valid", ["oauth.authorize", "success"]],
+      ["authorize-wrong-redirect", ["oauth.authorize", "denied"]],
+      ["token-consumed-after-mismatch", ["oauth.token", "denied"]],
+      ["token-expired", ["oauth.token", "denied"]],
+      ["token-replay", ["oauth.token", "denied"]],
+      ["token-valid", ["oauth.token", "success"]],
+      ["token-wrong-redirect", ["oauth.token", "denied"]],
+      ["token-wrong-verifier", ["oauth.token", "denied"]],
+    ]);
+    for (const [suffix, [action, outcome]] of expectedProtocolOutcomes) {
+      const event = protocolAudits.find(
+        (candidate) => candidate.requestId === `${runId}-flow-${suffix}`,
+      );
+      expect(event).toMatchObject({
+        action,
+        outcome,
+        requestId: `${runId}-flow-${suffix}`,
+        resourceType: "oauth_protocol",
+      });
+      expect(JSON.stringify(event?.metadata)).not.toMatch(
+        /authorization|code_verifier|refresh_token|client_secret/i,
+      );
+    }
 
     const deleted = await privilegedRequest(
       "/oauth2/delete-client",
@@ -899,16 +916,24 @@ describeWithDatabase("OAuth provider integration", () => {
       error_description: "access token is invalid",
     });
 
+    const strictClaims = {
+      azp: NTSCOUT_CLIENT_ID,
+      iss: baseURL,
+      jti: crypto.randomUUID(),
+      organization_id: organizationId,
+      policies_etag: accessToken.policies_etag,
+      scope: "openid ntscout:access",
+      service: NTSCOUT_SERVICE,
+      sid: accessToken.sid,
+      sub: adminId,
+    };
     const expiredToken = await auth().api.signJWT({
       body: {
         payload: {
           aud: NTSCOUT_AUDIENCE,
-          azp: NTSCOUT_CLIENT_ID,
+          ...strictClaims,
           exp: now - 1,
           iat: now - 16 * 60,
-          iss: baseURL,
-          scope: "openid ntscout:access",
-          sub: adminId,
         },
       },
     });
@@ -922,6 +947,30 @@ describeWithDatabase("OAuth provider integration", () => {
     );
     expect(expiredUserInfo.status).toBe(401);
     expect(await expiredUserInfo.json()).toEqual({
+      error: "invalid_token",
+      error_description: "access token is invalid",
+    });
+    const wrongAudienceToken = await auth().api.signJWT({
+      body: {
+        payload: {
+          aud: "urn:neotamia:service:unregistered",
+          ...strictClaims,
+          exp: now + 15 * 60,
+          iat: now,
+          jti: crypto.randomUUID(),
+        },
+      },
+    });
+    const wrongAudienceUserInfo = await handler()(
+      new Request(`${baseURL}/oauth2/userinfo`, {
+        headers: {
+          authorization: `Bearer ${wrongAudienceToken.token}`,
+          "x-request-id": `${runId}-ntscout-userinfo-wrong-audience`,
+        },
+      }),
+    );
+    expect(wrongAudienceUserInfo.status).toBe(401);
+    expect(await wrongAudienceUserInfo.json()).toEqual({
       error: "invalid_token",
       error_description: "access token is invalid",
     });
@@ -1117,6 +1166,35 @@ describeWithDatabase("OAuth provider integration", () => {
       organizationId,
       outcome: "denied",
     });
+    const securityRefusals = [
+      "ntscout-token-invalid-resource",
+      "ntscout-userinfo-expired",
+      "ntscout-userinfo-tampered",
+      "ntscout-userinfo-wrong-audience",
+      "ntscout-refresh-suspended",
+      "ntscout-refresh-suspended-membership",
+      "ntscout-refresh-reuse",
+      "ntscout-refresh-family-revoked",
+    ];
+    const ntscoutAudits = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(like(auditEvents.requestId, `${runId}-ntscout-%`));
+    for (const suffix of securityRefusals) {
+      const event = ntscoutAudits.find(
+        (candidate) =>
+          candidate.requestId === `${runId}-${suffix}` &&
+          candidate.resourceType === "oauth_protocol",
+      );
+      expect(event).toMatchObject({
+        outcome: "denied",
+        requestId: `${runId}-${suffix}`,
+        resourceType: "oauth_protocol",
+      });
+      expect(JSON.stringify(event?.metadata)).not.toMatch(
+        /authorization|code_verifier|refresh_token|client_secret/i,
+      );
+    }
     await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
   });
 
