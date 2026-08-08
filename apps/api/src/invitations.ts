@@ -5,6 +5,7 @@ import {
   acceptInvitation,
   cancelInvitation,
   createInvitation,
+  getInvitationPreview,
   InvalidInvitationError,
   InvitationAuthorizationError,
   type DatabaseConnection,
@@ -32,6 +33,14 @@ async function actorFrom(auth: Auth, headers: Headers, requestId: string) {
   return current ? { requestId, userId: current.user.id } : undefined;
 }
 
+function maskEmail(email: string): string {
+  const separator = email.lastIndexOf("@");
+  if (separator <= 0) return "***";
+  const local = email.slice(0, separator);
+  const domain = email.slice(separator + 1);
+  return `${local.slice(0, 1)}${"*".repeat(Math.min(Math.max(local.length - 1, 3), 8))}@${domain}`;
+}
+
 export function createInvitationRoutes(options: {
   acceptInvitationURL: string;
   applicationSecret: string;
@@ -39,6 +48,24 @@ export function createInvitationRoutes(options: {
   database: DatabaseConnection;
 }) {
   return new Elysia({ prefix: "/api/v1/invitations" })
+    .get("/validate", async ({ query }) => {
+      if (typeof query.token !== "string" || query.token.length < 32)
+        return problem(400, "invalid_invitation", "Invitation is invalid or unavailable");
+
+      try {
+        const invitation = await getInvitationPreview(options.database, query.token);
+        return Response.json({
+          email: maskEmail(invitation.email),
+          expiresAt: invitation.expiresAt.toISOString(),
+          organizationName: invitation.organizationName,
+          role: invitation.role,
+        });
+      } catch (error) {
+        if (error instanceof InvalidInvitationError)
+          return problem(400, "invalid_invitation", "Invitation is invalid or unavailable");
+        return problem(400, "invalid_invitation", "Invitation is invalid or unavailable");
+      }
+    })
     .post("/", async ({ body, request }) => {
       const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
       const actor = await actorFrom(options.auth, request.headers, requestId);
@@ -87,6 +114,8 @@ export function createInvitationRoutes(options: {
       const input = objectBody(body);
       if (
         typeof input?.name !== "string" ||
+        input.name.trim().length === 0 ||
+        input.name.trim().length > 100 ||
         typeof input.password !== "string" ||
         typeof input.token !== "string" ||
         input.password.length < 12 ||
@@ -96,7 +125,7 @@ export function createInvitationRoutes(options: {
 
       try {
         await acceptInvitation(options.database, {
-          name: input.name,
+          name: input.name.trim(),
           passwordHash: await hashPassword(input.password),
           token: input.token,
         });

@@ -6,13 +6,14 @@ related_targets:
   [
     "app/pages/auth/forgot-password.vue",
     "app/pages/auth/reset-password.vue",
+    "app/pages/auth/accept-invitation.vue",
     "app/layouts/admin.vue",
   ]
 ---
 
 ## Scope and mode
 
-Operate flow covering sign-in, password recovery, password reset and sign-out.
+Operate flow covering sign-in, password recovery, password reset, invitation acceptance and sign-out.
 
 ## Audience and job
 

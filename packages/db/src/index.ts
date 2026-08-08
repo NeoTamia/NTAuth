@@ -81,6 +81,7 @@ export {
   cancelInvitation,
   createInvitation,
   generateInvitationToken,
+  getInvitationPreview,
   hashInvitationToken,
   InvalidInvitationError,
   InvitationAuthorizationError,

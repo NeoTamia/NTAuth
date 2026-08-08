@@ -171,6 +171,33 @@ export async function cancelInvitation(
   if (result === "invalid") throw new InvalidInvitationError();
 }
 
+export async function getInvitationPreview(
+  connection: DatabaseConnection,
+  token: string,
+  now = new Date(),
+) {
+  const tokenHash = await hashInvitationToken(token);
+  const [invitation] = await connection.client<
+    {
+      email: string;
+      expiresAt: Date | string;
+      organizationName: string;
+      role: OrganizationRole;
+    }[]
+  >`
+    select i.email, i.expires_at as "expiresAt", i.role,
+           o.name as "organizationName"
+    from invitations i
+    join organizations o on o.id = i.organization_id
+    where i.token_hash = ${tokenHash}
+      and i.status = 'pending'
+      and i.expires_at > ${now.toISOString()}
+  `;
+
+  if (!invitation) throw new InvalidInvitationError();
+  return { ...invitation, expiresAt: new Date(invitation.expiresAt) };
+}
+
 export async function acceptInvitation(
   connection: DatabaseConnection,
   input: { name: string; passwordHash: string; token: string },
@@ -194,8 +221,26 @@ export async function acceptInvitation(
       for update
     `;
 
+    if (!invitation) return null;
+
+    if (invitation.status === "accepted") {
+      const [acceptedMembership] = await transaction<{ userId: string }[]>`
+        select u.id as "userId"
+        from "user" u
+        join organization_members m on m.user_id = u.id
+        where u.email = ${invitation.email}
+          and m.organization_id = ${invitation.organizationId}
+      `;
+      return acceptedMembership
+        ? {
+            email: invitation.email,
+            organizationId: invitation.organizationId,
+            userId: acceptedMembership.userId,
+          }
+        : null;
+    }
+
     if (
-      !invitation ||
       invitation.status !== "pending" ||
       new Date(invitation.expiresAt).getTime() <= now.getTime()
     )

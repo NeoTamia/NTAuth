@@ -32,6 +32,9 @@ describe("account access routes", () => {
     expect(authErrorMessage({ data: { code: "invalid_password_reset" } }, "fallback")).toContain(
       "expiré",
     );
+    expect(authErrorMessage({ data: { code: "invalid_invitation" } }, "fallback")).toContain(
+      "invitation",
+    );
     expect(authErrorMessage({ data: { title: "database secret" } }, "fallback")).toBe("fallback");
   });
 
@@ -50,5 +53,15 @@ describe("account access routes", () => {
     expect(reset).toContain('minlength="12"');
     expect(reset).toContain("/api/v1/password/reset");
     expect(reset).toContain("Demander un nouveau lien");
+  });
+
+  test("validates invitation scope before rendering its acceptance form", async () => {
+    const invitation = await page("accept-invitation");
+    expect(invitation).toContain("/api/v1/invitations/validate");
+    expect(invitation).toContain('v-else-if="invitation"');
+    expect(invitation).toContain('aria-label="Portée de l’invitation"');
+    expect(invitation).toContain("/api/v1/invitations/accept");
+    expect(invitation).toContain('autocomplete="new-password"');
+    expect(invitation).toContain("Organisation rejointe");
   });
 });

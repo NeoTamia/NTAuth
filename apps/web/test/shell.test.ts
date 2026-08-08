@@ -5,6 +5,7 @@ const routes = [
   "app/pages/auth/sign-in.vue",
   "app/pages/auth/forgot-password.vue",
   "app/pages/auth/reset-password.vue",
+  "app/pages/auth/accept-invitation.vue",
   "app/pages/auth/error.vue",
   "app/pages/admin/index.vue",
   "app/error.vue",

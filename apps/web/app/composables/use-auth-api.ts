@@ -2,6 +2,7 @@ type RequestOptions = {
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
   method?: "GET" | "POST";
+  query?: Record<string, string>;
 };
 
 export function useAuthApi() {

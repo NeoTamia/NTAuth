@@ -5,6 +5,7 @@ import {
   acceptInvitation,
   cancelInvitation,
   createInvitation,
+  getInvitationPreview,
   hashInvitationToken,
   InvalidInvitationError,
   InvitationAuthorizationError,
@@ -92,6 +93,8 @@ describeWithDatabase("single-use invitations", () => {
 
   test("accepts once, verifies email, and creates the membership transactionally", async () => {
     const invitation = await create("accepted");
+    const preview = await getInvitationPreview(connection, invitation.token);
+    expect(preview).toMatchObject({ organizationName: "Invitation Test", role: "member" });
     const accepted = await acceptInvitation(connection, {
       name: "Invited account",
       passwordHash: "hashed-password-value",
@@ -114,16 +117,19 @@ describeWithDatabase("single-use invitations", () => {
       group by u.email_verified, i.status
     `;
     expect(stored).toEqual({ emailVerified: true, membershipCount: 1, status: "accepted" });
-    await expect(
-      acceptInvitation(connection, {
+    expect(
+      await acceptInvitation(connection, {
         name: "Ignored",
         passwordHash: "another-hash",
         token: invitation.token,
       }),
-    ).rejects.toBeInstanceOf(InvalidInvitationError);
+    ).toEqual(accepted);
+    await expect(getInvitationPreview(connection, invitation.token)).rejects.toBeInstanceOf(
+      InvalidInvitationError,
+    );
   });
 
-  test("returns the same safe failure for cancelled, expired, reused, and unknown tokens", async () => {
+  test("returns the same safe failure for cancelled, expired, and unknown tokens", async () => {
     const cancelled = await create("cancelled");
     await cancelInvitation(connection, cancelled.id, {
       requestId: `${runId}-cancel-action`,

@@ -133,6 +133,16 @@ describeWithDatabase("invitation API", () => {
     const token = new URL(
       job!.payload.text.replace("Accept your invitation: ", ""),
     ).searchParams.get("token")!;
+    const preview = await app.handle(
+      new Request(`http://localhost/api/v1/invitations/validate?token=${token}`),
+    );
+    expect(preview.status).toBe(200);
+    const previewBody = await preview.json();
+    expect(previewBody).toMatchObject({
+      organizationName: "API Test",
+      role: "member",
+    });
+    expect(previewBody.email).not.toBe(`api-invited-${runId}@example.test`);
     const accept = () =>
       app.handle(
         new Request("http://localhost/api/v1/invitations/accept", {
@@ -141,9 +151,15 @@ describeWithDatabase("invitation API", () => {
           method: "POST",
         }),
       );
-    expect((await accept()).status).toBe(200);
-    const reused = await accept();
-    expect(reused.status).toBe(400);
-    expect(reused.headers.get("content-type")).toContain("application/problem+json");
+    const [accepted, duplicate] = await Promise.all([accept(), accept()]);
+    expect([accepted.status, duplicate.status]).toEqual([200, 200]);
+    expect(await accepted.json()).toEqual({ status: "accepted" });
+    expect(await duplicate.json()).toEqual({ status: "accepted" });
+
+    const consumedPreview = await app.handle(
+      new Request(`http://localhost/api/v1/invitations/validate?token=${token}`),
+    );
+    expect(consumedPreview.status).toBe(400);
+    expect(consumedPreview.headers.get("content-type")).toContain("application/problem+json");
   });
 });

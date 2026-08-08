@@ -27,5 +27,7 @@ export function authErrorMessage(error: unknown, fallback: string) {
     return "Trop de tentatives. Patientez avant de réessayer.";
   if (candidate.data?.code === "invalid_password_reset")
     return "Ce lien est expiré ou a déjà été utilisé. Demandez un nouveau lien.";
+  if (candidate.data?.code === "invalid_invitation")
+    return "Ce lien d’invitation a expiré, a déjà été utilisé ou a été annulé.";
   return fallback;
 }
