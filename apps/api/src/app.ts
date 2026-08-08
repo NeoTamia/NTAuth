@@ -74,7 +74,13 @@ export const createApp = (
           "x-ntauth-totp",
           "x-request-id",
         ],
-        exposeHeaders: ["etag", "location", "www-authenticate"],
+        exposeHeaders: [
+          "content-disposition",
+          "etag",
+          "location",
+          "www-authenticate",
+          "x-ntauth-export-truncated",
+        ],
         origin: options.corsOrigins,
       }),
     )

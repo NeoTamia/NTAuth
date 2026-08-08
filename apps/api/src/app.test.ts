@@ -78,7 +78,7 @@ describe("browser API boundary", () => {
       "authorization, content-type, if-none-match, x-ntauth-totp, x-request-id",
     );
     expect(response.headers.get("access-control-expose-headers")).toBe(
-      "etag, location, www-authenticate",
+      "content-disposition, etag, location, www-authenticate, x-ntauth-export-truncated",
     );
     expect(response.headers.get("access-control-allow-credentials")).toBe("true");
   });

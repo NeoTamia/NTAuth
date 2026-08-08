@@ -134,17 +134,53 @@ describeWithDatabase("IAM audit event API", () => {
   };
 
   test("returns only authorized, filtered and redacted tenant events", async () => {
+    const filters = new URLSearchParams({
+      action: "iam.policy.create",
+      actor_user_id: ownerId,
+      from: "2026-08-01T00:00:00.000Z",
+      organization_id: organizationId,
+      service: "ntscout",
+      to: "2026-09-01T00:00:00.000Z",
+    });
     const response = await app().handle(
-      new Request(
-        `http://localhost/api/v1/audit-events?organization_id=${organizationId}&service=ntscout&action=iam.policy.create`,
-        { headers: { cookie: ownerCookie } },
-      ),
+      new Request(`http://localhost/api/v1/audit-events?${filters}`, {
+        headers: { cookie: ownerCookie },
+      }),
     );
     expect(response.status).toBe(200);
     const body = (await response.json()) as { events: unknown[]; retentionDays: number };
     expect(body.events).toHaveLength(1);
     expect(body.retentionDays).toBe(365);
     expect(JSON.stringify(body)).not.toContain("must-not-leak");
+
+    const scopes = await app().handle(
+      new Request("http://localhost/api/v1/audit-events/scopes", {
+        headers: { cookie: ownerCookie },
+      }),
+    );
+    expect(scopes.status).toBe(200);
+    expect(await scopes.json()).toMatchObject({
+      organizations: [expect.objectContaining({ id: organizationId })],
+      services: [expect.objectContaining({ key: service })],
+    });
+
+    const exported = await app().handle(
+      new Request(`http://localhost/api/v1/audit-events/export?${filters}`, {
+        headers: { cookie: ownerCookie, "x-request-id": `${runId}-export-api` },
+      }),
+    );
+    expect(exported.status).toBe(200);
+    expect(exported.headers.get("content-type")).toContain("text/csv");
+    expect(exported.headers.get("content-disposition")).toContain("attachment");
+    const csv = await exported.text();
+    expect(csv).toContain("iam.policy.create");
+    expect(csv).not.toContain("must-not-leak");
+    expect(
+      await connection.db
+        .select({ outcome: auditEvents.outcome })
+        .from(auditEvents)
+        .where(eq(auditEvents.requestId, `${runId}-export-api`)),
+    ).toEqual([{ outcome: "success" }]);
   });
 
   test("fails closed for unauthenticated, cross-tenant and malformed queries", async () => {

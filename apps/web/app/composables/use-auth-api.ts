@@ -3,6 +3,7 @@ type RequestOptions = {
   headers?: Record<string, string>;
   method?: "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
   query?: Record<string, string>;
+  responseType?: "blob" | "json" | "text";
 };
 
 export function useAuthApi() {

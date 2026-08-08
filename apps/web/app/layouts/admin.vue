@@ -31,6 +31,7 @@ async function signOut() {
         <NuxtLink to="/admin/oauth-clients">Applications OAuth</NuxtLink>
         <NuxtLink to="/admin/users">Utilisateurs</NuxtLink>
         <NuxtLink to="/admin/service-grants">Services et accès</NuxtLink>
+        <NuxtLink to="/admin/audit-events">Journal d’audit</NuxtLink>
       </nav>
       <div class="admin-sidebar__session">
         <p v-if="signOutError" role="alert">{{ signOutError }}</p>

@@ -5,6 +5,7 @@ import {
   AUDIT_RETENTION_DAYS,
   AuditEventAuthorizationError,
   AuditEventInputError,
+  exportIamAuditEvents,
   listIamAuditEvents,
   purgeExpiredAuditEvents,
 } from "./audit-events";
@@ -101,6 +102,35 @@ describeWithDatabase("IAM audit event journal", () => {
     );
     expect(second.events).toHaveLength(1);
     expect(new Set([...first.events, ...second.events].map(({ id }) => id)).size).toBe(3);
+
+    const filtered = await listIamAuditEvents(
+      connection,
+      {
+        actorUserId: ownerId,
+        from: new Date("2026-08-08T11:59:00.000Z"),
+        organizationId,
+        service: "ntscout",
+        to: new Date("2026-08-08T12:01:00.000Z"),
+      },
+      actor,
+      new Date("2026-08-08T13:00:00.000Z"),
+    );
+    expect(filtered.events).toHaveLength(3);
+
+    const exported = await exportIamAuditEvents(
+      connection,
+      { organizationId, service: "ntscout" },
+      { requestId: `${runId}-export`, userId: ownerId },
+      new Date("2026-08-08T13:00:00.000Z"),
+    );
+    expect(exported).toMatchObject({ retentionDays: 365, truncated: false });
+    expect(exported.events).toHaveLength(3);
+    expect(
+      await connection.db
+        .select({ outcome: auditEvents.outcome })
+        .from(auditEvents)
+        .where(eq(auditEvents.requestId, `${runId}-export`)),
+    ).toEqual([{ outcome: "success" }]);
   });
 
   test("fails closed for cross-tenant actors and invalid filters", async () => {
@@ -112,6 +142,17 @@ describeWithDatabase("IAM audit event journal", () => {
     ).rejects.toBeInstanceOf(AuditEventInputError);
     await expect(
       listIamAuditEvents(connection, { organizationId, service: "../secret" }, actor),
+    ).rejects.toBeInstanceOf(AuditEventInputError);
+    await expect(
+      listIamAuditEvents(
+        connection,
+        {
+          from: new Date("2026-08-09T00:00:00.000Z"),
+          organizationId,
+          to: new Date("2026-08-08T00:00:00.000Z"),
+        },
+        actor,
+      ),
     ).rejects.toBeInstanceOf(AuditEventInputError);
   });
 

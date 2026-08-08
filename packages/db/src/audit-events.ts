@@ -15,6 +15,17 @@ export const AUDIT_PAGE_MAX_SIZE = 100;
 
 type AuditCursor = { createdAt: Date; id: string };
 type Actor = { requestId: string; userId: string };
+export type IamAuditQuery = {
+  action?: string;
+  actorUserId?: string;
+  cursor?: string;
+  from?: Date;
+  limit?: number;
+  organizationId?: string;
+  outcome?: AuditOutcome;
+  service?: string;
+  to?: Date;
+};
 
 export class AuditEventAuthorizationError extends Error {
   constructor() {
@@ -147,14 +158,7 @@ async function canReadServiceAudit(
 
 export async function listIamAuditEvents(
   connection: DatabaseConnection,
-  input: {
-    action?: string;
-    cursor?: string;
-    limit?: number;
-    organizationId?: string;
-    outcome?: AuditOutcome;
-    service?: string;
-  },
+  input: IamAuditQuery,
   actor: Actor,
   now = new Date(),
 ) {
@@ -169,8 +173,13 @@ export async function listIamAuditEvents(
         input.organizationId,
       )) ||
     (input.action !== undefined && !/^(iam|service-grant)\.[a-z.-]{1,110}$/.test(input.action)) ||
+    (input.actorUserId !== undefined &&
+      (input.actorUserId.length < 1 || input.actorUserId.length > 128)) ||
     (input.outcome !== undefined && !["denied", "success"].includes(input.outcome)) ||
-    (input.service !== undefined && !/^[a-z][a-z0-9-]{0,62}$/.test(input.service))
+    (input.service !== undefined && !/^[a-z][a-z0-9-]{0,62}$/.test(input.service)) ||
+    (input.from !== undefined && Number.isNaN(input.from.getTime())) ||
+    (input.to !== undefined && Number.isNaN(input.to.getTime())) ||
+    (input.from !== undefined && input.to !== undefined && input.from >= input.to)
   ) {
     throw new AuditEventInputError();
   }
@@ -196,8 +205,11 @@ export async function listIamAuditEvents(
           sql`${auditEvents.action} like 'service-grant.%'`,
         ),
         input.action ? eq(auditEvents.action, input.action) : undefined,
+        input.actorUserId ? eq(auditEvents.actorUserId, input.actorUserId) : undefined,
         input.outcome ? eq(auditEvents.outcome, input.outcome) : undefined,
         input.service ? sql`${auditEvents.metadata}->>'service' = ${input.service}` : undefined,
+        input.from ? gte(auditEvents.createdAt, input.from) : undefined,
+        input.to ? lt(auditEvents.createdAt, input.to) : undefined,
         cursor
           ? or(
               lt(auditEvents.createdAt, cursor.createdAt),
@@ -232,6 +244,55 @@ export async function listIamAuditEvents(
         : null,
     retentionDays: AUDIT_RETENTION_DAYS,
   };
+}
+
+export async function exportIamAuditEvents(
+  connection: DatabaseConnection,
+  input: Omit<IamAuditQuery, "cursor" | "limit">,
+  actor: Actor,
+  now = new Date(),
+) {
+  const events: Awaited<ReturnType<typeof listIamAuditEvents>>["events"] = [];
+  let cursor: string | undefined;
+  let retentionDays = AUDIT_RETENTION_DAYS;
+  try {
+    const collect = async (): Promise<void> => {
+      const page = await listIamAuditEvents(
+        connection,
+        { ...input, cursor, limit: AUDIT_PAGE_MAX_SIZE },
+        actor,
+        now,
+      );
+      events.push(...page.events);
+      retentionDays = page.retentionDays;
+      cursor = page.nextCursor ?? undefined;
+      if (cursor && events.length < 10_000) await collect();
+    };
+    await collect();
+  } catch (error) {
+    if (error instanceof AuditEventAuthorizationError) {
+      await connection.db.insert(auditEvents).values({
+        action: "iam.audit.export",
+        actorUserId: actor.userId,
+        metadata: { service: input.service ?? null },
+        organizationId: input.organizationId,
+        outcome: "denied",
+        requestId: actor.requestId,
+        resourceType: "audit_export",
+      });
+    }
+    throw error;
+  }
+  await connection.db.insert(auditEvents).values({
+    action: "iam.audit.export",
+    actorUserId: actor.userId,
+    metadata: { count: events.length, service: input.service ?? null },
+    organizationId: input.organizationId,
+    outcome: "success",
+    requestId: actor.requestId,
+    resourceType: "audit_export",
+  });
+  return { events, retentionDays, truncated: Boolean(cursor) };
 }
 
 export async function purgeExpiredAuditEvents(connection: DatabaseConnection, now = new Date()) {

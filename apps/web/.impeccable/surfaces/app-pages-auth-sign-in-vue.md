@@ -14,6 +14,7 @@ related_targets:
     "app/pages/admin/policies.vue",
     "app/pages/admin/users.vue",
     "app/pages/admin/service-grants.vue",
+    "app/pages/admin/audit-events.vue",
   ]
 ---
 
@@ -21,7 +22,7 @@ related_targets:
 
 Operate flow covering sign-in, password recovery, password reset, invitation acceptance, sign-out,
 MFA enrollment, the MFA-gated OAuth client registry, tenant administration, policy editing,
-platform user administration, and organization-scoped service grants.
+platform user administration, organization-scoped service grants, and authorized audit review.
 
 ## Audience and job
 
@@ -50,6 +51,10 @@ inside one clearly identified user scope.
 Organization administrators choose an explicit tenant, service and active member,
 then prepare activation, suspension or terminal revocation with a fresh challenge
 and a readable scope summary.
+
+Audit readers search one authorized organization or global service scope, move
+through stable cursor pages, inspect only allowlisted metadata, and explicitly
+confirm a masked CSV export.
 
 ## Constraints
 

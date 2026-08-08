@@ -6,8 +6,10 @@ export {
   AuditEventInputError,
   decodeAuditCursor,
   encodeAuditCursor,
+  exportIamAuditEvents,
   listIamAuditEvents,
   publicIamAuditMetadata,
+  type IamAuditQuery,
   purgeExpiredAuditEvents,
 } from "./audit-events";
 export {
