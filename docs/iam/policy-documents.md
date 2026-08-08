@@ -47,3 +47,10 @@ Les limites exportées dans `POLICY_LIMITS` font partie du contrat : document de
 64 Kio, 100 statements, 50 actions et 100 ressources par statement, 20 clés de
 condition et 20 valeurs par clé. Les tests du package exécutent l’exemple ci-dessus
 et les frontières de chaque règle.
+
+L’évaluation locale utilise `evaluatePolicy({ statements, action, resource,
+context })`. Son résultat indique `allowed`, la raison `explicit_allow`,
+`explicit_deny` ou `implicit_deny`, et les SID Allow/Deny correspondants triés.
+Un Deny correspondant gagne toujours, quel que soit l’ordre des statements. Un
+identifiant de requête doit être concret ; seuls les motifs de policy peuvent se
+terminer par `:*`.
