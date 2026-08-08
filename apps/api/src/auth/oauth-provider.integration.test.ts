@@ -1,13 +1,20 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
 import { and, desc, eq, like } from "drizzle-orm";
+import { Elysia } from "elysia";
 
+import { ntauth } from "@neotamia/elysia-auth";
 import { NTSCOUT_AUDIENCE, NTSCOUT_SERVICE } from "@neotamia/permissions";
 
 import {
   account,
   applyMigrations,
+  attachIamPolicy,
   auditEvents,
+  createIamCatalogEntry,
+  createIamPolicy,
+  createService,
+  createServiceGrant,
   createDatabase,
   encryptTotpSecret,
   generateTotpCode,
@@ -24,7 +31,10 @@ import {
   platformRoleAssignments,
   provisionNtscoutClient,
   session,
+  services,
   serviceGrants,
+  setIamPolicyStatus,
+  setServiceGrantActive,
   totpCounter,
   user,
   verification,
@@ -37,6 +47,7 @@ import { createDiscoveryRoutes } from "./discovery";
 import { enforceIntrospectionState } from "./oauth-lifecycle";
 import { SIGNING_KEY_GRACE_SECONDS, SIGNING_KEY_ROTATION_SECONDS } from "./signing-key-policy";
 import { createApp } from "../app";
+import { createEffectivePolicyRoutes } from "../effective-policies";
 import { createSigningKeyRoutes } from "../signing-keys";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -80,6 +91,29 @@ describeWithDatabase("OAuth provider integration", () => {
     await connection.db
       .insert(platformRoleAssignments)
       .values({ role: "platform_admin", userId: adminId });
+    await createService(
+      connection,
+      { key: NTSCOUT_SERVICE, name: "NTScout", ownerUserId: adminId },
+      { requestId: `${runId}-ntscout-service`, userId: adminId },
+    );
+    await createIamCatalogEntry(
+      connection,
+      {
+        identifier: "ntscout:report:read",
+        kind: "action",
+        service: NTSCOUT_SERVICE,
+      },
+      { requestId: `${runId}-ntscout-catalog-action`, userId: adminId },
+    );
+    await createIamCatalogEntry(
+      connection,
+      {
+        identifier: "ntscout:report:*",
+        kind: "resource",
+        service: NTSCOUT_SERVICE,
+      },
+      { requestId: `${runId}-ntscout-catalog-resource`, userId: adminId },
+    );
     await connection.db.insert(organizations).values({
       id: organizationId,
       name: "OAuth integration organization",
@@ -121,8 +155,9 @@ describeWithDatabase("OAuth provider integration", () => {
     }
     await connection.client`delete from jwks where id = ${`expired-${runId}`}`;
     await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
-    await connection.client`delete from "user" where id = ${adminId}`;
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
+    await connection.db.delete(services).where(eq(services.key, NTSCOUT_SERVICE));
+    await connection.client`delete from "user" where id = ${adminId}`;
     await connection.close();
   });
 
@@ -144,6 +179,11 @@ describeWithDatabase("OAuth provider integration", () => {
     return createApp({
       authHandler: createAuditedAuthHandler(currentAuth, connection),
       discoveryRoutes: createDiscoveryRoutes(currentAuth),
+      effectivePolicyRoutes: createEffectivePolicyRoutes({
+        applicationSecret,
+        auth: currentAuth,
+        database: connection,
+      }),
       signingKeyRoutes: createSigningKeyRoutes({
         applicationSecret,
         auth: currentAuth,
@@ -820,12 +860,35 @@ describeWithDatabase("OAuth provider integration", () => {
       error: "invalid_request",
       error_description: "access token context is invalid",
     });
-    await connection.db.insert(serviceGrants).values({
-      createdByUserId: adminId,
-      organizationId,
-      service: NTSCOUT_SERVICE,
-      userId: adminId,
-    });
+    const grant = await createServiceGrant(
+      connection,
+      { organizationId, service: NTSCOUT_SERVICE, userId: adminId },
+      { requestId: `${runId}-ntscout-grant`, userId: adminId },
+    );
+    const policy = await createIamPolicy(
+      connection,
+      {
+        document: {
+          statements: [
+            {
+              actions: ["ntscout:report:read"],
+              effect: "Allow",
+              resources: ["ntscout:report:*"],
+            },
+          ],
+          version: "2026-01-01",
+        },
+        name: `NTScout pilot ${runId}`,
+        organizationId,
+        service: NTSCOUT_SERVICE,
+      },
+      { requestId: `${runId}-ntscout-policy`, userId: adminId },
+    );
+    await attachIamPolicy(
+      connection,
+      { policyId: policy.policy.id, principalId: adminId, principalType: "user" },
+      { requestId: `${runId}-ntscout-policy-attachment`, userId: adminId },
+    );
 
     const verifier = "ntscout-verifier-1234567890123456789012345678901234";
     const authorization = await authorizePublicClient({
@@ -894,6 +957,42 @@ describeWithDatabase("OAuth provider integration", () => {
         "sub",
       ].toSorted(),
     );
+
+    const oauthApplication = application();
+    const jwksResponse = await oauthApplication.handle(new Request(`${baseURL}/jwks`));
+    expect(jwksResponse.status).toBe(200);
+    const jwks = (await jwksResponse.json()) as NonNullable<Parameters<typeof ntauth>[0]["jwks"]>;
+    const resourceServer = new Elysia()
+      .use(
+        ntauth({
+          audience: NTSCOUT_AUDIENCE,
+          fetch: (input, init) => oauthApplication.handle(new Request(input, init)),
+          issuer: baseURL,
+          jwks,
+          requiredScopes: ["openid", "ntscout:access"],
+          service: NTSCOUT_SERVICE,
+        }),
+      )
+      .get("/reports/:id", ({ auth: context, params, set }) => {
+        const decision = context.authorize({
+          action: "ntscout:report:read",
+          resource: `ntscout:report:${params.id}`,
+        });
+        if (!decision.allowed) set.status = 403;
+        return { allowed: decision.allowed, etag: context.policies.etag };
+      });
+    const authorizedReport = await resourceServer.handle(
+      new Request("http://ntscout.local/reports/monthly", {
+        headers: { authorization: `Bearer ${tokenSet.access_token}` },
+      }),
+    );
+    expect(authorizedReport.status).toBe(200);
+    const authorizedReportBody = (await authorizedReport.json()) as {
+      allowed: boolean;
+      etag: string;
+    };
+    expect(authorizedReportBody.allowed).toBe(true);
+    expect(authorizedReportBody.etag).toMatch(/^"[0-9a-f]{64}"$/);
 
     const ntscoutIdToken = await verifyEs256Jwt(tokenSet.id_token);
     expect(ntscoutIdToken).toMatchObject({
@@ -1197,6 +1296,67 @@ describeWithDatabase("OAuth provider integration", () => {
       organizationId,
       outcome: "denied",
     });
+    await setIamPolicyStatus(
+      connection,
+      { policyId: policy.policy.id, status: "inactive" },
+      { requestId: `${runId}-ntscout-policy-disable`, userId: adminId },
+    );
+    const etagBlockedReport = await resourceServer.handle(
+      new Request("http://ntscout.local/reports/monthly", {
+        headers: { authorization: `Bearer ${tokenSet.access_token}` },
+      }),
+    );
+    expect(etagBlockedReport.status).toBe(403);
+    const etagBlockedReportBody = (await etagBlockedReport.json()) as {
+      allowed: boolean;
+      etag: string;
+    };
+    expect(etagBlockedReportBody.allowed).toBe(false);
+    expect(etagBlockedReportBody.etag).not.toBe(authorizedReportBody.etag);
+
+    await setServiceGrantActive(
+      connection,
+      { active: false, grantId: grant.id },
+      { requestId: `${runId}-ntscout-grant-disable`, userId: adminId },
+    );
+    const blockedReport = await resourceServer.handle(
+      new Request("http://ntscout.local/reports/monthly", {
+        headers: { authorization: `Bearer ${tokenSet.access_token}` },
+      }),
+    );
+    const blockedReportBody = (await blockedReport.json()) as {
+      allowed: boolean;
+      etag: string;
+    };
+    await setServiceGrantActive(
+      connection,
+      { active: true, grantId: grant.id },
+      { requestId: `${runId}-ntscout-grant-restore`, userId: adminId },
+    );
+    expect(blockedReport.status).toBe(403);
+    expect(blockedReportBody.allowed).toBe(false);
+    expect(blockedReportBody.etag).not.toBe(etagBlockedReportBody.etag);
+
+    const pilotAudits = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(like(auditEvents.requestId, `${runId}-ntscout-%`));
+    for (const [requestId, action] of [
+      [`${runId}-ntscout-service`, "iam.service.create"],
+      [`${runId}-ntscout-catalog-action`, "iam.catalog.create"],
+      [`${runId}-ntscout-catalog-resource`, "iam.catalog.create"],
+      [`${runId}-ntscout-grant`, "service-grant.create"],
+      [`${runId}-ntscout-policy`, "iam.policy.create"],
+      [`${runId}-ntscout-policy-attachment`, "iam.policy.attach"],
+      [`${runId}-ntscout-policy-disable`, "iam.policy.status.change"],
+      [`${runId}-ntscout-grant-disable`, "service-grant.status.change"],
+    ]) {
+      expect(pilotAudits.find((event) => event.requestId === requestId)).toMatchObject({
+        action,
+        outcome: "success",
+        requestId,
+      });
+    }
     const securityRefusals = [
       "ntscout-token-invalid-resource",
       "ntscout-userinfo-expired",

@@ -33,8 +33,13 @@ function oauthIssuer(request: Request) {
   return `${url.origin}${basePath}`;
 }
 
-async function verifyLocalJwt(auth: Auth, request: Request, token: string, audience: string) {
-  const issuer = oauthIssuer(request);
+async function verifyLocalJwt(
+  auth: Auth,
+  request: Request,
+  token: string,
+  audience: string,
+  issuer = oauthIssuer(request),
+) {
   return verifyJwsAccessToken(token, {
     jwksFetch: async () => {
       const response = await auth.handler(new Request(`${issuer}/jwks`));
@@ -43,6 +48,53 @@ async function verifyLocalJwt(auth: Auth, request: Request, token: string, audie
     },
     verifyOptions: { algorithms: ["ES256"], audience, issuer },
   });
+}
+
+export async function authenticateResourceAccessToken(
+  auth: Auth,
+  database: DatabaseConnection,
+  request: Request,
+  issuer = `${new URL(request.url).origin}/api/auth`,
+): Promise<JWTPayload | Response> {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) {
+    return oauthProblem(401, "invalid_token", "access token is invalid");
+  }
+  try {
+    const payload = await verifyLocalJwt(
+      auth,
+      request,
+      authorization.slice("Bearer ".length),
+      NTSCOUT_AUDIENCE,
+      issuer,
+    );
+    if (!hasStrictAccessClaims(payload)) throw new Error("Invalid access-token claims");
+    const [activeSession] = await database.db
+      .select({ id: session.id })
+      .from(session)
+      .where(
+        and(
+          eq(session.id, payload.sid as string),
+          eq(session.userId, payload.sub as string),
+          gt(session.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+    const [revocation] = await database.db
+      .select({ jti: oauthTokenRevocations.jti })
+      .from(oauthTokenRevocations)
+      .where(
+        and(
+          eq(oauthTokenRevocations.jti, payload.jti as string),
+          gt(oauthTokenRevocations.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+    if (!activeSession || revocation) throw new Error("Access token is inactive");
+    return payload;
+  } catch {
+    return oauthProblem(401, "invalid_token", "access token is invalid");
+  }
 }
 
 function hasStrictAccessClaims(payload: JWTPayload) {
@@ -70,40 +122,13 @@ export async function validateUserInfoToken(
 ) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) return;
-  try {
-    const payload = await verifyLocalJwt(
-      auth,
-      request,
-      authorization.slice("Bearer ".length),
-      NTSCOUT_AUDIENCE,
-    );
-    if (!hasStrictAccessClaims(payload)) throw new Error("Invalid access-token claims");
-    const [activeSession] = await database.db
-      .select({ id: session.id })
-      .from(session)
-      .where(
-        and(
-          eq(session.id, payload.sid as string),
-          eq(session.userId, payload.sub as string),
-          gt(session.expiresAt, new Date()),
-        ),
-      )
-      .limit(1);
-    const [revocation] = await database.db
-      .select({ jti: oauthTokenRevocations.jti })
-      .from(oauthTokenRevocations)
-      .where(
-        and(
-          eq(oauthTokenRevocations.jti, payload.jti as string),
-          gt(oauthTokenRevocations.expiresAt, new Date()),
-        ),
-      )
-      .limit(1);
-    if (!activeSession || revocation) throw new Error("Access token is inactive");
-    return;
-  } catch {
-    return oauthProblem(401, "invalid_token", "access token is invalid");
-  }
+  const result = await authenticateResourceAccessToken(
+    auth,
+    database,
+    request,
+    oauthIssuer(request),
+  );
+  return result instanceof Response ? result : undefined;
 }
 
 export type RevocationContext = {

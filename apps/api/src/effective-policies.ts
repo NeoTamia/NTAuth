@@ -8,6 +8,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import { authenticateResourceAccessToken } from "./auth/oauth-lifecycle";
 import type { IamPermissionCache } from "./iam-cache";
 import { enforceRequestMfa, mfaProblem } from "./mfa";
 
@@ -40,8 +41,12 @@ export function createEffectivePolicyRoutes(options: {
   policyCache?: IamPermissionCache;
 }) {
   return new Elysia().get("/api/v1/iam/effective-policies", async ({ query, request }) => {
-    const current = await options.auth.api.getSession({ headers: request.headers });
-    if (!current) return problem(401, "authentication_required", "Authentication required");
+    const bearer = request.headers.get("authorization")?.startsWith("Bearer ") === true;
+    const current = bearer
+      ? undefined
+      : await options.auth.api.getSession({ headers: request.headers });
+    if (!bearer && !current)
+      return problem(401, "authentication_required", "Authentication required");
     const organizationId = query.organization_id;
     const service = query.service;
     if (
@@ -52,20 +57,32 @@ export function createEffectivePolicyRoutes(options: {
     ) {
       return problem(400, "invalid_request", "Invalid effective policy query");
     }
+    const access = bearer
+      ? await authenticateResourceAccessToken(options.auth, options.database, request)
+      : undefined;
+    if (access instanceof Response) return access;
+    if (access && (access.organization_id !== organizationId || access.service !== service)) {
+      return problem(403, "forbidden", "Effective policies are not available");
+    }
+    const userId = access?.sub ?? current?.user.id;
+    if (typeof userId !== "string")
+      return problem(401, "authentication_required", "Authentication required");
     try {
-      await enforceRequestMfa(options.database, options.applicationSecret, request, {
-        requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
-        userId: current.user.id,
-      });
+      if (!bearer) {
+        await enforceRequestMfa(options.database, options.applicationSecret, request, {
+          requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
+          userId,
+        });
+      }
       const effective = await (options.policyCache?.get({
         organizationId,
         service,
-        userId: current.user.id,
+        userId,
       }) ??
         getEffectivePolicies(options.database, {
           organizationId,
           service,
-          userId: current.user.id,
+          userId,
         }));
       if (matchesIfNoneMatch(request.headers.get("if-none-match"), effective.etag)) {
         return new Response(null, { headers: { etag: effective.etag }, status: 304 });
