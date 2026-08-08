@@ -9,7 +9,7 @@ import {
 } from "./iam-attachments";
 import { createDatabase, type DatabaseConnection } from "./client";
 import { EffectivePolicyAuthorizationError, getEffectivePolicies } from "./effective-policies";
-import { createIamPolicy, setIamPolicyStatus } from "./iam-policies";
+import { createIamPolicy, createIamPolicyVersion, setIamPolicyStatus } from "./iam-policies";
 import { applyMigrations } from "./migrations";
 import { createServiceGrant, setServiceGrantActive } from "./service-grants";
 import { iamCatalogEntries, organizationMembers, organizations, services, user } from "./schema";
@@ -158,9 +158,35 @@ describeWithDatabase("effective IAM policies", () => {
     expect(effective.statements.map(({ effect }) => effect)).toEqual(["Deny", "Allow", "Allow"]);
 
     await setServiceGrantActive(connection, { active: false, grantId: grant.id }, actor("disable"));
-    await expect(
-      getEffectivePolicies(connection, { organizationId, service, userId: memberId }),
-    ).resolves.toMatchObject({ policies: [], statements: [] });
+    const withoutGrant = await getEffectivePolicies(connection, {
+      organizationId,
+      service,
+      userId: memberId,
+    });
+    expect(withoutGrant).toMatchObject({ policies: [], statements: [] });
+    expect(withoutGrant.etag).not.toBe(effective.etag);
+
+    await setServiceGrantActive(connection, { active: true, grantId: grant.id }, actor("enable"));
+    const restored = await getEffectivePolicies(connection, {
+      organizationId,
+      service,
+      userId: memberId,
+    });
+    expect(restored.etag).toBe(effective.etag);
+    await createIamPolicyVersion(
+      connection,
+      { document: document("Deny"), expectedVersion: 1, policyId: alpha.policy.id },
+      actor("alpha-version"),
+    );
+    expect(
+      (
+        await getEffectivePolicies(connection, {
+          organizationId,
+          service,
+          userId: memberId,
+        })
+      ).etag,
+    ).not.toBe(restored.etag);
   });
 
   test("returns no policies without a grant and rejects cross-tenant subjects", async () => {

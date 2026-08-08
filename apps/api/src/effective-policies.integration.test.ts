@@ -149,13 +149,25 @@ describeWithDatabase("effective policy API", () => {
       ),
     );
     expect(effective.status).toBe(200);
+    const etag = effective.headers.get("etag");
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
     expect(await effective.json()).toMatchObject({
+      etag,
       organizationId,
       policies: [{ name: "Effective API policy" }],
       service,
       statements: [{ effect: "Allow" }],
       subjectUserId: ownerId,
     });
+    const notModified = await application().handle(
+      new Request(
+        `http://localhost/api/v1/iam/effective-policies?organization_id=${organizationId}&service=${service}`,
+        { headers: { cookie, "if-none-match": `"obsolete", W/${etag}` } },
+      ),
+    );
+    expect(notModified.status).toBe(304);
+    expect(notModified.headers.get("etag")).toBe(etag);
+    expect(await notModified.text()).toBe("");
 
     const crossTenant = await application().handle(
       new Request(

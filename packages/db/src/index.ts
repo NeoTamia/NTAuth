@@ -5,11 +5,13 @@ export {
   requestEmailVerification,
 } from "./email-verification";
 export {
+  calculateEffectivePolicyEtag,
   EffectivePolicyAuthorizationError,
   EffectivePolicyNotFoundError,
   getEffectivePolicies,
   mergeEffectivePolicies,
   type EffectivePolicyRow,
+  type EffectivePolicyFingerprint,
 } from "./effective-policies";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {

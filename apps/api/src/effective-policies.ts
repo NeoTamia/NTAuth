@@ -23,6 +23,15 @@ function validUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+export function matchesIfNoneMatch(header: string | null, etag: string) {
+  if (!header) return false;
+  const normalizedEtag = etag.replace(/^W\//, "");
+  return header
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .some((candidate) => candidate === "*" || candidate.replace(/^W\//, "") === normalizedEtag);
+}
+
 export function createEffectivePolicyRoutes(options: {
   applicationSecret: string;
   auth: Auth;
@@ -46,11 +55,15 @@ export function createEffectivePolicyRoutes(options: {
         requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
         userId: current.user.id,
       });
-      return await getEffectivePolicies(options.database, {
+      const effective = await getEffectivePolicies(options.database, {
         organizationId,
         service,
         userId: current.user.id,
       });
+      if (matchesIfNoneMatch(request.headers.get("if-none-match"), effective.etag)) {
+        return new Response(null, { headers: { etag: effective.etag }, status: 304 });
+      }
+      return Response.json(effective, { headers: { etag: effective.etag } });
     } catch (error) {
       const mfa = mfaProblem(error);
       if (mfa) return mfa;

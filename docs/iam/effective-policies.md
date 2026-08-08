@@ -7,6 +7,21 @@ organisation/service précis :
 GET /api/v1/iam/effective-policies?organization_id=00000000-0000-4000-8000-000000000001&service=ntscout
 ```
 
+La réponse fournit un ETag fort dans le header `ETag` et dans le corps. Le même
+snapshot produit le même ETag. Le fingerprint inclut le sujet et son nom, le
+scope et son slug, le rôle, les groupes, le grant actif ainsi que les IDs,
+versions et hashes des policies. La lecture et le calcul utilisent une transaction
+PostgreSQL `REPEATABLE READ`.
+
+```http
+If-None-Match: "d7f4..."
+```
+
+Si le validator correspond (y compris sous forme faible `W/`), NTAuth retourne
+`304 Not Modified` sans corps et répète le header `ETag`. Une modification de
+version, de grant, de rôle, de groupe ou d’identité pertinente produit un nouvel
+ETag.
+
 L’utilisateur n’est jamais accepté comme paramètre. NTAuth le prend dans la
 session, puis vérifie dans cet ordre :
 
@@ -24,6 +39,7 @@ document. Le résultat est ainsi stable pour une même version des données.
 
 ```json
 {
+  "etag": "\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"",
   "organizationId": "00000000-0000-4000-8000-000000000001",
   "service": "ntscout",
   "subjectUserId": "user_123",

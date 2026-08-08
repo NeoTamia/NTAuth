@@ -17,6 +17,8 @@ import {
   type OrganizationRole,
 } from "./schema";
 
+type Transaction = Parameters<Parameters<DatabaseConnection["db"]["transaction"]>[0]>[0];
+
 export class EffectivePolicyAuthorizationError extends Error {
   constructor() {
     super("Effective policies are not available for this subject and organization");
@@ -39,6 +41,26 @@ export type EffectivePolicyRow = {
   version: number;
 };
 
+export type EffectivePolicyFingerprint = {
+  grantId: string | null;
+  groupIds: string[];
+  organizationId: string;
+  organizationSlug: string;
+  policies: { documentHash: string; id: string; version: number }[];
+  role: OrganizationRole;
+  service: string;
+  subjectName: string;
+  subjectUserId: string;
+};
+
+export async function calculateEffectivePolicyEtag(input: EffectivePolicyFingerprint) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(input)),
+  );
+  return `"${Buffer.from(digest).toString("hex")}"`;
+}
+
 export function mergeEffectivePolicies(rows: EffectivePolicyRow[]) {
   const byPolicy = new Map<string, EffectivePolicyRow>();
   for (const row of rows) byPolicy.set(row.policyId, row);
@@ -59,13 +81,13 @@ export function mergeEffectivePolicies(rows: EffectivePolicyRow[]) {
   };
 }
 
-async function activeMembership(
-  connection: DatabaseConnection,
-  organizationId: string,
-  userId: string,
-) {
-  const [membership] = await connection.db
-    .select({ role: organizationMembers.role })
+async function activeMembership(transaction: Transaction, organizationId: string, userId: string) {
+  const [membership] = await transaction
+    .select({
+      organizationSlug: organizations.slug,
+      role: organizationMembers.role,
+      subjectName: user.name,
+    })
     .from(organizationMembers)
     .innerJoin(
       organizations,
@@ -87,10 +109,10 @@ async function activeMembership(
 }
 
 async function hasGrant(
-  connection: DatabaseConnection,
+  transaction: Transaction,
   input: { organizationId: string; service: string; userId: string },
 ) {
-  const [grant] = await connection.db
+  const [grant] = await transaction
     .select({ id: serviceGrants.id })
     .from(serviceGrants)
     .where(
@@ -102,15 +124,11 @@ async function hasGrant(
       ),
     )
     .limit(1);
-  return Boolean(grant);
+  return grant;
 }
 
-async function activeGroupIds(
-  connection: DatabaseConnection,
-  organizationId: string,
-  userId: string,
-) {
-  const groups = await connection.db
+async function activeGroupIds(transaction: Transaction, organizationId: string, userId: string) {
+  const groups = await transaction
     .select({ id: iamGroups.id })
     .from(iamGroupMembers)
     .innerJoin(iamGroups, eq(iamGroups.id, iamGroupMembers.groupId))
@@ -142,60 +160,96 @@ export async function getEffectivePolicies(
   connection: DatabaseConnection,
   input: { organizationId: string; service: string; userId: string },
 ) {
-  const membership = await activeMembership(connection, input.organizationId, input.userId);
-  if (!membership) throw new EffectivePolicyAuthorizationError();
-  const [service] = await connection.db
-    .select({ key: services.key })
-    .from(services)
-    .where(and(eq(services.key, input.service), eq(services.status, "active")))
-    .limit(1);
-  if (!service) throw new EffectivePolicyNotFoundError();
-  if (!(await hasGrant(connection, input))) {
-    return {
-      organizationId: input.organizationId,
-      policies: [],
-      service: input.service,
-      statements: [],
-      subjectUserId: input.userId,
-    };
-  }
+  return connection.db.transaction(
+    async (transaction) => {
+      const membership = await activeMembership(transaction, input.organizationId, input.userId);
+      if (!membership) throw new EffectivePolicyAuthorizationError();
+      const [service] = await transaction
+        .select({ key: services.key })
+        .from(services)
+        .where(and(eq(services.key, input.service), eq(services.status, "active")))
+        .limit(1);
+      if (!service) throw new EffectivePolicyNotFoundError();
+      const grant = await hasGrant(transaction, input);
+      const groupIds = await activeGroupIds(transaction, input.organizationId, input.userId);
+      if (!grant) {
+        const policies: never[] = [];
+        const etag = await calculateEffectivePolicyEtag({
+          grantId: null,
+          groupIds,
+          organizationId: input.organizationId,
+          organizationSlug: membership.organizationSlug,
+          policies,
+          role: membership.role,
+          service: input.service,
+          subjectName: membership.subjectName,
+          subjectUserId: input.userId,
+        });
+        return {
+          etag,
+          organizationId: input.organizationId,
+          policies,
+          service: input.service,
+          statements: [],
+          subjectUserId: input.userId,
+        };
+      }
 
-  const groupIds = await activeGroupIds(connection, input.organizationId, input.userId);
-  const rows = await connection.db
-    .select({
-      document: iamPolicyVersions.document,
-      documentHash: iamPolicyVersions.documentHash,
-      policyId: iamPolicies.id,
-      policyName: iamPolicies.name,
-      version: iamPolicyVersions.version,
-    })
-    .from(iamPolicyAttachments)
-    .innerJoin(
-      iamPolicies,
-      and(
-        eq(iamPolicies.id, iamPolicyAttachments.policyId),
-        eq(iamPolicies.organizationId, input.organizationId),
-        eq(iamPolicies.service, input.service),
-        eq(iamPolicies.status, "active"),
-      ),
-    )
-    .innerJoin(
-      iamPolicyVersions,
-      and(
-        eq(iamPolicyVersions.policyId, iamPolicies.id),
-        eq(iamPolicyVersions.version, iamPolicies.currentVersion),
-      ),
-    )
-    .where(
-      and(
-        isNull(iamPolicyAttachments.detachedAt),
-        attachmentFilter(input.userId, membership.role, groupIds),
-      ),
-    );
-  return {
-    organizationId: input.organizationId,
-    ...mergeEffectivePolicies(rows),
-    service: input.service,
-    subjectUserId: input.userId,
-  };
+      const rows = await transaction
+        .select({
+          document: iamPolicyVersions.document,
+          documentHash: iamPolicyVersions.documentHash,
+          policyId: iamPolicies.id,
+          policyName: iamPolicies.name,
+          version: iamPolicyVersions.version,
+        })
+        .from(iamPolicyAttachments)
+        .innerJoin(
+          iamPolicies,
+          and(
+            eq(iamPolicies.id, iamPolicyAttachments.policyId),
+            eq(iamPolicies.organizationId, input.organizationId),
+            eq(iamPolicies.service, input.service),
+            eq(iamPolicies.status, "active"),
+          ),
+        )
+        .innerJoin(
+          iamPolicyVersions,
+          and(
+            eq(iamPolicyVersions.policyId, iamPolicies.id),
+            eq(iamPolicyVersions.version, iamPolicies.currentVersion),
+          ),
+        )
+        .where(
+          and(
+            isNull(iamPolicyAttachments.detachedAt),
+            attachmentFilter(input.userId, membership.role, groupIds),
+          ),
+        );
+      const merged = mergeEffectivePolicies(rows);
+      const etag = await calculateEffectivePolicyEtag({
+        grantId: grant.id,
+        groupIds,
+        organizationId: input.organizationId,
+        organizationSlug: membership.organizationSlug,
+        policies: merged.policies.map(({ documentHash, id, version }) => ({
+          documentHash,
+          id,
+          version,
+        })),
+        role: membership.role,
+        service: input.service,
+        subjectName: membership.subjectName,
+        subjectUserId: input.userId,
+      });
+      return {
+        etag,
+        organizationId: input.organizationId,
+        ...merged,
+        service: input.service,
+        subjectUserId: input.userId,
+      };
+    },
+    { accessMode: "read only", isolationLevel: "repeatable read" },
+  );
 }
