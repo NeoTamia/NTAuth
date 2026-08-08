@@ -254,6 +254,7 @@ export type PlatformRole = "platform_admin";
 export type ServiceGrantStatus = "active" | "inactive" | "revoked";
 export type ServiceStatus = "active" | "inactive";
 export type IamCatalogKind = "action" | "resource";
+export type IamPolicyStatus = "active" | "inactive";
 
 export const organizations = pgTable(
   "organizations",
@@ -402,6 +403,65 @@ export const iamCatalogEntries = pgTable(
       "iam_catalog_entries_ownership_check",
       sql`${table.identifier} like ${table.service} || ':%'`,
     ),
+  ],
+);
+
+export const iamPolicies = pgTable(
+  "iam_policies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    service: varchar("service", { length: 63 })
+      .notNull()
+      .references(() => services.key, { onDelete: "restrict" }),
+    name: varchar("name", { length: 160 }).notNull(),
+    status: varchar("status", { length: 16 }).$type<IamPolicyStatus>().notNull().default("active"),
+    currentVersion: integer("current_version").notNull().default(1),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("iam_policies_scope_name_unique").on(
+      table.organizationId,
+      table.service,
+      table.name,
+    ),
+    index("iam_policies_scope_idx").on(table.organizationId, table.service, table.status),
+    check("iam_policies_name_check", sql`length(trim(${table.name})) > 0`),
+    check("iam_policies_status_check", sql`${table.status} in ('active', 'inactive')`),
+    check("iam_policies_current_version_check", sql`${table.currentVersion} > 0`),
+  ],
+);
+
+export const iamPolicyVersions = pgTable(
+  "iam_policy_versions",
+  {
+    policyId: uuid("policy_id")
+      .notNull()
+      .references(() => iamPolicies.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    document: jsonb("document").$type<import("@neotamia/permissions").PolicyDocument>().notNull(),
+    documentHash: varchar("document_hash", { length: 64 }).notNull(),
+    sourceVersion: integer("source_version"),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.policyId, table.version] }),
+    index("iam_policy_versions_policy_created_idx").on(table.policyId, table.createdAt),
+    check("iam_policy_versions_version_check", sql`${table.version} > 0`),
+    check(
+      "iam_policy_versions_source_check",
+      sql`${table.sourceVersion} is null or ${table.sourceVersion} > 0`,
+    ),
+    check("iam_policy_versions_hash_check", sql`${table.documentHash} ~ '^[0-9a-f]{64}$'`),
   ],
 );
 

@@ -16,6 +16,18 @@ export {
   updateService,
 } from "./iam-catalog";
 export {
+  createIamPolicy,
+  createIamPolicyVersion,
+  getIamPolicyHistory,
+  hashPolicyDocument,
+  IamPolicyAuthorizationError,
+  IamPolicyConflictError,
+  IamPolicyNotFoundError,
+  IamPolicyValidationError,
+  rollbackIamPolicy,
+  setIamPolicyStatus,
+} from "./iam-policies";
+export {
   getNtscoutClient,
   NTSCOUT_CLIENT_ID,
   NTSCOUT_SCOPES,
