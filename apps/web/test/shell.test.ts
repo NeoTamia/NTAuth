@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test";
 const routes = [
   "app/pages/index.vue",
   "app/pages/auth/sign-in.vue",
+  "app/pages/auth/forgot-password.vue",
+  "app/pages/auth/reset-password.vue",
   "app/pages/auth/error.vue",
   "app/pages/admin/index.vue",
   "app/error.vue",

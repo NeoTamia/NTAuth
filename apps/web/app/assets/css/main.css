@@ -124,6 +124,10 @@ button:disabled {
   background: #d9ded9;
   cursor: not-allowed;
 }
+button:not(:disabled):hover,
+.button:hover {
+  background: #164733;
+}
 .text-link,
 .back-link {
   width: fit-content;
@@ -158,6 +162,180 @@ button:disabled {
   border: 1px solid #aab5ad;
   border-radius: 0.75rem;
   background: #e9ece8;
+}
+.auth-register {
+  display: grid;
+  min-height: 38rem;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(22rem, 1.1fr);
+  border-block: 1px solid #cbd3cc;
+}
+.auth-register__context,
+.auth-workspace {
+  padding: clamp(2rem, 5vw, 4.5rem);
+}
+.auth-register__context {
+  display: flex;
+  flex-direction: column;
+  color: #f5f7f3;
+  background: #14201b;
+}
+.auth-register__context h1 {
+  max-width: 13ch;
+  margin-bottom: 1.25rem;
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 1;
+}
+.auth-register__context > div > p:last-child {
+  max-width: 44ch;
+  margin: 0;
+  color: #c5d0ca;
+  line-height: 1.65;
+}
+.auth-paths {
+  display: grid;
+  margin-block: clamp(2.5rem, 6vw, 5rem);
+  border-top: 1px solid #415048;
+}
+.auth-paths a {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding-block: 1rem;
+  border-bottom: 1px solid #415048;
+  color: #dce4df;
+  text-decoration: none;
+}
+.auth-paths a[aria-current="page"] {
+  color: #fff;
+}
+.auth-paths a[aria-current="page"] span::before {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.65rem;
+  border-radius: 50%;
+  background: #d77a51;
+  content: "";
+}
+.auth-paths span {
+  font-weight: 750;
+}
+.auth-paths small {
+  color: #9eafa5;
+  text-align: right;
+}
+.auth-register__assurance {
+  max-width: 42ch;
+  margin: auto 0 0;
+  color: #aebdb4;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.auth-workspace {
+  align-self: center;
+  width: min(100%, 35rem);
+  justify-self: center;
+}
+.auth-workspace h2 {
+  max-width: 15ch;
+  margin: 0 0 1rem;
+  font-size: clamp(2.15rem, 4vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+.auth-workspace header > p:last-child {
+  max-width: 52ch;
+  margin: 0;
+  color: #45544c;
+  line-height: 1.6;
+}
+.auth-workspace form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2.75rem;
+}
+.field {
+  display: grid;
+  gap: 0.55rem;
+}
+.field label {
+  font-weight: 750;
+}
+.field__label-row {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.field__label-row a {
+  color: #375345;
+  font-size: 0.875rem;
+  font-weight: 650;
+  text-underline-offset: 0.2rem;
+}
+.field input {
+  min-height: 3.25rem;
+  padding-inline: 0.9rem;
+  border: 1px solid #8f9c94;
+  border-radius: 0.75rem;
+  color: #14201b;
+  background: #eef1ed;
+}
+.field input:hover:not(:disabled) {
+  border-color: #5f7166;
+}
+.field input[aria-invalid="true"] {
+  border-color: #a13f25;
+}
+.form-guidance,
+.form-message {
+  margin: 0;
+  color: #526158;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.form-guidance--error,
+.form-message--error {
+  color: #8d321c;
+}
+.auth-workspace form button {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+.auth-result {
+  margin-top: 2.75rem;
+  padding-block: 1.5rem;
+  border-block: 1px solid #aab5ad;
+}
+.auth-result h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+}
+.auth-result p {
+  margin: 0 0 1.5rem;
+  color: #45544c;
+  line-height: 1.6;
+}
+.auth-result--error {
+  border-color: #c68b76;
+}
+.auth-facts {
+  margin: clamp(3rem, 7vw, 6rem) 0 0;
+}
+.auth-facts > div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 1rem;
+  padding-block: 0.85rem;
+  border-bottom: 1px solid #415048;
+}
+.auth-facts dt {
+  color: #9eafa5;
+}
+.auth-facts dd {
+  margin: 0;
+  font-weight: 700;
 }
 .notice {
   padding: 1rem;
@@ -194,8 +372,26 @@ button:disabled {
   color: #98a69e;
 }
 .back-link {
-  margin-top: auto;
   color: #c5d0ca;
+}
+.admin-sidebar__session {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+.admin-sidebar__session p {
+  margin: 0;
+  color: #ffd3c4;
+  font-size: 0.875rem;
+}
+.sign-out-button {
+  width: 100%;
+  border: 1px solid #617068;
+  color: #f5f7f3;
+  background: transparent;
+}
+.sign-out-button:not(:disabled):hover {
+  background: #29372f;
 }
 .admin-main {
   padding: clamp(2rem, 7vw, 6rem);
@@ -242,17 +438,74 @@ button:disabled {
 }
 
 @media (max-width: 48rem) {
+  .public-main {
+    padding-block: 1.5rem;
+  }
   .site-header {
-    align-items: flex-start;
+    align-items: center;
   }
   .site-header nav {
-    flex-direction: column;
-    gap: 0.6rem;
-    text-align: right;
+    gap: 1rem;
+    font-size: 0.85rem;
   }
   .intro,
-  .admin-shell {
+  .admin-shell,
+  .auth-register {
     grid-template-columns: 1fr;
+  }
+  .auth-register {
+    min-height: auto;
+  }
+  .auth-register__context,
+  .auth-workspace {
+    padding: 1.5rem 1.25rem;
+  }
+  .auth-register__context h1 {
+    max-width: 16ch;
+    margin-bottom: 0.75rem;
+    font-size: clamp(1.85rem, 8vw, 2.4rem);
+  }
+  .auth-register__context > div > p:last-child {
+    font-size: 0.925rem;
+    line-height: 1.45;
+  }
+  .auth-paths {
+    margin-block: 1.25rem;
+  }
+  .auth-paths a {
+    padding-block: 0.7rem;
+  }
+  .auth-paths small {
+    font-size: 0.72rem;
+  }
+  .auth-register__assurance {
+    margin-top: 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+  .auth-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #415048;
+  }
+  .auth-facts > div {
+    display: block;
+    padding-block: 0;
+    border-bottom: 0;
+  }
+  .auth-facts dt {
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+  }
+  .auth-facts dd {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+  .auth-workspace {
+    width: 100%;
   }
   .admin-sidebar {
     min-height: auto;
@@ -260,7 +513,7 @@ button:disabled {
   .admin-sidebar nav {
     margin-top: 2rem;
   }
-  .back-link {
+  .admin-sidebar__session {
     margin-top: 1.5rem;
   }
   .service-state > div {

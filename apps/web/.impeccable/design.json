@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-08T14:20:00+04:00",
+  "title": "Design System: NTAuth",
+  "extensions": {
+    "colorMeta": {
+      "forest-ink": {
+        "role": "primary",
+        "displayName": "Encre forestière",
+        "canonical": "#14201b",
+        "tonalRamp": [
+          "#0b120f",
+          "#14201b",
+          "#263a31",
+          "#455d51",
+          "#70877b",
+          "#9bada3",
+          "#cbd5cf",
+          "#f5f7f3"
+        ]
+      },
+      "forest-action": {
+        "role": "primary",
+        "displayName": "Action forestière",
+        "canonical": "#1c5941",
+        "tonalRamp": [
+          "#0b281d",
+          "#123c2c",
+          "#1c5941",
+          "#36745b",
+          "#60937a",
+          "#8cb39f",
+          "#bad3c6",
+          "#e8f3ed"
+        ]
+      },
+      "mineral-paper": {
+        "role": "neutral",
+        "displayName": "Papier minéral",
+        "canonical": "#f5f7f3",
+        "tonalRamp": [
+          "#20231f",
+          "#3e433d",
+          "#62685f",
+          "#899087",
+          "#b0b7ae",
+          "#d0d5ce",
+          "#e7ebe5",
+          "#f5f7f3"
+        ]
+      },
+      "rust-focus": {
+        "role": "tertiary",
+        "displayName": "Rouille de contrôle",
+        "canonical": "#b84b26",
+        "tonalRamp": [
+          "#35140b",
+          "#572012",
+          "#7e301b",
+          "#b84b26",
+          "#d46f49",
+          "#e49b7f",
+          "#f1c7b6",
+          "#fbede7"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Titre compact", "purpose": "Titres de contexte et de tâche." },
+      "body": {
+        "displayName": "Corps lisible",
+        "purpose": "Explications et guidance de sécurité."
+      },
+      "label": { "displayName": "Libellé de contrôle", "purpose": "Champs, liens et états courts." }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [{ "name": "mobile", "value": "48rem" }]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Action principale unique d’un formulaire.",
+      "html": "<button class=\"ds-button\">Ouvrir ma session</button>",
+      "css": ".ds-button { min-height: 2.75rem; padding: .75rem 1rem; border: 0; border-radius: .75rem; color: #fff; background: #1c5941; font: 700 1rem system-ui, sans-serif; cursor: pointer; } .ds-button:hover { background: #164733; } .ds-button:focus-visible { outline: 3px solid #b84b26; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Champ d’identité à label persistant.",
+      "html": "<label class=\"ds-field\">Adresse e-mail<input type=\"email\" /></label>",
+      "css": ".ds-field { display: grid; gap: .55rem; color: #14201b; font: 700 .875rem system-ui, sans-serif; } .ds-field input { min-height: 3.25rem; padding: 0 .9rem; border: 1px solid #8f9c94; border-radius: .75rem; color: #14201b; background: #eef1ed; font: 400 1rem system-ui, sans-serif; } .ds-field input:focus-visible { outline: 3px solid #b84b26; outline-offset: 3px; }"
+    },
+    {
+      "name": "Access Path",
+      "kind": "nav",
+      "description": "Chemin actif du registre d’accès.",
+      "html": "<a class=\"ds-path\" href=\"#\"><span>Connexion</span><small>Session existante</small></a>",
+      "css": ".ds-path { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: baseline; padding: 1rem 0; border-block: 1px solid #415048; color: #fff; background: #14201b; font-family: system-ui, sans-serif; text-decoration: none; } .ds-path span { font-weight: 700; } .ds-path span::before { display: inline-block; width: .55rem; height: .55rem; margin-right: .65rem; border-radius: 50%; background: #d77a51; content: \"\"; } .ds-path small { color: #9eafa5; } .ds-path:focus-visible { outline: 3px solid #b84b26; outline-offset: 3px; }"
+    },
+    {
+      "name": "Error State",
+      "kind": "custom",
+      "description": "État bloquant avec issue récupérable.",
+      "html": "<div class=\"ds-error\"><h3>Lien incomplet</h3><p>Demandez un nouveau lien de récupération.</p></div>",
+      "css": ".ds-error { padding: 1.5rem 0; border-block: 1px solid #c68b76; color: #14201b; font-family: system-ui, sans-serif; } .ds-error h3 { margin: 0 0 .75rem; font-size: 1.35rem; } .ds-error p { margin: 0; color: #45544c; line-height: 1.6; }"
+    },
+    {
+      "name": "Context Panel",
+      "kind": "custom",
+      "description": "Aplat sombre qui explique la portée de l’action.",
+      "html": "<aside class=\"ds-context\"><h2>Retrouver votre espace de travail</h2><p>Une seule identité donne accès aux espaces invités.</p></aside>",
+      "css": ".ds-context { padding: 2rem; color: #f5f7f3; background: #14201b; font-family: system-ui, sans-serif; } .ds-context h2 { max-width: 13ch; margin: 0 0 1.25rem; font-size: 2.2rem; line-height: 1; letter-spacing: -.035em; } .ds-context p { max-width: 44ch; margin: 0; color: #c5d0ca; line-height: 1.65; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le registre minéral",
+    "overview": "NTAuth ressemble à un registre de contrôle contemporain : fonds minéraux clairs, encre forestière dense et accents rouille rares. Les surfaces opposent contexte et action sans effets décoratifs.",
+    "keyCharacteristics": [
+      "Deux zones lisibles : contexte sombre, action claire.",
+      "Palette forestière et minérale avec un accent rouille fonctionnel.",
+      "Densité modérée, phrases courtes et états explicites.",
+      "Aucun contenu marketing ou décoratif inventé."
+    ],
+    "rules": [
+      {
+        "name": "Rare Rust",
+        "body": "La rouille indique une attention réelle ; elle ne sert pas à colorer de grandes surfaces.",
+        "section": "colors"
+      },
+      {
+        "name": "Direct Heading",
+        "body": "Un titre commence directement la section ; aucun kicker, sourcil ou numéro décoratif ne le précède.",
+        "section": "typography"
+      },
+      {
+        "name": "Flat Authority",
+        "body": "Une surface d’identité reste plate ; elle ne flotte pas au-dessus de son contexte.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do utiliser la zone sombre pour la portée, les contraintes ou les chemins possibles.",
+      "Do conserver une seule action primaire par formulaire.",
+      "Do annoncer les erreurs, succès et états expirés avec du texte explicite.",
+      "Do vérifier clavier, mobile et réduction des animations."
+    ],
+    "donts": [
+      "Don't ajouter de gradients, de verre, d’ombres ou de texture simulée.",
+      "Don't placer de kicker en capitales au-dessus des titres.",
+      "Don't fabriquer de statistiques, témoignages, logos ou promesses commerciales.",
+      "Don't utiliser la couleur seule pour communiquer un état."
+    ]
+  }
+}
