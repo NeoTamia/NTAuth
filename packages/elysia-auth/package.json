@@ -1,17 +1,54 @@
 {
   "name": "@neotamia/elysia-auth",
   "version": "0.0.0",
-  "private": true,
+  "description": "Typed NTAuth JWT and IAM protection for Elysia resource servers.",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeoTamia/NTAuth.git",
+    "directory": "packages/elysia-auth"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun --format esm --sourcemap=external --external elysia && tsc -p tsconfig.build.json",
+    "prepack": "bun run build",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neotamia/permissions": "workspace:*",
+    "jose": "6.2.8"
   },
   "devDependencies": {
     "@neotamia/config": "workspace:*",
     "@types/bun": "1.3.14",
+    "elysia": "1.4.29",
     "typescript": "6.0.3"
+  },
+  "peerDependencies": {
+    "elysia": "1.4.29"
+  },
+  "engines": {
+    "bun": ">=1.3.14",
+    "node": ">=20"
   }
 }

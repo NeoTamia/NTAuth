@@ -37,6 +37,7 @@
       "name": "@neotamia/ntauth-web",
       "version": "0.0.0",
       "dependencies": {
+        "@neotamia/permissions": "workspace:*",
         "nuxt": "4.5.2",
         "qrcode": "1.5.4",
         "vue": "3.5.41",
@@ -93,10 +94,18 @@
     "packages/elysia-auth": {
       "name": "@neotamia/elysia-auth",
       "version": "0.0.0",
+      "dependencies": {
+        "@neotamia/permissions": "workspace:*",
+        "jose": "6.2.8",
+      },
       "devDependencies": {
         "@neotamia/config": "workspace:*",
         "@types/bun": "1.3.14",
+        "elysia": "1.4.29",
         "typescript": "6.0.3",
+      },
+      "peerDependencies": {
+        "elysia": "1.4.29",
       },
     },
     "packages/nuxt-auth": {
