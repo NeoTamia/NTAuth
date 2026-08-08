@@ -521,6 +521,211 @@ button:not(:disabled):hover,
   color: #1c5941;
   white-space: nowrap;
 }
+
+.oauth-admin {
+  max-width: 76rem;
+}
+.oauth-admin__header,
+.oauth-detail > header,
+.oauth-creation > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+}
+.oauth-admin__header p {
+  max-width: 60ch;
+  color: #45544c;
+  line-height: 1.65;
+}
+.registry-gate {
+  width: min(100%, 36rem);
+}
+.registry-gate > p,
+.empty-state > p,
+.oauth-detail--empty > p {
+  color: #45544c;
+  line-height: 1.6;
+}
+.registry-gate form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.oauth-workspace {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.8fr) minmax(26rem, 1.2fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+.oauth-workspace h2,
+.oauth-creation h2 {
+  margin-top: 0;
+}
+.oauth-client-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  border-top: 1px solid #cbd3cc;
+  list-style: none;
+}
+.oauth-client-list li {
+  border-bottom: 1px solid #cbd3cc;
+}
+.oauth-client-list button {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem;
+  padding: 1rem 0;
+  border: 0;
+  border-radius: 0;
+  color: #14201b;
+  text-align: left;
+  background: transparent;
+}
+.oauth-client-list button:hover,
+.oauth-client-list button[aria-current="true"] {
+  padding-inline: 0.75rem;
+  background: #e7ece7;
+}
+.oauth-client-list span {
+  font-weight: 800;
+}
+.oauth-client-list small {
+  color: #45544c;
+}
+.oauth-client-list code {
+  overflow-wrap: anywhere;
+  color: #7f4029;
+  font-size: 0.78rem;
+}
+.oauth-detail,
+.oauth-creation {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.oauth-detail > header span,
+.oauth-creation > header span {
+  color: #59675f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.oauth-detail > header h2,
+.oauth-creation > header h2 {
+  margin: 0.25rem 0 0;
+}
+.oauth-detail--empty {
+  min-height: 16rem;
+  align-content: center;
+}
+.client-kind {
+  margin: 1.5rem 0;
+  padding-block: 0.8rem;
+  border-block: 1px solid #c1cac3;
+  font-weight: 750;
+}
+.oauth-detail .field,
+.oauth-creation form {
+  margin-top: 1.5rem;
+}
+.oauth-creation {
+  width: min(100%, 48rem);
+  margin-top: 3rem;
+}
+.oauth-creation form {
+  display: grid;
+  gap: 1.25rem;
+}
+.text-button {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  color: #45544c;
+  text-decoration: underline;
+  background: transparent;
+}
+.choice-field {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0;
+  border: 0;
+}
+.choice-field legend {
+  margin-bottom: 0.65rem;
+  font-weight: 750;
+}
+.choice-field label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: #34423a;
+  line-height: 1.4;
+}
+.choice-field input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.1rem;
+}
+.choice-field--inline {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.choice-field--inline legend {
+  grid-column: 1 / -1;
+}
+.oauth-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.secondary-button {
+  border-color: #617068;
+  color: #14201b;
+  background: transparent;
+}
+.danger-button {
+  border-color: #9c3f2e;
+  color: #8d2e20;
+  background: transparent;
+}
+.destructive-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #c1cac3;
+  color: #6f3025;
+  line-height: 1.45;
+}
+.destructive-confirmation input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+}
+.secret-reveal {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid #b56b4d;
+  background: #f4e7df;
+}
+.secret-reveal p {
+  margin: 0;
+  color: #593d32;
+}
+.secret-reveal code {
+  overflow-wrap: anywhere;
+  color: #7f2e20;
+  font-weight: 800;
+}
+.empty-state {
+  width: min(100%, 42rem);
+  padding-block: 3rem;
+  border-block: 1px solid #cbd3cc;
+}
 .error-page {
   width: min(100% - 2rem, 48rem);
   margin: 0 auto;
@@ -632,7 +837,8 @@ button:not(:disabled):hover,
     gap: 0.35rem;
   }
   .security-scope > div,
-  .enrollment-grid {
+  .enrollment-grid,
+  .oauth-workspace {
     grid-template-columns: 1fr;
   }
   .security-scope > div {
@@ -640,6 +846,16 @@ button:not(:disabled):hover,
   }
   .mfa-status {
     display: grid;
+  }
+  .oauth-admin__header,
+  .oauth-detail > header,
+  .oauth-creation > header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .choice-field--inline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -26,7 +26,7 @@ async function signOut() {
       <nav aria-label="Administration">
         <NuxtLink to="/admin">Vue d’ensemble</NuxtLink>
         <NuxtLink to="/admin/security/mfa">Sécurité MFA</NuxtLink>
-        <span aria-disabled="true">Applications — bientôt</span>
+        <NuxtLink to="/admin/oauth-clients">Applications OAuth</NuxtLink>
         <span aria-disabled="true">Utilisateurs — bientôt</span>
       </nav>
       <div class="admin-sidebar__session">

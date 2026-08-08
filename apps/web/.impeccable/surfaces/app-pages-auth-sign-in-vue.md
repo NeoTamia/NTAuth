@@ -9,12 +9,14 @@ related_targets:
     "app/pages/auth/accept-invitation.vue",
     "app/layouts/admin.vue",
     "app/pages/admin/security/mfa.vue",
+    "app/pages/admin/oauth-clients.vue",
   ]
 ---
 
 ## Scope and mode
 
-Operate flow covering sign-in, password recovery, password reset, invitation acceptance and sign-out.
+Operate flow covering sign-in, password recovery, password reset, invitation acceptance, sign-out,
+MFA enrollment and the MFA-gated OAuth client registry.
 
 ## Audience and job
 
