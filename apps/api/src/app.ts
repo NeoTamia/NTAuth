@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 
 import type { createInvitationRoutes } from "./invitations";
+import type { createEffectivePolicyRoutes } from "./effective-policies";
 import type { createIamCatalogRoutes } from "./iam-catalog";
 import type { createIamAttachmentRoutes } from "./iam-attachments";
 import type { createIamPolicyRoutes } from "./iam-policies";
@@ -28,6 +29,7 @@ export const createApp = (
     corsOrigins?: string[];
     discoveryRoutes?: ReturnType<typeof createDiscoveryRoutes>;
     emailVerificationRoutes?: ReturnType<typeof createEmailVerificationRoutes>;
+    effectivePolicyRoutes?: ReturnType<typeof createEffectivePolicyRoutes>;
     invitationRoutes?: ReturnType<typeof createInvitationRoutes>;
     iamAttachmentRoutes?: ReturnType<typeof createIamAttachmentRoutes>;
     iamCatalogRoutes?: ReturnType<typeof createIamCatalogRoutes>;
@@ -45,6 +47,7 @@ export const createApp = (
   if (options.authHandler) app.mount(options.authHandler);
   if (options.discoveryRoutes) app.use(options.discoveryRoutes);
   if (options.emailVerificationRoutes) app.use(options.emailVerificationRoutes);
+  if (options.effectivePolicyRoutes) app.use(options.effectivePolicyRoutes);
   if (options.invitationRoutes) app.use(options.invitationRoutes);
   if (options.iamAttachmentRoutes) app.use(options.iamAttachmentRoutes);
   if (options.iamCatalogRoutes) app.use(options.iamCatalogRoutes);

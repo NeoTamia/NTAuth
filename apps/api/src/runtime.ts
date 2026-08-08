@@ -6,6 +6,7 @@ import type { ReadinessChecks } from "./app";
 import { createAuth } from "./auth/auth";
 import { createAuditedAuthHandler } from "./auth/audited-handler";
 import { createDiscoveryRoutes } from "./auth/discovery";
+import { createEffectivePolicyRoutes } from "./effective-policies";
 import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
 import { createIamAttachmentRoutes } from "./iam-attachments";
@@ -65,6 +66,11 @@ export function createRuntime(environment: ApiEnvironment) {
     database,
     verificationURL: `${environment.CORS_ORIGINS[0]}/auth/verify-email`,
   });
+  const effectivePolicyRoutes = createEffectivePolicyRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
   const userRoutes = createUserRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
@@ -114,6 +120,7 @@ export function createRuntime(environment: ApiEnvironment) {
     auth,
     authHandler,
     discoveryRoutes,
+    effectivePolicyRoutes,
     emailVerificationRoutes,
     invitationRoutes,
     iamAttachmentRoutes,

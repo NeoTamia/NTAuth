@@ -4,6 +4,13 @@ export {
   InvalidEmailVerificationError,
   requestEmailVerification,
 } from "./email-verification";
+export {
+  EffectivePolicyAuthorizationError,
+  EffectivePolicyNotFoundError,
+  getEffectivePolicies,
+  mergeEffectivePolicies,
+  type EffectivePolicyRow,
+} from "./effective-policies";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {
   addIamGroupMember,

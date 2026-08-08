@@ -9,6 +9,7 @@ const app = createApp({
   authHandler: runtime.authHandler,
   corsOrigins: environment.CORS_ORIGINS,
   discoveryRoutes: runtime.discoveryRoutes,
+  effectivePolicyRoutes: runtime.effectivePolicyRoutes,
   emailVerificationRoutes: runtime.emailVerificationRoutes,
   invitationRoutes: runtime.invitationRoutes,
   iamAttachmentRoutes: runtime.iamAttachmentRoutes,
