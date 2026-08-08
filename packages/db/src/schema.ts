@@ -255,6 +255,7 @@ export type ServiceGrantStatus = "active" | "inactive" | "revoked";
 export type ServiceStatus = "active" | "inactive";
 export type IamCatalogKind = "action" | "resource";
 export type IamPolicyStatus = "active" | "inactive";
+export type IamPrincipalType = "group" | "role" | "user";
 
 export const organizations = pgTable(
   "organizations",
@@ -462,6 +463,84 @@ export const iamPolicyVersions = pgTable(
       sql`${table.sourceVersion} is null or ${table.sourceVersion} > 0`,
     ),
     check("iam_policy_versions_hash_check", sql`${table.documentHash} ~ '^[0-9a-f]{64}$'`),
+  ],
+);
+
+export const iamGroups = pgTable(
+  "iam_groups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 160 }).notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("iam_groups_organization_name_unique").on(table.organizationId, table.name),
+    index("iam_groups_organization_idx").on(table.organizationId),
+    check("iam_groups_name_check", sql`length(trim(${table.name})) > 0`),
+  ],
+);
+
+export const iamGroupMembers = pgTable(
+  "iam_group_members",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => iamGroups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    addedByUserId: text("added_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.groupId, table.userId] }),
+    index("iam_group_members_user_idx").on(table.userId, table.groupId),
+  ],
+);
+
+export const iamPolicyAttachments = pgTable(
+  "iam_policy_attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    policyId: uuid("policy_id")
+      .notNull()
+      .references(() => iamPolicies.id, { onDelete: "cascade" }),
+    principalType: varchar("principal_type", { length: 16 }).$type<IamPrincipalType>().notNull(),
+    principalId: text("principal_id").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    detachedByUserId: text("detached_by_user_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    detachedAt: timestamp("detached_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("iam_policy_attachments_active_principal_unique")
+      .on(table.policyId, table.principalType, table.principalId)
+      .where(sql`${table.detachedAt} is null`),
+    index("iam_policy_attachments_principal_idx").on(
+      table.principalType,
+      table.principalId,
+      table.policyId,
+    ),
+    check(
+      "iam_policy_attachments_principal_type_check",
+      sql`${table.principalType} in ('user', 'group', 'role')`,
+    ),
+    check(
+      "iam_policy_attachments_detachment_check",
+      sql`(${table.detachedAt} is null and ${table.detachedByUserId} is null) or (${table.detachedAt} is not null and ${table.detachedByUserId} is not null)`,
+    ),
   ],
 );
 

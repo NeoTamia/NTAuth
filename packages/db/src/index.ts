@@ -6,6 +6,17 @@ export {
 } from "./email-verification";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {
+  addIamGroupMember,
+  attachIamPolicy,
+  createIamGroup,
+  detachIamPolicy,
+  IamAttachmentAuthorizationError,
+  IamAttachmentConflictError,
+  IamAttachmentNotFoundError,
+  isOrganizationRole,
+  listIamPolicyAttachments,
+} from "./iam-attachments";
+export {
   createIamCatalogEntry,
   createService,
   getServiceCatalogue,

@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 
 import type { createInvitationRoutes } from "./invitations";
 import type { createIamCatalogRoutes } from "./iam-catalog";
+import type { createIamAttachmentRoutes } from "./iam-attachments";
 import type { createIamPolicyRoutes } from "./iam-policies";
 import type { createDiscoveryRoutes } from "./auth/discovery";
 import type { createEmailVerificationRoutes } from "./email-verification";
@@ -28,6 +29,7 @@ export const createApp = (
     discoveryRoutes?: ReturnType<typeof createDiscoveryRoutes>;
     emailVerificationRoutes?: ReturnType<typeof createEmailVerificationRoutes>;
     invitationRoutes?: ReturnType<typeof createInvitationRoutes>;
+    iamAttachmentRoutes?: ReturnType<typeof createIamAttachmentRoutes>;
     iamCatalogRoutes?: ReturnType<typeof createIamCatalogRoutes>;
     iamPolicyRoutes?: ReturnType<typeof createIamPolicyRoutes>;
     mfaRoutes?: ReturnType<typeof createMfaRoutes>;
@@ -44,6 +46,7 @@ export const createApp = (
   if (options.discoveryRoutes) app.use(options.discoveryRoutes);
   if (options.emailVerificationRoutes) app.use(options.emailVerificationRoutes);
   if (options.invitationRoutes) app.use(options.invitationRoutes);
+  if (options.iamAttachmentRoutes) app.use(options.iamAttachmentRoutes);
   if (options.iamCatalogRoutes) app.use(options.iamCatalogRoutes);
   if (options.iamPolicyRoutes) app.use(options.iamPolicyRoutes);
   if (options.mfaRoutes) app.use(options.mfaRoutes);

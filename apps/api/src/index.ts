@@ -11,6 +11,7 @@ const app = createApp({
   discoveryRoutes: runtime.discoveryRoutes,
   emailVerificationRoutes: runtime.emailVerificationRoutes,
   invitationRoutes: runtime.invitationRoutes,
+  iamAttachmentRoutes: runtime.iamAttachmentRoutes,
   iamCatalogRoutes: runtime.iamCatalogRoutes,
   iamPolicyRoutes: runtime.iamPolicyRoutes,
   mfaRoutes: runtime.mfaRoutes,

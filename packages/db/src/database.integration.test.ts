@@ -42,18 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0015_chief_johnny_blaze");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0016_large_cerebro");
 
-    const [policyVersionsTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.iam_policy_versions') is not null as exists
+    const [attachmentsTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.iam_policy_attachments') is not null as exists
     `;
-    expect(policyVersionsTable?.exists).toBe(false);
+    expect(attachmentsTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredPolicyVersionsTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.iam_policy_versions') is not null as exists
+    const [restoredAttachmentsTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.iam_policy_attachments') is not null as exists
     `;
-    expect(restoredPolicyVersionsTable?.exists).toBe(true);
+    expect(restoredAttachmentsTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

@@ -8,6 +8,7 @@ import { createAuditedAuthHandler } from "./auth/audited-handler";
 import { createDiscoveryRoutes } from "./auth/discovery";
 import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
+import { createIamAttachmentRoutes } from "./iam-attachments";
 import { createIamCatalogRoutes } from "./iam-catalog";
 import { createIamPolicyRoutes } from "./iam-policies";
 import { createMfaRoutes } from "./mfa";
@@ -46,6 +47,11 @@ export function createRuntime(environment: ApiEnvironment) {
     database,
   });
   const iamCatalogRoutes = createIamCatalogRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
+  const iamAttachmentRoutes = createIamAttachmentRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
@@ -110,6 +116,7 @@ export function createRuntime(environment: ApiEnvironment) {
     discoveryRoutes,
     emailVerificationRoutes,
     invitationRoutes,
+    iamAttachmentRoutes,
     iamCatalogRoutes,
     iamPolicyRoutes,
     mfaRoutes,
