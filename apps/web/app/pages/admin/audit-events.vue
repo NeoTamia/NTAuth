@@ -243,9 +243,7 @@ async function exportEvents() {
         <button type="submit" :disabled="!validTotpCode(scopesCode)">Charger les portées</button>
       </form>
     </section>
-    <p v-else-if="scopesState === 'loading'" class="state-panel" aria-live="polite">
-      Chargement des portées…
-    </p>
+    <LoadingSkeleton v-else-if="scopesState === 'loading'" label="Chargement des portées d’audit" />
     <div v-else-if="scopesState === 'error' || scopesState === 'forbidden'" class="state-panel">
       <p role="alert">{{ scopesError }}</p>
       <button type="button" class="text-button" @click="scopesState = 'locked'">Réessayer</button>
@@ -361,9 +359,11 @@ async function exportEvents() {
       <p v-if="journalState === 'locked'" class="state-panel">
         Définissez les filtres puis fournissez un code MFA frais.
       </p>
-      <p v-else-if="journalState === 'loading'" class="state-panel" aria-live="polite">
-        Recherche dans le journal…
-      </p>
+      <LoadingSkeleton
+        v-else-if="journalState === 'loading'"
+        label="Recherche dans le journal d’audit"
+        :lines="5"
+      />
       <div v-else-if="journalState === 'error' || journalState === 'forbidden'" class="state-panel">
         <p role="alert">{{ journalError }}</p>
         <button type="button" class="text-button" @click="journalState = 'locked'">
@@ -512,6 +512,7 @@ async function exportEvents() {
           </p>
           <button
             type="submit"
+            :aria-busy="exportPending"
             :disabled="exportPending || !confirmExport || !validTotpCode(exportCode)"
           >
             {{ exportPending ? "Génération…" : "Télécharger le CSV" }}

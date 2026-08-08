@@ -56,6 +56,10 @@ Audit readers search one authorized organization or global service scope, move
 through stable cursor pages, inspect only allowlisted metadata, and explicitly
 confirm a masked CSV export.
 
+All protected workspaces share an announced skeleton while loading, preserve a
+visible keyboard focus, offer a retry path after recoverable failures, and expose
+pending sensitive actions to assistive technologies.
+
 ## Constraints
 
 Preserve the incumbent light mineral palette, forest green actions, rust focus

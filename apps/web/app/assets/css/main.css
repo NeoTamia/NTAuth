@@ -30,6 +30,49 @@ input {
   outline-offset: 3px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.loading-skeleton {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid #cbd3cc;
+  background: #eef1ed;
+}
+.loading-skeleton__line {
+  display: block;
+  width: 100%;
+  height: 0.875rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(90deg, #d8ded8 25%, #e7ebe6 50%, #d8ded8 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.4s ease-in-out infinite;
+}
+.loading-skeleton__line:nth-of-type(2n) {
+  width: 78%;
+}
+.loading-skeleton__line:nth-of-type(3n) {
+  width: 56%;
+}
+@keyframes skeleton-loading {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
 .skip-link {
   position: fixed;
   z-index: 10;
@@ -2035,5 +2078,7 @@ button:not(:disabled):hover,
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

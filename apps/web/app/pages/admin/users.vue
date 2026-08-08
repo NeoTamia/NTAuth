@@ -308,9 +308,11 @@ async function revokeSessions() {
     <p v-if="registryState === 'locked'" class="state-panel">
       Saisissez un code MFA frais pour ouvrir le registre ou changer de page.
     </p>
-    <p v-else-if="registryState === 'loading'" class="state-panel" role="status">
-      Chargement des identités autorisées…
-    </p>
+    <LoadingSkeleton
+      v-else-if="registryState === 'loading'"
+      label="Chargement des identités autorisées"
+      :lines="5"
+    />
     <div
       v-else-if="registryState === 'error' || registryState === 'forbidden'"
       class="state-panel state-panel--error"
@@ -318,6 +320,7 @@ async function revokeSessions() {
     >
       <h2>{{ registryState === "forbidden" ? "Registre interdit" : "Chargement interrompu" }}</h2>
       <p>{{ registryError }}</p>
+      <button type="button" @click="registryState = 'locked'">Réessayer</button>
     </div>
     <div v-else-if="registryState === 'empty'" class="state-panel">
       <h2>Aucune identité trouvée</h2>
@@ -402,9 +405,11 @@ async function revokeSessions() {
           />
           <button type="submit" :disabled="!validTotpCode(detailCode)">Ouvrir l’identité</button>
         </form>
-        <p v-else-if="detailState === 'loading'" class="state-panel" role="status">
-          Chargement des memberships et sessions…
-        </p>
+        <LoadingSkeleton
+          v-else-if="detailState === 'loading'"
+          label="Chargement des memberships et des sessions"
+          :lines="4"
+        />
         <div
           v-else-if="detailState === 'error' || detailState === 'forbidden'"
           class="state-panel state-panel--error"
@@ -509,6 +514,7 @@ async function revokeSessions() {
             </p>
             <button
               type="submit"
+              :aria-busy="revokePending"
               :disabled="!confirmRevocation || !validTotpCode(revokeCode) || revokePending"
             >
               {{ revokePending ? "Révocation…" : "Révoquer les sessions" }}

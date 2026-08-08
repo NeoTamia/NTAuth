@@ -124,15 +124,17 @@ async function verifyEnrollment() {
       </div>
     </dl>
 
-    <div v-if="loadingStatus === 'pending'" class="auth-result" role="status">
-      <h2>Vérification du statut…</h2>
-      <p>NTAuth vérifie la protection du compte.</p>
-    </div>
+    <LoadingSkeleton
+      v-if="loadingStatus === 'pending'"
+      label="Vérification du statut de protection du compte"
+      :lines="2"
+    />
     <div v-else-if="statusError" class="auth-result auth-result--error" role="alert">
       <h2>Accès indisponible</h2>
       <p>
         Cette page est réservée aux administrateurs plateforme ou le statut ne peut pas être chargé.
       </p>
+      <button type="button" class="text-button" @click="refreshStatus">Réessayer</button>
     </div>
     <div v-else-if="mfaStatus?.status === 'verified' && !totpURI" class="mfa-status" role="status">
       <div>

@@ -279,9 +279,10 @@ async function executeAction() {
         </button>
       </form>
     </section>
-    <p v-else-if="catalogueState === 'loading'" class="state-panel" aria-live="polite">
-      Chargement du catalogue…
-    </p>
+    <LoadingSkeleton
+      v-else-if="catalogueState === 'loading'"
+      label="Chargement du catalogue de services"
+    />
     <div
       v-else-if="catalogueState === 'error' || catalogueState === 'forbidden'"
       class="state-panel"
@@ -342,9 +343,11 @@ async function executeAction() {
           />
           <button type="submit" :disabled="!validTotpCode(workspaceCode)">Charger les accès</button>
         </form>
-        <p v-else-if="workspaceState === 'loading'" class="state-panel" aria-live="polite">
-          Chargement des membres et des accès…
-        </p>
+        <LoadingSkeleton
+          v-else-if="workspaceState === 'loading'"
+          label="Chargement des membres et des accès"
+          :lines="4"
+        />
         <div
           v-else-if="workspaceState === 'error' || workspaceState === 'forbidden'"
           class="state-panel"
@@ -508,6 +511,7 @@ async function executeAction() {
               <div class="filter-actions">
                 <button
                   type="submit"
+                  :aria-busy="actionPending"
                   :disabled="actionPending || !confirmAction || !validTotpCode(actionCode)"
                 >
                   {{ actionPending ? "Application…" : "Appliquer maintenant" }}

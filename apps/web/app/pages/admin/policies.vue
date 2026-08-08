@@ -357,9 +357,10 @@ async function savePolicy() {
         </button>
       </form>
     </section>
-    <p v-else-if="organizationState === 'loading'" class="state-panel" role="status">
-      Chargement des tenants autorisés…
-    </p>
+    <LoadingSkeleton
+      v-else-if="organizationState === 'loading'"
+      label="Chargement des tenants autorisés"
+    />
     <div
       v-else-if="organizationState === 'error' || organizationState === 'forbidden'"
       class="state-panel state-panel--error"
@@ -428,9 +429,11 @@ async function savePolicy() {
         </form>
       </section>
 
-      <p v-if="workspaceState === 'loading'" class="state-panel" role="status">
-        Chargement du catalogue et des policies…
-      </p>
+      <LoadingSkeleton
+        v-if="workspaceState === 'loading'"
+        label="Chargement du catalogue et des policies"
+        :lines="4"
+      />
       <div
         v-else-if="workspaceState === 'error' || workspaceState === 'forbidden'"
         class="state-panel state-panel--error"
@@ -438,6 +441,7 @@ async function savePolicy() {
       >
         <h2>{{ workspaceState === "forbidden" ? "Portée interdite" : "Espace indisponible" }}</h2>
         <p>{{ workspaceError }}</p>
+        <button type="button" @click="workspaceState = 'locked'">Réessayer</button>
       </div>
 
       <section
@@ -500,9 +504,11 @@ async function savePolicy() {
             <button type="submit" :disabled="!validTotpCode(historyCode)">Ouvrir la policy</button>
           </form>
         </section>
-        <p v-else-if="historyState === 'loading'" class="state-panel" role="status">
-          Chargement de l’historique immuable…
-        </p>
+        <LoadingSkeleton
+          v-else-if="historyState === 'loading'"
+          label="Chargement de l’historique immuable"
+          :lines="4"
+        />
         <div
           v-else-if="historyState === 'error' || historyState === 'forbidden'"
           class="state-panel state-panel--error"
@@ -708,7 +714,7 @@ async function savePolicy() {
                 `Portée : ${catalogue?.service.key}, tenant sélectionné. Une nouvelle version auditée sera créée.`
               }}
             </p>
-            <button type="submit" :disabled="!canSave">
+            <button type="submit" :aria-busy="savePending" :disabled="!canSave">
               {{
                 savePending
                   ? "Enregistrement…"
