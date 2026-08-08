@@ -8,6 +8,7 @@ related_targets:
     "app/pages/auth/reset-password.vue",
     "app/pages/auth/accept-invitation.vue",
     "app/layouts/admin.vue",
+    "app/pages/admin/security/mfa.vue",
   ]
 ---
 

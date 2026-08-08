@@ -168,6 +168,11 @@ describeWithDatabase("user lifecycle API", () => {
   });
 
   test("enrolls and verifies TOTP through the authenticated API", async () => {
+    const unauthenticatedStatus = await app().handle(
+      new Request("http://localhost/api/v1/mfa/status"),
+    );
+    expect(unauthenticatedStatus.status).toBe(401);
+
     const enrolled = await app().handle(
       new Request("http://localhost/api/v1/mfa/enroll", {
         body: JSON.stringify({ password }),
@@ -176,6 +181,10 @@ describeWithDatabase("user lifecycle API", () => {
       }),
     );
     expect(enrolled.status).toBe(200);
+    const pendingStatus = await app().handle(
+      new Request("http://localhost/api/v1/mfa/status", { headers: { cookie } }),
+    );
+    expect(await pendingStatus.json()).toEqual({ status: "pending" });
     const { totpURI } = (await enrolled.json()) as { totpURI: string };
     const secret = new URL(totpURI).searchParams.get("secret")!;
     const code = await generateTotpCode(secret, totpCounter());
@@ -191,5 +200,9 @@ describeWithDatabase("user lifecycle API", () => {
       }),
     );
     expect(verified.status).toBe(200);
+    const activeStatus = await app().handle(
+      new Request("http://localhost/api/v1/mfa/status", { headers: { cookie } }),
+    );
+    expect(await activeStatus.json()).toEqual({ status: "verified" });
   });
 });

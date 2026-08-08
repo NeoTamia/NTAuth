@@ -8,6 +8,7 @@ const routes = [
   "app/pages/auth/accept-invitation.vue",
   "app/pages/auth/error.vue",
   "app/pages/admin/index.vue",
+  "app/pages/admin/security/mfa.vue",
   "app/error.vue",
 ];
 

@@ -425,6 +425,102 @@ button:not(:disabled):hover,
   border-radius: 50%;
   background: #1c704f;
 }
+.admin-security {
+  max-width: 70rem;
+}
+.admin-security > header {
+  max-width: 54rem;
+}
+.admin-security > header p,
+.enrollment-start > p,
+.enrollment-grid section > p,
+.mfa-status p {
+  max-width: 65ch;
+  color: #45544c;
+  line-height: 1.65;
+}
+.security-scope {
+  display: grid;
+  margin: 3rem 0;
+  border-top: 1px solid #cbd3cc;
+}
+.security-scope > div {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.6fr) 1.4fr;
+  gap: 1rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid #cbd3cc;
+}
+.security-scope dt {
+  font-weight: 750;
+}
+.security-scope dd {
+  margin: 0;
+  color: #45544c;
+}
+.enrollment-start {
+  width: min(100%, 36rem);
+}
+.enrollment-start h2,
+.enrollment-grid h2,
+.mfa-status h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.65rem, 3vw, 2.4rem);
+  letter-spacing: -0.025em;
+}
+.enrollment-start form,
+.enrollment-grid form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.enrollment-start form button,
+.enrollment-grid form button {
+  width: 100%;
+}
+.enrollment-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(20rem, 1.1fr);
+  gap: clamp(2rem, 6vw, 6rem);
+}
+.qr-panel {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.qr-panel img {
+  display: block;
+  width: min(100%, 15rem);
+  height: auto;
+}
+.qr-panel span {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #45544c;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.secret-value {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+.mfa-status {
+  display: flex;
+  gap: 2rem;
+  align-items: start;
+  justify-content: space-between;
+  padding-block: 2rem;
+  border-block: 1px solid #7f9b8d;
+}
+.mfa-status strong {
+  color: #1c5941;
+  white-space: nowrap;
+}
 .error-page {
   width: min(100% - 2rem, 48rem);
   margin: 0 auto;
@@ -509,16 +605,41 @@ button:not(:disabled):hover,
   }
   .admin-sidebar {
     min-height: auto;
+    padding: 1.25rem;
   }
   .admin-sidebar nav {
-    margin-top: 2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem 1rem;
+    margin-top: 1.25rem;
+  }
+  .admin-sidebar nav a,
+  .admin-sidebar nav span {
+    padding-block: 0.45rem;
   }
   .admin-sidebar__session {
-    margin-top: 1.5rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    margin-top: 1rem;
+  }
+  .admin-sidebar__session p {
+    grid-column: 1 / -1;
+  }
+  .sign-out-button {
+    width: auto;
   }
   .service-state > div {
     grid-template-columns: 1fr;
     gap: 0.35rem;
+  }
+  .security-scope > div,
+  .enrollment-grid {
+    grid-template-columns: 1fr;
+  }
+  .security-scope > div {
+    gap: 0.35rem;
+  }
+  .mfa-status {
+    display: grid;
   }
 }
 

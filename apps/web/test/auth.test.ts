@@ -35,6 +35,9 @@ describe("account access routes", () => {
     expect(authErrorMessage({ data: { code: "invalid_invitation" } }, "fallback")).toContain(
       "invitation",
     );
+    expect(authErrorMessage({ data: { code: "invalid_mfa_challenge" } }, "fallback")).toContain(
+      "code",
+    );
     expect(authErrorMessage({ data: { title: "database secret" } }, "fallback")).toBe("fallback");
   });
 
