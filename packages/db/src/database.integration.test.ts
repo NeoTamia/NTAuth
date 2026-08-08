@@ -42,18 +42,24 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0016_large_cerebro");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0017_audit_guard");
 
-    const [attachmentsTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.iam_policy_attachments') is not null as exists
+    const [auditGuard] = await connection.client<{ exists: boolean }[]>`
+      select exists (
+        select 1 from pg_trigger
+        where tgname = 'audit_events_immutable_update' and not tgisinternal
+      ) as exists
     `;
-    expect(attachmentsTable?.exists).toBe(false);
+    expect(auditGuard?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredAttachmentsTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.iam_policy_attachments') is not null as exists
+    const [restoredAuditGuard] = await connection.client<{ exists: boolean }[]>`
+      select exists (
+        select 1 from pg_trigger
+        where tgname = 'audit_events_immutable_update' and not tgisinternal
+      ) as exists
     `;
-    expect(restoredAttachmentsTable?.exists).toBe(true);
+    expect(restoredAuditGuard?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 
+import type { createAuditEventRoutes } from "./audit-events";
 import type { createInvitationRoutes } from "./invitations";
 import type { createEffectivePolicyRoutes } from "./effective-policies";
 import type { createIamCatalogRoutes } from "./iam-catalog";
@@ -25,6 +26,7 @@ const available = async () => undefined;
 
 export const createApp = (
   options: {
+    auditEventRoutes?: ReturnType<typeof createAuditEventRoutes>;
     authHandler?: AuthHandler;
     corsOrigins?: string[];
     discoveryRoutes?: ReturnType<typeof createDiscoveryRoutes>;
@@ -44,6 +46,7 @@ export const createApp = (
 ) => {
   const app = new Elysia().use(cors({ origin: options.corsOrigins }));
 
+  if (options.auditEventRoutes) app.use(options.auditEventRoutes);
   if (options.authHandler) app.mount(options.authHandler);
   if (options.discoveryRoutes) app.use(options.discoveryRoutes);
   if (options.emailVerificationRoutes) app.use(options.emailVerificationRoutes);

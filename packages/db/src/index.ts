@@ -1,5 +1,16 @@
 export { createDatabase, type DatabaseConnection } from "./client";
 export {
+  AUDIT_PAGE_MAX_SIZE,
+  AUDIT_RETENTION_DAYS,
+  AuditEventAuthorizationError,
+  AuditEventInputError,
+  decodeAuditCursor,
+  encodeAuditCursor,
+  listIamAuditEvents,
+  publicIamAuditMetadata,
+  purgeExpiredAuditEvents,
+} from "./audit-events";
+export {
   completeEmailVerification,
   InvalidEmailVerificationError,
   requestEmailVerification,

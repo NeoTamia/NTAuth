@@ -3,6 +3,7 @@ import { createClient } from "redis";
 
 import type { ApiEnvironment } from "@neotamia/config";
 import type { ReadinessChecks } from "./app";
+import { createAuditEventRoutes } from "./audit-events";
 import { createAuth } from "./auth/auth";
 import { createAuditedAuthHandler } from "./auth/audited-handler";
 import { createDiscoveryRoutes } from "./auth/discovery";
@@ -42,6 +43,11 @@ export function createRuntime(environment: ApiEnvironment) {
   });
   const policyCache = createIamPermissionCache({ client: redis, connect: connectRedis, database });
   const authHandler = createAuditedAuthHandler(auth, database);
+  const auditEventRoutes = createAuditEventRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
   const discoveryRoutes = createDiscoveryRoutes(auth);
   const invitationRoutes = createInvitationRoutes({
     acceptInvitationURL: `${environment.CORS_ORIGINS[0]}/auth/accept-invitation`,
@@ -125,6 +131,7 @@ export function createRuntime(environment: ApiEnvironment) {
   return {
     auth,
     authHandler,
+    auditEventRoutes,
     discoveryRoutes,
     effectivePolicyRoutes,
     emailVerificationRoutes,

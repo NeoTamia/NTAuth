@@ -1,5 +1,5 @@
 import { parseWorkerEnvironment } from "@neotamia/config";
-import { createDatabase } from "@neotamia/db";
+import { createDatabase, purgeExpiredAuditEvents } from "@neotamia/db";
 import nodemailer from "nodemailer";
 
 import { createEmailHandler } from "./email";
@@ -33,6 +33,12 @@ const worker = new WorkerProcessor(
 );
 const abortController = new AbortController();
 const processing = worker.run(abortController.signal);
+const auditRetention = setInterval(
+  () => void purgeExpiredAuditEvents(connection).catch(() => undefined),
+  24 * 60 * 60 * 1_000,
+);
+auditRetention.unref();
+void purgeExpiredAuditEvents(connection).catch(() => undefined);
 
 const server = Bun.serve({
   hostname: environment.WORKER_HOST,
@@ -68,6 +74,7 @@ const stop = async (signal: string) => {
   if (stopping) return;
   stopping = true;
   console.log(`NTAuth worker received ${signal}; stopping`);
+  clearInterval(auditRetention);
   abortController.abort();
   await processing;
   await server.stop(true);
