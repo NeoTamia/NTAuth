@@ -8,6 +8,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import type { IamPermissionCache } from "./iam-cache";
 import { enforceRequestMfa, mfaProblem } from "./mfa";
 
 type Auth = ReturnType<typeof createAuth>;
@@ -36,6 +37,7 @@ export function createEffectivePolicyRoutes(options: {
   applicationSecret: string;
   auth: Auth;
   database: DatabaseConnection;
+  policyCache?: IamPermissionCache;
 }) {
   return new Elysia().get("/api/v1/iam/effective-policies", async ({ query, request }) => {
     const current = await options.auth.api.getSession({ headers: request.headers });
@@ -55,11 +57,16 @@ export function createEffectivePolicyRoutes(options: {
         requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
         userId: current.user.id,
       });
-      const effective = await getEffectivePolicies(options.database, {
+      const effective = await (options.policyCache?.get({
         organizationId,
         service,
         userId: current.user.id,
-      });
+      }) ??
+        getEffectivePolicies(options.database, {
+          organizationId,
+          service,
+          userId: current.user.id,
+        }));
       if (matchesIfNoneMatch(request.headers.get("if-none-match"), effective.etag)) {
         return new Response(null, { headers: { etag: effective.etag }, status: 304 });
       }

@@ -11,6 +11,7 @@ import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
 import { createIamAttachmentRoutes } from "./iam-attachments";
 import { createIamCatalogRoutes } from "./iam-catalog";
+import { createIamPermissionCache } from "./iam-cache";
 import { createIamPolicyRoutes } from "./iam-policies";
 import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
@@ -39,6 +40,7 @@ export function createRuntime(environment: ApiEnvironment) {
     secret: environment.BETTER_AUTH_SECRET,
     trustedOrigins: environment.CORS_ORIGINS,
   });
+  const policyCache = createIamPermissionCache({ client: redis, connect: connectRedis, database });
   const authHandler = createAuditedAuthHandler(auth, database);
   const discoveryRoutes = createDiscoveryRoutes(auth);
   const invitationRoutes = createInvitationRoutes({
@@ -56,11 +58,13 @@ export function createRuntime(environment: ApiEnvironment) {
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
+    policyCache,
   });
   const iamPolicyRoutes = createIamPolicyRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
+    policyCache,
   });
   const emailVerificationRoutes = createEmailVerificationRoutes({
     database,
@@ -70,6 +74,7 @@ export function createRuntime(environment: ApiEnvironment) {
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
+    policyCache,
   });
   const userRoutes = createUserRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
@@ -95,9 +100,10 @@ export function createRuntime(environment: ApiEnvironment) {
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
+    policyCache,
   });
 
-  const connectRedis = async () => {
+  async function connectRedis() {
     if (redis.isOpen) return;
     redisConnection ??= redis.connect().then(() => undefined);
 
@@ -106,7 +112,7 @@ export function createRuntime(environment: ApiEnvironment) {
     } finally {
       redisConnection = undefined;
     }
-  };
+  }
 
   const readiness: ReadinessChecks = {
     postgres: () => database.ping(),

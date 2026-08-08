@@ -12,6 +12,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import type { IamPermissionCache } from "./iam-cache";
 import { enforceRequestMfa, mfaProblem } from "./mfa";
 
 type Auth = ReturnType<typeof createAuth>;
@@ -51,6 +52,7 @@ export function createServiceGrantRoutes(options: {
   applicationSecret: string;
   auth: Auth;
   database: DatabaseConnection;
+  policyCache?: IamPermissionCache;
 }) {
   const actorFrom = async (request: Request) => {
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -95,6 +97,10 @@ export function createServiceGrantRoutes(options: {
           },
           access.actor!,
         );
+        await options.policyCache?.invalidateScope(
+          { organizationId: grant.organizationId, service: grant.service },
+          `${access.actor!.requestId}:service-grant-create`,
+        );
         return Response.json(grant, { status: 201 });
       } catch (error) {
         return grantProblem(error);
@@ -132,11 +138,16 @@ export function createServiceGrantRoutes(options: {
       if (!validUuid(params.id) || typeof input?.active !== "boolean")
         return problem(400, "invalid_request", "Invalid service grant status");
       try {
-        return await setServiceGrantActive(
+        const grant = await setServiceGrantActive(
           options.database,
           { active: input.active, grantId: params.id },
           access.actor!,
         );
+        await options.policyCache?.invalidateScope(
+          { organizationId: grant.organizationId, service: grant.service },
+          `${access.actor!.requestId}:service-grant-status`,
+        );
+        return grant;
       } catch (error) {
         return grantProblem(error);
       }
@@ -146,7 +157,11 @@ export function createServiceGrantRoutes(options: {
       if (access.response) return access.response;
       if (!validUuid(params.id)) return problem(400, "invalid_request", "Invalid service grant");
       try {
-        await revokeServiceGrant(options.database, params.id, access.actor!);
+        const grant = await revokeServiceGrant(options.database, params.id, access.actor!);
+        await options.policyCache?.invalidateScope(
+          { organizationId: grant.organizationId, service: grant.service },
+          `${access.actor!.requestId}:service-grant-revoke`,
+        );
         return new Response(null, { status: 204 });
       } catch (error) {
         return grantProblem(error);

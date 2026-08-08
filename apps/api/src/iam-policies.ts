@@ -15,6 +15,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import type { IamPermissionCache } from "./iam-cache";
 import { enforceRequestMfa, mfaProblem } from "./mfa";
 
 type Auth = ReturnType<typeof createAuth>;
@@ -56,6 +57,7 @@ export function createIamPolicyRoutes(options: {
   applicationSecret: string;
   auth: Auth;
   database: DatabaseConnection;
+  policyCache?: IamPermissionCache;
 }) {
   const actor = async (request: Request) => {
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -88,19 +90,21 @@ export function createIamPolicyRoutes(options: {
         return problem(400, "invalid_request", "Invalid IAM policy request");
       }
       try {
-        return Response.json(
-          await createIamPolicy(
-            options.database,
-            {
-              document: input.document,
-              name: input.name,
-              organizationId: input.organizationId,
-              service: input.service,
-            },
-            access.actor!,
-          ),
-          { status: 201 },
+        const result = await createIamPolicy(
+          options.database,
+          {
+            document: input.document,
+            name: input.name,
+            organizationId: input.organizationId,
+            service: input.service,
+          },
+          access.actor!,
         );
+        await options.policyCache?.invalidateScope(
+          { organizationId: result.policy.organizationId, service: result.policy.service },
+          `${access.actor!.requestId}:policy-create`,
+        );
+        return Response.json(result, { status: 201 });
       } catch (error) {
         return policyProblem(error);
       }
@@ -117,11 +121,16 @@ export function createIamPolicyRoutes(options: {
         return problem(400, "invalid_request", "Invalid IAM policy version request");
       }
       try {
-        return await createIamPolicyVersion(
+        const result = await createIamPolicyVersion(
           options.database,
           { document: input.document, expectedVersion: input.expectedVersion, policyId: params.id },
           access.actor!,
         );
+        await options.policyCache?.invalidateScope(
+          { organizationId: result.policy.organizationId, service: result.policy.service },
+          `${access.actor!.requestId}:policy-version`,
+        );
+        return result;
       } catch (error) {
         return policyProblem(error);
       }
@@ -138,7 +147,7 @@ export function createIamPolicyRoutes(options: {
         return problem(400, "invalid_request", "Invalid IAM policy rollback request");
       }
       try {
-        return await rollbackIamPolicy(
+        const result = await rollbackIamPolicy(
           options.database,
           {
             expectedVersion: input.expectedVersion,
@@ -147,6 +156,11 @@ export function createIamPolicyRoutes(options: {
           },
           access.actor!,
         );
+        await options.policyCache?.invalidateScope(
+          { organizationId: result.policy.organizationId, service: result.policy.service },
+          `${access.actor!.requestId}:policy-rollback`,
+        );
+        return result;
       } catch (error) {
         return policyProblem(error);
       }
@@ -163,11 +177,16 @@ export function createIamPolicyRoutes(options: {
         return problem(400, "invalid_request", "Invalid IAM policy status request");
       }
       try {
-        return await setIamPolicyStatus(
+        const policy = await setIamPolicyStatus(
           options.database,
           { policyId: params.id, status: input.status as IamPolicyStatus },
           access.actor!,
         );
+        await options.policyCache?.invalidateScope(
+          { organizationId: policy.organizationId, service: policy.service },
+          `${access.actor!.requestId}:policy-status`,
+        );
+        return policy;
       } catch (error) {
         return policyProblem(error);
       }

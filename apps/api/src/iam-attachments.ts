@@ -14,6 +14,7 @@ import {
 } from "@neotamia/db";
 
 import type { createAuth } from "./auth/auth";
+import type { IamPermissionCache } from "./iam-cache";
 import { enforceRequestMfa, mfaProblem } from "./mfa";
 
 type Auth = ReturnType<typeof createAuth>;
@@ -49,6 +50,7 @@ export function createIamAttachmentRoutes(options: {
   applicationSecret: string;
   auth: Auth;
   database: DatabaseConnection;
+  policyCache?: IamPermissionCache;
 }) {
   const actor = async (request: Request) => {
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -97,14 +99,16 @@ export function createIamAttachmentRoutes(options: {
       if (!validUuid(params.id) || params.userId.length === 0)
         return problem(400, "invalid_request", "Invalid IAM group member request");
       try {
-        return Response.json(
-          await addIamGroupMember(
-            options.database,
-            { groupId: params.id, userId: params.userId },
-            access.actor!,
-          ),
-          { status: 201 },
+        const membership = await addIamGroupMember(
+          options.database,
+          { groupId: params.id, userId: params.userId },
+          access.actor!,
         );
+        await options.policyCache?.invalidateGroup(
+          membership.groupId,
+          `${access.actor!.requestId}:group-member-add`,
+        );
+        return Response.json(membership, { status: 201 });
       } catch (error) {
         return attachmentProblem(error);
       }
@@ -122,18 +126,20 @@ export function createIamAttachmentRoutes(options: {
         return problem(400, "invalid_request", "Invalid IAM attachment request");
       }
       try {
-        return Response.json(
-          await attachIamPolicy(
-            options.database,
-            {
-              policyId: params.id,
-              principalId: input.principalId,
-              principalType: input.principalType as IamPrincipalType,
-            },
-            access.actor!,
-          ),
-          { status: 201 },
+        const attachment = await attachIamPolicy(
+          options.database,
+          {
+            policyId: params.id,
+            principalId: input.principalId,
+            principalType: input.principalType as IamPrincipalType,
+          },
+          access.actor!,
         );
+        await options.policyCache?.invalidatePolicy(
+          attachment.policyId,
+          `${access.actor!.requestId}:policy-attach`,
+        );
+        return Response.json(attachment, { status: 201 });
       } catch (error) {
         return attachmentProblem(error);
       }
@@ -153,7 +159,12 @@ export function createIamAttachmentRoutes(options: {
       if (access.response) return access.response;
       if (!validUuid(params.id)) return problem(400, "invalid_request", "Invalid IAM attachment");
       try {
-        return await detachIamPolicy(options.database, params.id, access.actor!);
+        const attachment = await detachIamPolicy(options.database, params.id, access.actor!);
+        await options.policyCache?.invalidatePolicy(
+          attachment.policyId,
+          `${access.actor!.requestId}:policy-detach`,
+        );
+        return attachment;
       } catch (error) {
         return attachmentProblem(error);
       }
