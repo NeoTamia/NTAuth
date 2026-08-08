@@ -9,6 +9,10 @@ import { auditEvents, oauthClients } from "./schema";
 export const NTSCOUT_CLIENT_ID = "ntscout";
 export { NTSCOUT_SCOPES };
 
+function logoutRedirectUris(redirectUris: readonly string[]) {
+  return [...new Set(redirectUris.map((redirectUri) => new URL("/", redirectUri).toString()))];
+}
+
 export async function provisionNtscoutClient(
   connection: DatabaseConnection,
   input: NtscoutSeedEnvironment & { requestId: string },
@@ -29,6 +33,7 @@ export async function provisionNtscoutClient(
           managedBy: "ntauth-seed",
         },
         name: "NTScout",
+        postLogoutRedirectUris: logoutRedirectUris(input.NTSCOUT_REDIRECT_URIS),
         public: true,
         redirectUris: input.NTSCOUT_REDIRECT_URIS,
         requirePKCE: true,
@@ -51,6 +56,7 @@ export async function provisionNtscoutClient(
             managedBy: "ntauth-seed",
           },
           name: "NTScout",
+          postLogoutRedirectUris: logoutRedirectUris(input.NTSCOUT_REDIRECT_URIS),
           public: true,
           redirectUris: input.NTSCOUT_REDIRECT_URIS,
           requirePKCE: true,

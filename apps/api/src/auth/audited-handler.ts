@@ -1,10 +1,13 @@
-import type { JSONWebKeySet } from "better-auth";
-import { verifyJwsAccessToken } from "better-auth/oauth2";
-
 import { auditEvents, type DatabaseConnection } from "@neotamia/db";
-import { NTSCOUT_AUDIENCE, NTSCOUT_SERVICE } from "@neotamia/permissions";
 
 import type { createAuth } from "./auth";
+import {
+  enforceIntrospectionState,
+  handleOidcLogout,
+  inspectRevocation,
+  persistAccessTokenRevocation,
+  validateUserInfoToken,
+} from "./oauth-lifecycle";
 import {
   hasActiveOrganizationMembership,
   organizationFromOAuthRequest,
@@ -35,15 +38,16 @@ const sensitiveEndpoints = new Set([
 ]);
 
 async function oauthOutcome(response: Response): Promise<"denied" | "success"> {
-  if (!response.ok) return "denied";
   const location = response.headers.get("location");
   if (location) {
     try {
       if (new URL(location).searchParams.has("error")) return "denied";
+      if (response.status >= 300 && response.status < 400) return "success";
     } catch {
       return "denied";
     }
   }
+  if (!response.ok) return "denied";
   if (response.headers.get("content-type")?.includes("application/json")) {
     try {
       const body = (await response.clone().json()) as { url?: unknown };
@@ -55,53 +59,6 @@ async function oauthOutcome(response: Response): Promise<"denied" | "success"> {
     }
   }
   return "success";
-}
-
-async function validateUserInfoToken(auth: Auth, request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return;
-  const token = authorization.slice("Bearer ".length);
-  const url = new URL(request.url);
-  const issuer = `${url.origin}${url.pathname.slice(0, -"/oauth2/userinfo".length)}`;
-  try {
-    const payload = await verifyJwsAccessToken(token, {
-      jwksFetch: async () => {
-        const response = await auth.handler(new Request(`${issuer}/jwks`));
-        if (!response.ok) throw new Error("JWKS unavailable");
-        return (await response.json()) as JSONWebKeySet;
-      },
-      verifyOptions: {
-        algorithms: ["ES256"],
-        audience: NTSCOUT_AUDIENCE,
-        issuer,
-      },
-    });
-    const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-    if (
-      typeof payload.sub !== "string" ||
-      payload.azp !== NTSCOUT_SERVICE ||
-      typeof payload.sid !== "string" ||
-      typeof payload.jti !== "string" ||
-      !uuidPattern.test(payload.jti) ||
-      typeof payload.organization_id !== "string" ||
-      !uuidPattern.test(payload.organization_id) ||
-      payload.service !== NTSCOUT_SERVICE ||
-      typeof payload.policies_etag !== "string" ||
-      !/^[A-Za-z0-9_-]{43}$/.test(payload.policies_etag) ||
-      !scopes.includes("openid") ||
-      !scopes.includes("ntscout:access")
-    ) {
-      throw new Error("Invalid NTAuth access-token claims");
-    }
-  } catch {
-    return Response.json(
-      { error: "invalid_token", error_description: "access token is invalid" },
-      {
-        headers: { "www-authenticate": 'Bearer error="invalid_token"' },
-        status: 401,
-      },
-    );
-  }
 }
 
 export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnection) {
@@ -124,6 +81,10 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
       tokenBody = new URLSearchParams(await request.clone().text());
       storedGrant = await resolveStoredGrantContext(database, tokenBody);
     }
+    const logout =
+      endpoint === "end-session" ? await handleOidcLogout(auth, database, request) : undefined;
+    const revocation =
+      endpoint === "revoke" ? await inspectRevocation(auth, database, request) : undefined;
     const requestedOrganizationId = await organizationFromOAuthRequest(request);
     let organizationId =
       requestedOrganizationId && uuidPattern.test(requestedOrganizationId)
@@ -140,30 +101,45 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
     } else if (storedGrant) {
       if (storedGrant.status === "valid") {
         organizationId = storedGrant.organizationId;
-        organizationDenied = !(await hasActiveOrganizationMembership(
-          database,
-          storedGrant.userId,
-          storedGrant.organizationId,
-        ));
+        organizationDenied =
+          (storedGrant.grant === "refresh_token" && !storedGrant.sessionActive) ||
+          !(await hasActiveOrganizationMembership(
+            database,
+            storedGrant.userId,
+            storedGrant.organizationId,
+          ));
       } else if (storedGrant.status === "invalid") {
         organizationDenied = true;
       }
     }
     const invalidUserInfoToken =
-      endpoint === "userinfo" ? await validateUserInfoToken(auth, request) : undefined;
-    let response = invalidUserInfoToken
-      ? invalidUserInfoToken
-      : organizationDenied
-        ? Response.json(
-            {
-              error: endpoint === "token" ? "invalid_grant" : "invalid_request",
-              error_description: "organization context is invalid",
-            },
-            { status: 400 },
-          )
-        : organizationId
-          ? await withOAuthOrganization(organizationId, () => auth.handler(request))
-          : await auth.handler(request);
+      endpoint === "userinfo" ? await validateUserInfoToken(auth, database, request) : undefined;
+    let response = logout
+      ? logout.response
+      : revocation?.response
+        ? revocation.response
+        : invalidUserInfoToken
+          ? invalidUserInfoToken
+          : organizationDenied
+            ? Response.json(
+                {
+                  error: endpoint === "token" ? "invalid_grant" : "invalid_request",
+                  error_description: "organization context is invalid",
+                },
+                { status: 400 },
+              )
+            : organizationId
+              ? await withOAuthOrganization(organizationId, () => auth.handler(request))
+              : await auth.handler(request);
+    if (revocation?.idempotent && !response.ok) {
+      response = new Response(null, { status: 200 });
+    }
+    if (revocation?.payload && response.ok) {
+      await persistAccessTokenRevocation(database, revocation);
+    }
+    if (endpoint === "introspect") {
+      response = await enforceIntrospectionState(database, response);
+    }
     if (
       tokenBody?.get("grant_type") === "refresh_token" &&
       !response.ok &&
@@ -182,6 +158,8 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
     }
     if (
       endpoint === "token" ||
+      endpoint === "revoke" ||
+      endpoint === "introspect" ||
       (response.ok && (endpoint === "create-client" || endpoint === "rotate-secret"))
     ) {
       response.headers.set("cache-control", "no-store");
@@ -190,7 +168,9 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
     await database.db.insert(auditEvents).values({
       action: `oauth.${endpoint}`,
       actorUserId:
-        current?.user.id ?? (storedGrant?.status === "valid" ? storedGrant.userId : undefined),
+        current?.user.id ??
+        logout?.userId ??
+        (storedGrant?.status === "valid" ? storedGrant.userId : undefined),
       metadata: {
         method: request.method,
         organizationId: organizationId ?? null,
@@ -201,17 +181,35 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
       requestId,
       resourceType: "oauth_protocol",
     });
+    if (revocation) {
+      await database.db.insert(auditEvents).values({
+        action: "oauth.token.revoke",
+        actorUserId:
+          typeof revocation.payload?.sub === "string" ? revocation.payload.sub : undefined,
+        metadata: {
+          clientId: revocation.clientId,
+          status: response.status,
+          tokenType: revocation.tokenType,
+        },
+        outcome: response.ok ? "success" : "denied",
+        requestId,
+        resourceId:
+          typeof revocation.payload?.jti === "string" ? revocation.payload.jti : undefined,
+        resourceType: "oauth_token",
+      });
+    }
     if (storedGrant?.status === "valid" && storedGrant.grant === "refresh_token") {
       await database.db.insert(auditEvents).values({
-        action: storedGrant.revoked
-          ? "oauth.refresh-token.reuse"
-          : response.ok
-            ? "oauth.refresh-token.rotate"
-            : "oauth.refresh-token.exchange",
+        action:
+          storedGrant.revoked && storedGrant.sessionActive
+            ? "oauth.refresh-token.reuse"
+            : response.ok
+              ? "oauth.refresh-token.rotate"
+              : "oauth.refresh-token.exchange",
         actorUserId: storedGrant.userId,
         metadata: {
           clientId: storedGrant.clientId,
-          familyRevoked: storedGrant.revoked,
+          familyRevoked: storedGrant.revoked && storedGrant.sessionActive,
           status: response.status,
         },
         organizationId: storedGrant.organizationId,

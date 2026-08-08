@@ -1,11 +1,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 
 import {
   oauthRefreshTokens,
   organizationMembers,
   organizations,
+  session,
   verification,
   type DatabaseConnection,
 } from "@neotamia/db";
@@ -22,6 +23,7 @@ type StoredGrantContext =
       organizationId: string;
       refreshTokenId: string;
       revoked: boolean;
+      sessionActive: boolean;
       status: "valid";
       userId: string;
     }
@@ -112,9 +114,18 @@ export async function resolveStoredGrantContext(
         id: oauthRefreshTokens.id,
         organizationId: oauthRefreshTokens.referenceId,
         revoked: oauthRefreshTokens.revoked,
+        activeSessionId: session.id,
         userId: oauthRefreshTokens.userId,
       })
       .from(oauthRefreshTokens)
+      .leftJoin(
+        session,
+        and(
+          eq(session.id, oauthRefreshTokens.sessionId),
+          eq(session.userId, oauthRefreshTokens.userId),
+          gt(session.expiresAt, new Date()),
+        ),
+      )
       .where(
         eq(oauthRefreshTokens.token, await tokenHash(presented.slice(refreshTokenPrefix.length))),
       )
@@ -127,6 +138,7 @@ export async function resolveStoredGrantContext(
       organizationId: stored.organizationId,
       refreshTokenId: stored.id,
       revoked: Boolean(stored.revoked),
+      sessionActive: Boolean(stored.activeSessionId),
       status: "valid",
       userId: stored.userId,
     };

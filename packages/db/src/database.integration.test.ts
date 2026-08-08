@@ -42,18 +42,18 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0011_solid_kylun");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0012_smooth_stone_men");
 
-    const [oauthTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.oauth_clients') is not null as exists
+    const [revocationsTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.oauth_token_revocations') is not null as exists
     `;
-    expect(oauthTable?.exists).toBe(false);
+    expect(revocationsTable?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredOauthTable] = await connection.client<{ exists: boolean }[]>`
-      select to_regclass('public.oauth_clients') is not null as exists
+    const [restoredRevocationsTable] = await connection.client<{ exists: boolean }[]>`
+      select to_regclass('public.oauth_token_revocations') is not null as exists
     `;
-    expect(restoredOauthTable?.exists).toBe(true);
+    expect(restoredRevocationsTable?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

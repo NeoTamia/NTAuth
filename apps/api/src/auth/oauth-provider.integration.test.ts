@@ -18,10 +18,12 @@ import {
   oauthClients,
   oauthConsents,
   oauthRefreshTokens,
+  oauthTokenRevocations,
   organizationMembers,
   organizations,
   platformRoleAssignments,
   provisionNtscoutClient,
+  session,
   totpCounter,
   user,
   verification,
@@ -31,6 +33,7 @@ import {
 import { createAuditedAuthHandler } from "./audited-handler";
 import { createAuth } from "./auth";
 import { createDiscoveryRoutes } from "./discovery";
+import { enforceIntrospectionState } from "./oauth-lifecycle";
 import { SIGNING_KEY_GRACE_SECONDS, SIGNING_KEY_ROTATION_SECONDS } from "./signing-key-policy";
 import { createApp } from "../app";
 import { createSigningKeyRoutes } from "../signing-keys";
@@ -1247,5 +1250,223 @@ describeWithDatabase("OAuth provider integration", () => {
       outcome: "success",
       resourceId: next!.id,
     });
+  });
+
+  test("revokes tokens idempotently and ends the OIDC session with an exact redirect", async () => {
+    const redirectUri = "https://ntscout.example/auth/callback";
+    const logoutRedirectUri = "https://ntscout.example/";
+    await provisionNtscoutClient(connection, {
+      NTSCOUT_ENVIRONMENT: "production",
+      NTSCOUT_REDIRECT_URIS: [redirectUri],
+      requestId: `${runId}-lifecycle-seed`,
+    });
+    await connection.db.insert(oauthConsents).values({
+      clientId: NTSCOUT_CLIENT_ID,
+      id: crypto.randomUUID(),
+      referenceId: organizationId,
+      scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
+      userId: adminId,
+    });
+
+    const issueTokenSet = async (label: string) => {
+      const verifier = `${label}-verifier-123456789012345678901234567890123456`;
+      const authorization = await authorizePublicClient({
+        clientId: NTSCOUT_CLIENT_ID,
+        nonce: `${label}-nonce-${runId}`,
+        redirectUri,
+        requestId: `${label}-authorize`,
+        scope: "openid profile email offline_access ntscout:access",
+        state: `${label}-state-${runId}`,
+        verifier,
+      });
+      const response = await exchangeCode({
+        clientId: NTSCOUT_CLIENT_ID,
+        code: authorization.searchParams.get("code")!,
+        redirectUri,
+        requestId: `${label}-token`,
+        resource: NTSCOUT_AUDIENCE,
+        verifier,
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()) as {
+        access_token: string;
+        id_token: string;
+        refresh_token: string;
+      };
+    };
+    const revoke = (token: string, tokenType: "access_token" | "refresh_token", label: string) =>
+      handler()(
+        new Request(`${baseURL}/oauth2/revoke`, {
+          body: new URLSearchParams({
+            client_id: NTSCOUT_CLIENT_ID,
+            token,
+            token_type_hint: tokenType,
+          }),
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            "x-request-id": `${runId}-${label}`,
+          },
+          method: "POST",
+        }),
+      );
+    const revocationTokens = await issueTokenSet("lifecycle-revoke");
+    const revokedAccessClaims = await verifyEs256Jwt(revocationTokens.access_token);
+    const activeIntrospection = await enforceIntrospectionState(
+      connection,
+      Response.json({ ...revokedAccessClaims, active: true }),
+    );
+    expect(await activeIntrospection.json()).toMatchObject({ active: true });
+    const accessRevocation = await revoke(
+      revocationTokens.access_token,
+      "access_token",
+      "lifecycle-access-revoke",
+    );
+    expect(accessRevocation.status).toBe(200);
+    expect(accessRevocation.headers.get("cache-control")).toBe("no-store");
+    const [storedRevocation] = await connection.db
+      .select()
+      .from(oauthTokenRevocations)
+      .where(eq(oauthTokenRevocations.jti, revokedAccessClaims.jti as string));
+    expect(storedRevocation).toMatchObject({
+      clientId: NTSCOUT_CLIENT_ID,
+      sessionId: revokedAccessClaims.sid,
+      userId: adminId,
+    });
+    const revokedUserInfo = await handler()(
+      new Request(`${baseURL}/oauth2/userinfo`, {
+        headers: { authorization: `Bearer ${revocationTokens.access_token}` },
+      }),
+    );
+    expect(revokedUserInfo.status).toBe(401);
+    const revokedIntrospection = await enforceIntrospectionState(
+      connection,
+      Response.json({ ...revokedAccessClaims, active: true }),
+    );
+    expect(await revokedIntrospection.json()).toEqual({ active: false });
+    expect(
+      (
+        await revoke(
+          revocationTokens.access_token,
+          "access_token",
+          "lifecycle-access-revoke-repeat",
+        )
+      ).status,
+    ).toBe(200);
+
+    const refreshRevocation = await revoke(
+      revocationTokens.refresh_token,
+      "refresh_token",
+      "lifecycle-refresh-revoke",
+    );
+    expect(refreshRevocation.status).toBe(200);
+    expect(
+      (
+        await revoke(
+          revocationTokens.refresh_token,
+          "refresh_token",
+          "lifecycle-refresh-revoke-repeat",
+        )
+      ).status,
+    ).toBe(200);
+    const revokedRefresh = await exchangeRefreshToken({
+      refreshToken: revocationTokens.refresh_token,
+      requestId: "lifecycle-refresh-after-revoke",
+    });
+    expect(revokedRefresh.status).toBe(400);
+    expect(await revokedRefresh.json()).toEqual({
+      error: "invalid_grant",
+      error_description: "refresh token is invalid",
+    });
+    expect(
+      (await revoke("ntauth_refresh_unknown", "refresh_token", "lifecycle-unknown-revoke")).status,
+    ).toBe(200);
+
+    const logoutTokens = await issueTokenSet("lifecycle-logout");
+    const logoutAccessClaims = await verifyEs256Jwt(logoutTokens.access_token);
+    const invalidLogout = await handler()(
+      new Request(
+        `${baseURL}/oauth2/end-session?${new URLSearchParams({
+          client_id: NTSCOUT_CLIENT_ID,
+          id_token_hint: logoutTokens.id_token,
+          post_logout_redirect_uri: "https://attacker.example/logout",
+          state: "must-not-leak",
+        })}`,
+        { headers: { "x-request-id": `${runId}-lifecycle-logout-invalid-redirect` } },
+      ),
+    );
+    expect(invalidLogout.status).toBe(400);
+    expect(invalidLogout.headers.get("location")).toBeNull();
+    expect(
+      await connection.db
+        .select({ id: session.id })
+        .from(session)
+        .where(eq(session.id, logoutAccessClaims.sid as string)),
+    ).toHaveLength(1);
+
+    const logoutState = `logout-state-${runId}`;
+    const logout = await handler()(
+      new Request(
+        `${baseURL}/oauth2/end-session?${new URLSearchParams({
+          client_id: NTSCOUT_CLIENT_ID,
+          id_token_hint: logoutTokens.id_token,
+          post_logout_redirect_uri: logoutRedirectUri,
+          state: logoutState,
+        })}`,
+        { headers: { "x-request-id": `${runId}-lifecycle-logout-valid` } },
+      ),
+    );
+    expect(logout.status).toBe(302);
+    expect(logout.headers.get("location")).toBe(`${logoutRedirectUri}?state=${logoutState}`);
+    expect(
+      await connection.db
+        .select({ id: session.id })
+        .from(session)
+        .where(eq(session.id, logoutAccessClaims.sid as string)),
+    ).toEqual([]);
+    const logoutUserInfo = await handler()(
+      new Request(`${baseURL}/oauth2/userinfo`, {
+        headers: { authorization: `Bearer ${logoutTokens.access_token}` },
+      }),
+    );
+    expect(logoutUserInfo.status).toBe(401);
+    const logoutIntrospection = await enforceIntrospectionState(
+      connection,
+      Response.json({ ...logoutAccessClaims, active: true }),
+    );
+    expect(await logoutIntrospection.json()).toEqual({ active: false });
+    const logoutRefresh = await exchangeRefreshToken({
+      refreshToken: logoutTokens.refresh_token,
+      requestId: "lifecycle-refresh-after-logout",
+    });
+    expect(logoutRefresh.status).toBe(400);
+    expect(await logoutRefresh.json()).toEqual({
+      error: "invalid_grant",
+      error_description: "refresh token is invalid",
+    });
+
+    const [logoutAudit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.requestId, `${runId}-lifecycle-logout-valid`));
+    expect(logoutAudit).toMatchObject({
+      action: "oauth.end-session",
+      actorUserId: adminId,
+      outcome: "success",
+    });
+    const [revocationAudit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, "oauth.token.revoke"),
+          eq(auditEvents.requestId, `${runId}-lifecycle-access-revoke`),
+        ),
+      );
+    expect(revocationAudit).toMatchObject({
+      actorUserId: adminId,
+      outcome: "success",
+      resourceId: revokedAccessClaims.jti,
+    });
+    await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
   });
 });

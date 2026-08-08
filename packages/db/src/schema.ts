@@ -188,6 +188,26 @@ export const oauthAccessTokens = pgTable(
   ],
 );
 
+export const oauthTokenRevocations = pgTable(
+  "oauth_token_revocations",
+  {
+    jti: text("jti").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.clientId, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("oauth_token_revocations_expires_at_idx").on(table.expiresAt),
+    index("oauth_token_revocations_session_id_idx").on(table.sessionId),
+  ],
+);
+
 export const oauthConsents = pgTable(
   "oauth_consents",
   {

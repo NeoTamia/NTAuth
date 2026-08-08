@@ -43,6 +43,7 @@ describeWithDatabase("NTScout OAuth client provisioning", () => {
       enableEndSession: true,
       grantTypes: ["authorization_code", "refresh_token"],
       public: true,
+      postLogoutRedirectUris: ["http://127.0.0.1:3003/"],
       redirectUris: ["http://127.0.0.1:3003/auth/callback"],
       requirePKCE: true,
       responseTypes: ["code"],
@@ -70,6 +71,7 @@ describeWithDatabase("NTScout OAuth client provisioning", () => {
     expect(stored[0]).toMatchObject({
       clientSecret: null,
       metadata: { environment: "staging", managedBy: "ntauth-seed" },
+      postLogoutRedirectUris: ["https://staging.ntscout.example/"],
       redirectUris: ["https://staging.ntscout.example/auth/callback"],
       updatedAt: reconciledTime,
     });
