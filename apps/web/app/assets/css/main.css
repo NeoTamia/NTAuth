@@ -1407,6 +1407,170 @@ button:not(:disabled):hover,
   height: 1.15rem;
   margin-top: 0.15rem;
 }
+.grant-admin {
+  width: min(100%, 78rem);
+}
+.grant-admin__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: end;
+  padding-bottom: clamp(2rem, 5vw, 4rem);
+  border-bottom: 1px solid #c3cbc5;
+}
+.grant-admin__header h1 {
+  max-width: 10ch;
+  margin: 0 0 1rem;
+  font-size: clamp(3rem, 7vw, 6.25rem);
+  line-height: 0.92;
+  letter-spacing: -0.065em;
+}
+.grant-admin__header p,
+.grant-gate p,
+.grant-scope-picker p,
+.grant-workspace > header p,
+.grant-creation header p,
+.grant-register header p {
+  color: #536158;
+}
+.grant-gate,
+.grant-scope-picker {
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.65fr) minmax(22rem, 1.35fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: start;
+  margin-top: 3rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.grant-gate h2,
+.grant-scope-picker h2,
+.grant-workspace h2,
+.grant-workspace h3 {
+  margin: 0;
+}
+.grant-gate form,
+.grant-workspace__gate,
+.grant-creation form,
+.grant-action form {
+  display: grid;
+  gap: 1rem;
+}
+.organization-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.organization-choices button {
+  display: block;
+  width: 100%;
+  border: 1px solid #8f9c94;
+  border-radius: 0;
+  color: #14201b;
+  background: #f5f7f3;
+  text-align: left;
+}
+.organization-choices button[aria-current="true"],
+.organization-choices button:hover {
+  border-color: #1c5941;
+  background: #dde5df;
+}
+.organization-choices strong,
+.organization-choices small {
+  display: block;
+}
+.organization-choices small {
+  margin-top: 0.25rem;
+  color: #536158;
+}
+.grant-workspace {
+  margin-top: 1.5rem;
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.grant-workspace > header,
+.grant-creation > header,
+.grant-register > header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem;
+  border-bottom: 1px solid #aab5ad;
+}
+.grant-workspace > header p,
+.grant-creation header p,
+.grant-register header p {
+  margin: 0.25rem 0 0;
+}
+.grant-workspace__gate,
+.grant-creation form,
+.grant-action {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+.grant-workspace__content {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+  gap: 1px;
+  background: #aab5ad;
+}
+.grant-creation,
+.grant-register,
+.grant-action {
+  background: #eef1ed;
+}
+.grant-filters {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(9rem, 0.6fr);
+  gap: 0.75rem;
+  width: min(100%, 30rem);
+}
+.grant-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.grant-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid #c3cbc5;
+}
+.grant-list strong,
+.grant-list small {
+  display: block;
+}
+.grant-list small {
+  margin-top: 0.2rem;
+  color: #536158;
+  overflow-wrap: anywhere;
+}
+.grant-status {
+  font-weight: 800;
+}
+.grant-status--active {
+  color: #176b43;
+}
+.grant-status--inactive,
+.grant-status--revoked {
+  color: #755a4a;
+}
+.grant-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.grant-action {
+  grid-column: 1 / -1;
+  border-top: 2px solid #b56b4d;
+}
+.grant-action > p {
+  max-width: 70ch;
+  color: #536158;
+}
 .error-page {
   width: min(100% - 2rem, 48rem);
   margin: 0 auto;
@@ -1553,6 +1717,10 @@ button:not(:disabled):hover,
   .user-admin__header,
   .user-filters,
   .user-workspace,
+  .grant-admin__header,
+  .grant-gate,
+  .grant-scope-picker,
+  .grant-workspace__content,
   .inline-fields {
     grid-template-columns: 1fr;
   }
@@ -1568,6 +1736,18 @@ button:not(:disabled):hover,
   }
   .user-admin__header h1 {
     font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+  .grant-admin__header h1 {
+    font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+  .organization-choices,
+  .grant-filters {
+    grid-template-columns: 1fr;
+  }
+  .grant-workspace > header,
+  .grant-creation > header,
+  .grant-register > header {
+    flex-direction: column;
   }
   .user-register {
     position: static;

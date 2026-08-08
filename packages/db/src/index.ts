@@ -43,6 +43,7 @@ export {
   IamCatalogAuthorizationError,
   IamCatalogConflictError,
   IamCatalogNotFoundError,
+  listAvailableServices,
   setIamCatalogEntryStatus,
   updateService,
 } from "./iam-catalog";

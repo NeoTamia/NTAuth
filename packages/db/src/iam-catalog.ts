@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { isPolicyIdentifier } from "@neotamia/permissions";
 
@@ -35,6 +35,14 @@ export class IamCatalogNotFoundError extends Error {
     super("IAM catalogue resource not found");
     this.name = "IamCatalogNotFoundError";
   }
+}
+
+export async function listAvailableServices(connection: DatabaseConnection) {
+  return connection.db
+    .select({ key: services.key, name: services.name, status: services.status })
+    .from(services)
+    .where(eq(services.status, "active"))
+    .orderBy(asc(services.name), asc(services.key));
 }
 
 async function isPlatformAdmin(transaction: Transaction, userId: string) {

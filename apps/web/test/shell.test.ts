@@ -12,6 +12,7 @@ const routes = [
   "app/pages/admin/organizations.vue",
   "app/pages/admin/policies.vue",
   "app/pages/admin/users.vue",
+  "app/pages/admin/service-grants.vue",
   "app/pages/admin/oauth-clients.vue",
   "app/error.vue",
 ];

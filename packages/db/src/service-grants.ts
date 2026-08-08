@@ -7,6 +7,7 @@ import {
   organizations,
   platformRoleAssignments,
   serviceGrants,
+  services,
   type ServiceGrantStatus,
 } from "./schema";
 
@@ -170,6 +171,12 @@ export async function createServiceGrant(
         await auditDenied(transaction, "service-grant.create", input, actor);
         return { kind: "denied" as const };
       }
+      const [availableService] = await transaction
+        .select({ key: services.key })
+        .from(services)
+        .where(and(eq(services.key, input.service), eq(services.status, "active")))
+        .limit(1);
+      if (!availableService) return { kind: "conflict" as const };
       const [existing] = await transaction
         .select({ id: serviceGrants.id })
         .from(serviceGrants)

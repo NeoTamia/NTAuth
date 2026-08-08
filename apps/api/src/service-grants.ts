@@ -2,7 +2,12 @@ import { Elysia } from "elysia";
 
 import {
   createServiceGrant,
+  getOrganizationAdministration,
+  listAvailableServices,
+  listManagedOrganizations,
   listServiceGrants,
+  OrganizationAuthorizationError,
+  OrganizationNotFoundError,
   revokeServiceGrant,
   ServiceGrantAuthorizationError,
   ServiceGrantConflictError,
@@ -45,6 +50,10 @@ function grantProblem(error: unknown) {
     return problem(404, "service_grant_not_found", "Service grant not found");
   if (error instanceof ServiceGrantConflictError)
     return problem(409, "service_grant_conflict", "Service grant conflicts with current state");
+  if (error instanceof OrganizationAuthorizationError)
+    return problem(403, "forbidden", "Organization operation not permitted");
+  if (error instanceof OrganizationNotFoundError)
+    return problem(404, "organization_not_found", "Organization not found");
   return problem(500, "internal_error", "Service grant operation failed");
 }
 
@@ -72,6 +81,36 @@ export function createServiceGrantRoutes(options: {
   };
 
   return new Elysia({ prefix: "/api/v1/service-grants" })
+    .get("/administration", async ({ query, request }) => {
+      const access = await privilegedActor(request);
+      if (access.response) return access.response;
+      if (query.organizationId === undefined) {
+        try {
+          const [services, organizations] = await Promise.all([
+            listAvailableServices(options.database),
+            listManagedOrganizations(options.database, access.actor!),
+          ]);
+          return { organizations, services };
+        } catch (error) {
+          return grantProblem(error);
+        }
+      }
+      if (typeof query.organizationId !== "string" || !validUuid(query.organizationId))
+        return problem(400, "invalid_request", "Invalid organization scope");
+      try {
+        const [detail, grants] = await Promise.all([
+          getOrganizationAdministration(options.database, query.organizationId, access.actor!),
+          listServiceGrants(
+            options.database,
+            { organizationId: query.organizationId },
+            access.actor!,
+          ),
+        ]);
+        return { detail, grants };
+      } catch (error) {
+        return grantProblem(error);
+      }
+    })
     .post("/", async ({ body, request }) => {
       const access = await privilegedActor(request);
       if (access.response) return access.response;

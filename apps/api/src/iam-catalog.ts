@@ -7,6 +7,7 @@ import {
   IamCatalogAuthorizationError,
   IamCatalogConflictError,
   IamCatalogNotFoundError,
+  listAvailableServices,
   setIamCatalogEntryStatus,
   updateService,
   type DatabaseConnection,
@@ -66,6 +67,11 @@ export function createIamCatalogRoutes(options: {
   };
 
   return new Elysia()
+    .get("/api/v1/services", async ({ request }) => {
+      const access = await actor(request);
+      if (access.response) return access.response;
+      return await listAvailableServices(options.database);
+    })
     .post("/api/v1/services", async ({ body, request }) => {
       const access = await actor(request);
       if (access.response) return access.response;

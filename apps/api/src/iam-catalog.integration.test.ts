@@ -163,6 +163,18 @@ describeWithDatabase("IAM catalogue API", () => {
     );
     expect(createdService.status).toBe(201);
 
+    const listedServices = await request(
+      "/api/v1/services",
+      {},
+      { cookie: ownerCookie, suffix: "service-list" },
+    );
+    expect(listedServices.status).toBe(200);
+    expect(await listedServices.json()).toContainEqual({
+      key: "api-catalog",
+      name: "API catalogue",
+      status: "active",
+    });
+
     const action = await request(
       "/api/v1/iam/catalog",
       {

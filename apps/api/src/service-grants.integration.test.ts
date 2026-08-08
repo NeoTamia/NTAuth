@@ -10,6 +10,7 @@ import {
   organizationMembers,
   organizations,
   serviceGrants,
+  services,
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
@@ -73,6 +74,9 @@ describeWithDatabase("service grant API", () => {
       { organizationId, role: "member", userId: memberId },
       { organizationId: otherOrganizationId, role: "member", userId: outsiderId },
     ]);
+    await connection.db
+      .insert(services)
+      .values({ key: "ntscout", name: "NTScout", ownerUserId: ownerId });
     const signIn = await auth().handler(
       new Request(`${baseURL}/sign-in/email`, {
         body: JSON.stringify({
@@ -90,6 +94,7 @@ describeWithDatabase("service grant API", () => {
     await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.db.delete(organizations).where(eq(organizations.id, otherOrganizationId));
+    await connection.db.delete(services).where(eq(services.key, "ntscout"));
     await connection.db.delete(user).where(eq(user.id, ownerId));
     await connection.db.delete(user).where(eq(user.id, memberId));
     await connection.db.delete(user).where(eq(user.id, outsiderId));
@@ -151,6 +156,12 @@ describeWithDatabase("service grant API", () => {
   });
 
   test("creates, lists, disables and revokes a scoped grant", async () => {
+    const catalogue = await request("/administration", {}, "administration");
+    expect(catalogue.status).toBe(200);
+    expect(await catalogue.json()).toMatchObject({
+      organizations: [expect.objectContaining({ id: organizationId })],
+      services: [expect.objectContaining({ key: "ntscout" })],
+    });
     const created = await request(
       "",
       {
@@ -162,6 +173,17 @@ describeWithDatabase("service grant API", () => {
     expect(created.status).toBe(201);
     const grant = (await created.json()) as { id: string; status: string };
     expect(grant.status).toBe("active");
+
+    const administration = await request(
+      `/administration?${new URLSearchParams({ organizationId })}`,
+      {},
+      "administration-detail",
+    );
+    expect(administration.status).toBe(200);
+    expect(await administration.json()).toMatchObject({
+      detail: { members: expect.arrayContaining([expect.objectContaining({ userId: memberId })]) },
+      grants: [expect.objectContaining({ id: grant.id })],
+    });
 
     const listed = await request(
       `?${new URLSearchParams({ organizationId, service: "ntscout", userId: memberId })}`,

@@ -13,14 +13,15 @@ related_targets:
     "app/pages/admin/organizations.vue",
     "app/pages/admin/policies.vue",
     "app/pages/admin/users.vue",
+    "app/pages/admin/service-grants.vue",
   ]
 ---
 
 ## Scope and mode
 
 Operate flow covering sign-in, password recovery, password reset, invitation acceptance, sign-out,
-MFA enrollment, the MFA-gated OAuth client registry, tenant administration, policy editing and
-platform user administration.
+MFA enrollment, the MFA-gated OAuth client registry, tenant administration, policy editing,
+platform user administration, and organization-scoped service grants.
 
 ## Audience and job
 
@@ -45,6 +46,10 @@ and immutable version hashes before an audited write.
 Platform administrators search a paginated identity register, inspect only
 minimized session metadata, and confirm session revocation or lifecycle changes
 inside one clearly identified user scope.
+
+Organization administrators choose an explicit tenant, service and active member,
+then prepare activation, suspension or terminal revocation with a fresh challenge
+and a readable scope summary.
 
 ## Constraints
 

@@ -12,7 +12,14 @@ import {
   ServiceGrantConflictError,
   setServiceGrantActive,
 } from "./service-grants";
-import { auditEvents, organizationMembers, organizations, serviceGrants, user } from "./schema";
+import {
+  auditEvents,
+  organizationMembers,
+  organizations,
+  serviceGrants,
+  services,
+  user,
+} from "./schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
@@ -54,6 +61,11 @@ describeWithDatabase("organization service grants", () => {
       { id: organizationId, name: "Grant organization", slug: `grant-${runId}` },
       { id: otherOrganizationId, name: "Other organization", slug: `other-${runId}` },
     ]);
+    await connection.db.insert(services).values([
+      { key: "ntscout", name: "NTScout", ownerUserId: ownerId },
+      { key: "inventory", name: "Inventory", ownerUserId: ownerId },
+      { key: "concurrent", name: "Concurrent", ownerUserId: ownerId },
+    ]);
     await connection.db.insert(organizationMembers).values([
       { organizationId, role: "owner", userId: ownerId },
       { organizationId, role: "member", userId: memberId },
@@ -65,6 +77,7 @@ describeWithDatabase("organization service grants", () => {
     await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.db.delete(organizations).where(eq(organizations.id, otherOrganizationId));
+    await connection.db.delete(services).where(eq(services.ownerUserId, ownerId));
     await connection.db.delete(user).where(eq(user.id, ownerId));
     await connection.db.delete(user).where(eq(user.id, memberId));
     await connection.db.delete(user).where(eq(user.id, outsiderId));
@@ -72,6 +85,13 @@ describeWithDatabase("organization service grants", () => {
   });
 
   test("creates, toggles, revokes and re-grants one scoped subject", async () => {
+    await expect(
+      createServiceGrant(
+        connection,
+        { organizationId, service: "unknown-service", userId: memberId },
+        actor("unknown-service"),
+      ),
+    ).rejects.toBeInstanceOf(ServiceGrantConflictError);
     const grant = await createServiceGrant(
       connection,
       { organizationId, service: "ntscout", userId: memberId },
