@@ -1,3 +1,5 @@
+import { isPolicyConditionVariable, policyConditionVariableType } from "./conditions";
+
 export const POLICY_DOCUMENT_VERSION = "2026-01-01" as const;
 
 export const POLICY_LIMITS = Object.freeze({
@@ -57,7 +59,6 @@ const conditionOperators = new Set<string>(POLICY_CONDITION_OPERATORS);
 const servicePattern = /^[a-z][a-z0-9-]{0,62}$/;
 const actionSegmentPattern = /^[a-z][a-z0-9-]{0,62}$/;
 const resourceSegmentPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
-const conditionKeyPattern = /^(user|organization|service)\.[a-z][a-z0-9_.-]{0,62}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -209,8 +210,13 @@ function validateConditions(value: unknown, path: string, issues: PolicyValidati
     for (const [key, conditionValue] of Object.entries(entries)) {
       conditionKeyCount += 1;
       const conditionPath = `${path}.${operator}.${key}`;
-      if (!conditionKeyPattern.test(key)) {
+      if (!isPolicyConditionVariable(key)) {
         addIssue(issues, conditionPath, "format", "condition variable is not declared");
+      } else if (
+        (operator === "Bool" && policyConditionVariableType(key) !== "boolean") ||
+        (operator !== "Bool" && policyConditionVariableType(key) !== "string")
+      ) {
+        addIssue(issues, conditionPath, "type", "condition operator is invalid for this variable");
       }
       validateConditionValue(operator, conditionValue, conditionPath, issues);
     }

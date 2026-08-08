@@ -228,12 +228,6 @@ describe("IAM policy document validation", () => {
       { length: POLICY_LIMITS.resourcesPerStatement },
       (_, index) => `ntscout:resource-${index}`,
     );
-    const conditionKeys = Object.fromEntries(
-      Array.from({ length: POLICY_LIMITS.conditionKeysPerStatement }, (_, index) => [
-        `user.attribute-${index}`,
-        "value",
-      ]),
-    );
     const conditionValues = Array.from(
       { length: POLICY_LIMITS.conditionValuesPerKey },
       (_, index) => `value-${index}`,
@@ -243,7 +237,32 @@ describe("IAM policy document validation", () => {
         {
           actions,
           conditions: {
-            StringEquals: { ...conditionKeys, "user.values": conditionValues },
+            Bool: { "user.email_verified": true },
+            StringEquals: {
+              "organization.id": "organization",
+              "organization.role": "member",
+              "organization.slug": "organization",
+              "service.environment": "production",
+              "service.key": "ntscout",
+              "user.email": "user@example.test",
+              "user.id": conditionValues,
+              "user.name": "User",
+            },
+            StringLike: {
+              "organization.id": "org*",
+              "organization.role": "mem*",
+              "organization.slug": "org*",
+              "service.environment": "prod*",
+              "service.key": "nt*",
+              "user.email": "*@example.test",
+              "user.id": "user*",
+              "user.name": "U*",
+            },
+            StringNotEquals: {
+              "organization.id": "other",
+              "service.environment": "development",
+              "user.id": "other",
+            },
           },
           effect: "Allow",
           resources,
@@ -251,15 +270,12 @@ describe("IAM policy document validation", () => {
         },
       ],
     });
-    expect(validatePolicyDocument(maximum).ok).toBe(false);
-    const withinConditionLimit = structuredClone(maximum);
-    delete withinConditionLimit.statements[0]!.conditions!.StringEquals!["user.attribute-19"];
-    expect(validatePolicyDocument(withinConditionLimit).ok).toBe(true);
+    expect(validatePolicyDocument(maximum).ok).toBe(true);
 
-    const excessive = structuredClone(withinConditionLimit);
+    const excessive = structuredClone(maximum);
     excessive.statements[0]!.actions.push("ntscout:action-extra");
     excessive.statements[0]!.resources.push("ntscout:resource-extra");
-    excessive.statements[0]!.conditions!.StringEquals!["user.values"] = [
+    excessive.statements[0]!.conditions!.StringEquals!["user.id"] = [
       ...conditionValues,
       "value-extra",
     ];
@@ -268,7 +284,7 @@ describe("IAM policy document validation", () => {
       expect.arrayContaining([
         "limit:$.statements[0].actions",
         "limit:$.statements[0].resources",
-        "limit:$.statements[0].conditions.StringEquals.user.values",
+        "limit:$.statements[0].conditions.StringEquals.user.id",
         "format:$.statements[0].sid",
       ]),
     );

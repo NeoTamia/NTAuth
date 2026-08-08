@@ -36,6 +36,13 @@ Les opérateurs V1 déclarés sont `StringEquals`, `StringLike`, `StringNotEqual
 `organization` et `service`. L’évaluateur applique ensuite un refus implicite par
 défaut et donne toujours priorité à un `Deny` explicite.
 
+Les variables V1 sont fermées : `user.id`, `user.email`, `user.email_verified`,
+`user.name`, `organization.id`, `organization.slug`, `organization.role`,
+`service.key` et `service.environment`. Une variable absente fait échouer la
+condition. Les conditions d’un statement sont combinées avec AND ; les tableaux
+de valeurs d’un même opérateur utilisent OR. `StringLike` accepte `*` et `?` sur
+la chaîne complète, en traitant les autres caractères comme des littéraux.
+
 Les limites exportées dans `POLICY_LIMITS` font partie du contrat : document de
 64 Kio, 100 statements, 50 actions et 100 ressources par statement, 20 clés de
 condition et 20 valeurs par clé. Les tests du package exécutent l’exemple ci-dessus
