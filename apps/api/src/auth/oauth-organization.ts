@@ -16,7 +16,21 @@ const refreshTokenPrefix = "ntauth_refresh_";
 type StoredGrantContext =
   | { status: "invalid" }
   | { status: "not-found" }
-  | { organizationId: string; status: "valid"; userId: string };
+  | {
+      clientId: string;
+      grant: "refresh_token";
+      organizationId: string;
+      refreshTokenId: string;
+      revoked: boolean;
+      status: "valid";
+      userId: string;
+    }
+  | {
+      grant: "authorization_code";
+      organizationId: string;
+      status: "valid";
+      userId: string;
+    };
 
 export function currentOAuthOrganization() {
   return organizationContext.getStore();
@@ -82,13 +96,24 @@ export async function resolveStoredGrantContext(
     if (!stored) return { status: "not-found" };
     const context = parseAuthorizationCode(stored.value);
     if (!context?.referenceId || !context.userId) return { status: "invalid" };
-    return { organizationId: context.referenceId, status: "valid", userId: context.userId };
+    return {
+      grant: "authorization_code",
+      organizationId: context.referenceId,
+      status: "valid",
+      userId: context.userId,
+    };
   }
   if (grantType === "refresh_token") {
     const presented = body.get("refresh_token");
     if (!presented?.startsWith(refreshTokenPrefix)) return { status: "not-found" };
     const [stored] = await database.db
-      .select({ organizationId: oauthRefreshTokens.referenceId, userId: oauthRefreshTokens.userId })
+      .select({
+        clientId: oauthRefreshTokens.clientId,
+        id: oauthRefreshTokens.id,
+        organizationId: oauthRefreshTokens.referenceId,
+        revoked: oauthRefreshTokens.revoked,
+        userId: oauthRefreshTokens.userId,
+      })
       .from(oauthRefreshTokens)
       .where(
         eq(oauthRefreshTokens.token, await tokenHash(presented.slice(refreshTokenPrefix.length))),
@@ -96,7 +121,15 @@ export async function resolveStoredGrantContext(
       .limit(1);
     if (!stored) return { status: "not-found" };
     if (!stored.organizationId) return { status: "invalid" };
-    return { organizationId: stored.organizationId, status: "valid", userId: stored.userId };
+    return {
+      clientId: stored.clientId,
+      grant: "refresh_token",
+      organizationId: stored.organizationId,
+      refreshTokenId: stored.id,
+      revoked: Boolean(stored.revoked),
+      status: "valid",
+      userId: stored.userId,
+    };
   }
   return { status: "not-found" };
 }

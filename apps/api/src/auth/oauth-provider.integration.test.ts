@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { NTSCOUT_AUDIENCE, NTSCOUT_SERVICE } from "@neotamia/permissions";
 
@@ -218,6 +218,28 @@ describeWithDatabase("OAuth provider integration", () => {
           grant_type: "authorization_code",
           redirect_uri: input.redirectUri,
           ...(input.resource ? { resource: input.resource } : {}),
+        }),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-request-id": `${runId}-${input.requestId}`,
+        },
+        method: "POST",
+      }),
+    );
+
+  const exchangeRefreshToken = (input: {
+    refreshToken: string;
+    requestId: string;
+    scope?: string;
+  }) =>
+    handler()(
+      new Request(`${baseURL}/oauth2/token`, {
+        body: new URLSearchParams({
+          client_id: NTSCOUT_CLIENT_ID,
+          grant_type: "refresh_token",
+          refresh_token: input.refreshToken,
+          resource: NTSCOUT_AUDIENCE,
+          ...(input.scope ? { scope: input.scope } : {}),
         }),
         headers: {
           "content-type": "application/x-www-form-urlencoded",
@@ -901,11 +923,20 @@ describeWithDatabase("OAuth provider integration", () => {
       error_description: "access token is invalid",
     });
     const [storedRefresh] = await connection.db
-      .select({ organizationId: oauthRefreshTokens.referenceId })
+      .select()
       .from(oauthRefreshTokens)
-      .where(eq(oauthRefreshTokens.clientId, NTSCOUT_CLIENT_ID))
+      .where(
+        and(
+          eq(oauthRefreshTokens.clientId, NTSCOUT_CLIENT_ID),
+          eq(oauthRefreshTokens.userId, adminId),
+        ),
+      )
       .limit(1);
-    expect(storedRefresh?.organizationId).toBe(organizationId);
+    expect(storedRefresh?.referenceId).toBe(organizationId);
+    expect(storedRefresh!.expiresAt.getTime() - storedRefresh!.createdAt.getTime()).toBe(
+      30 * 24 * 60 * 60 * 1000,
+    );
+    expect(storedRefresh!.token).not.toContain(tokenSet.refresh_token);
 
     await connection.db
       .update(organizations)
@@ -928,7 +959,7 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(suspendedRefresh.status).toBe(400);
     expect(await suspendedRefresh.json()).toEqual({
       error: "invalid_grant",
-      error_description: "organization context is invalid",
+      error_description: "refresh token is invalid",
     });
     await connection.db
       .update(organizations)
@@ -955,12 +986,110 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(suspendedMembershipRefresh.status).toBe(400);
     expect(await suspendedMembershipRefresh.json()).toEqual({
       error: "invalid_grant",
-      error_description: "organization context is invalid",
+      error_description: "refresh token is invalid",
     });
     await connection.db
       .update(organizationMembers)
       .set({ status: "active" })
       .where(eq(organizationMembers.organizationId, organizationId));
+
+    const rotatedRefresh = await exchangeRefreshToken({
+      refreshToken: tokenSet.refresh_token,
+      requestId: "ntscout-refresh-rotate",
+    });
+    expect(rotatedRefresh.status).toBe(200);
+    expect(rotatedRefresh.headers.get("cache-control")).toBe("no-store");
+    const rotatedTokenSet = (await rotatedRefresh.json()) as {
+      access_token: string;
+      refresh_token: string;
+    };
+    expect(rotatedTokenSet.refresh_token).toStartWith("ntauth_refresh_");
+    expect(rotatedTokenSet.refresh_token).not.toBe(tokenSet.refresh_token);
+    const rotatedAccessToken = await verifyEs256Jwt(rotatedTokenSet.access_token);
+    expect(rotatedAccessToken).toMatchObject({
+      organization_id: organizationId,
+      service: NTSCOUT_SERVICE,
+      sub: adminId,
+    });
+    const refreshRowsAfterRotation = await connection.db
+      .select()
+      .from(oauthRefreshTokens)
+      .where(
+        and(
+          eq(oauthRefreshTokens.clientId, NTSCOUT_CLIENT_ID),
+          eq(oauthRefreshTokens.userId, adminId),
+        ),
+      );
+    expect(refreshRowsAfterRotation).toHaveLength(2);
+    const previousRefresh = refreshRowsAfterRotation.find((row) => row.id === storedRefresh!.id);
+    const currentRefresh = refreshRowsAfterRotation.find((row) => row.id !== storedRefresh!.id);
+    expect(previousRefresh?.revoked).toBeInstanceOf(Date);
+    expect(currentRefresh?.revoked).toBeNull();
+    expect(currentRefresh!.expiresAt.getTime() - currentRefresh!.createdAt.getTime()).toBe(
+      30 * 24 * 60 * 60 * 1000,
+    );
+
+    const replay = await exchangeRefreshToken({
+      refreshToken: tokenSet.refresh_token,
+      requestId: "ntscout-refresh-reuse",
+    });
+    expect(replay.status).toBe(400);
+    expect(replay.headers.get("cache-control")).toBe("no-store");
+    expect(await replay.json()).toEqual({
+      error: "invalid_grant",
+      error_description: "refresh token is invalid",
+    });
+    const familyAfterReplay = await connection.db
+      .select({ id: oauthRefreshTokens.id })
+      .from(oauthRefreshTokens)
+      .where(
+        and(
+          eq(oauthRefreshTokens.clientId, NTSCOUT_CLIENT_ID),
+          eq(oauthRefreshTokens.userId, adminId),
+        ),
+      );
+    expect(familyAfterReplay).toEqual([]);
+    const revokedFamilyToken = await exchangeRefreshToken({
+      refreshToken: rotatedTokenSet.refresh_token,
+      requestId: "ntscout-refresh-family-revoked",
+    });
+    expect(revokedFamilyToken.status).toBe(400);
+    expect(await revokedFamilyToken.json()).toEqual({
+      error: "invalid_grant",
+      error_description: "refresh token is invalid",
+    });
+
+    const [rotationAudit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, "oauth.refresh-token.rotate"),
+          eq(auditEvents.requestId, `${runId}-ntscout-refresh-rotate`),
+        ),
+      );
+    expect(rotationAudit).toMatchObject({
+      actorUserId: adminId,
+      organizationId,
+      outcome: "success",
+      requestId: `${runId}-ntscout-refresh-rotate`,
+    });
+    const [reuseAudit] = await connection.db
+      .select()
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.action, "oauth.refresh-token.reuse"),
+          eq(auditEvents.requestId, `${runId}-ntscout-refresh-reuse`),
+        ),
+      );
+    expect(reuseAudit).toMatchObject({
+      actorUserId: adminId,
+      organizationId,
+      outcome: "denied",
+      requestId: `${runId}-ntscout-refresh-reuse`,
+    });
+    expect(reuseAudit?.metadata).toMatchObject({ familyRevoked: true });
 
     const [seedAudit] = await connection.db
       .select()
@@ -974,7 +1103,12 @@ describeWithDatabase("OAuth provider integration", () => {
     const [refreshAudit] = await connection.db
       .select()
       .from(auditEvents)
-      .where(eq(auditEvents.requestId, `${runId}-ntscout-refresh-suspended-membership`));
+      .where(
+        and(
+          eq(auditEvents.action, "oauth.token"),
+          eq(auditEvents.requestId, `${runId}-ntscout-refresh-suspended-membership`),
+        ),
+      );
     expect(refreshAudit).toMatchObject({
       action: "oauth.token",
       organizationId,

@@ -118,6 +118,12 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
 
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     const current = await auth.api.getSession({ headers: request.headers });
+    let tokenBody: URLSearchParams | undefined;
+    let storedGrant: Awaited<ReturnType<typeof resolveStoredGrantContext>> | undefined;
+    if (endpoint === "token" && request.method === "POST") {
+      tokenBody = new URLSearchParams(await request.clone().text());
+      storedGrant = await resolveStoredGrantContext(database, tokenBody);
+    }
     const requestedOrganizationId = await organizationFromOAuthRequest(request);
     let organizationId =
       requestedOrganizationId && uuidPattern.test(requestedOrganizationId)
@@ -131,25 +137,21 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
           current &&
           !(await hasActiveOrganizationMembership(database, current.user.id, organizationId)),
         );
-    } else if (endpoint === "token" && request.method === "POST") {
-      const grant = await resolveStoredGrantContext(
-        database,
-        new URLSearchParams(await request.clone().text()),
-      );
-      if (grant.status === "valid") {
-        organizationId = grant.organizationId;
+    } else if (storedGrant) {
+      if (storedGrant.status === "valid") {
+        organizationId = storedGrant.organizationId;
         organizationDenied = !(await hasActiveOrganizationMembership(
           database,
-          grant.userId,
-          grant.organizationId,
+          storedGrant.userId,
+          storedGrant.organizationId,
         ));
-      } else if (grant.status === "invalid") {
+      } else if (storedGrant.status === "invalid") {
         organizationDenied = true;
       }
     }
     const invalidUserInfoToken =
       endpoint === "userinfo" ? await validateUserInfoToken(auth, request) : undefined;
-    const response = invalidUserInfoToken
+    let response = invalidUserInfoToken
       ? invalidUserInfoToken
       : organizationDenied
         ? Response.json(
@@ -163,15 +165,32 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
           ? await withOAuthOrganization(organizationId, () => auth.handler(request))
           : await auth.handler(request);
     if (
-      response.ok &&
-      (endpoint === "create-client" || endpoint === "rotate-secret" || endpoint === "token")
+      tokenBody?.get("grant_type") === "refresh_token" &&
+      !response.ok &&
+      response.headers.get("content-type")?.includes("application/json")
+    ) {
+      const error = (await response
+        .clone()
+        .json()
+        .catch(() => undefined)) as { error?: unknown } | undefined;
+      if (error?.error === "invalid_grant" || error?.error === "invalid_token") {
+        response = Response.json(
+          { error: "invalid_grant", error_description: "refresh token is invalid" },
+          { status: 400 },
+        );
+      }
+    }
+    if (
+      endpoint === "token" ||
+      (response.ok && (endpoint === "create-client" || endpoint === "rotate-secret"))
     ) {
       response.headers.set("cache-control", "no-store");
       response.headers.set("pragma", "no-cache");
     }
     await database.db.insert(auditEvents).values({
       action: `oauth.${endpoint}`,
-      actorUserId: current?.user.id,
+      actorUserId:
+        current?.user.id ?? (storedGrant?.status === "valid" ? storedGrant.userId : undefined),
       metadata: {
         method: request.method,
         organizationId: organizationId ?? null,
@@ -182,6 +201,26 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
       requestId,
       resourceType: "oauth_protocol",
     });
+    if (storedGrant?.status === "valid" && storedGrant.grant === "refresh_token") {
+      await database.db.insert(auditEvents).values({
+        action: storedGrant.revoked
+          ? "oauth.refresh-token.reuse"
+          : response.ok
+            ? "oauth.refresh-token.rotate"
+            : "oauth.refresh-token.exchange",
+        actorUserId: storedGrant.userId,
+        metadata: {
+          clientId: storedGrant.clientId,
+          familyRevoked: storedGrant.revoked,
+          status: response.status,
+        },
+        organizationId: storedGrant.organizationId,
+        outcome: response.ok ? "success" : "denied",
+        requestId,
+        resourceId: storedGrant.refreshTokenId,
+        resourceType: "oauth_refresh_family",
+      });
+    }
     response.headers.set("x-request-id", requestId);
     return response;
   };
