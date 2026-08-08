@@ -16,6 +16,7 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "release": "changeset publish",
+    "release:verify": "bun tooling/verify-release.ts",
     "test": "bun test tooling && turbo run test --concurrency=1",
     "typecheck": "turbo run typecheck",
     "version-packages": "changeset version"

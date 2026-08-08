@@ -56,9 +56,15 @@ La CI publie avec provenance depuis un tag ou une branche protégée après tout
 bun run release
 ```
 
+Le workflow `.github/workflows/npm-release.yaml` ne publie que depuis un tag `v*`. Son lancement
+manuel exécute un dry-run complet sans accès au token npm. Avant publication, `release:verify`
+reconstruit chaque package, vérifie ses exports ESM/types, inspecte le contenu du tarball, recherche
+du matériel d’authentification et refuse `0.0.0` ou tout protocole `workspace:*` résiduel.
+
 Conditions :
 
 - authentification npm fournie par secret CI ;
+- provenance npm signée via OIDC avec la permission minimale `id-token: write` ;
 - aucun token dans les logs ;
 - version absente du registre avant publication ;
 - contenu du tarball inspecté avec `npm pack --dry-run` ;
