@@ -8,6 +8,7 @@ import {
   IamPolicyConflictError,
   IamPolicyNotFoundError,
   IamPolicyValidationError,
+  listIamPolicies,
   rollbackIamPolicy,
   setIamPolicyStatus,
   type DatabaseConnection,
@@ -74,6 +75,29 @@ export function createIamPolicyRoutes(options: {
   };
 
   return new Elysia()
+    .get("/api/v1/iam/policies", async ({ query, request }) => {
+      const access = await actor(request);
+      if (access.response) return access.response;
+      const organizationId = query.organization_id;
+      const service = query.service;
+      if (
+        typeof organizationId !== "string" ||
+        !validUuid(organizationId) ||
+        (service !== undefined &&
+          (typeof service !== "string" || !/^[a-z][a-z0-9-]{0,62}$/.test(service)))
+      ) {
+        return problem(400, "invalid_request", "Invalid IAM policy query");
+      }
+      try {
+        return await listIamPolicies(
+          options.database,
+          { organizationId, service: service || undefined },
+          access.actor!,
+        );
+      } catch (error) {
+        return policyProblem(error);
+      }
+    })
     .post("/api/v1/iam/policies", async ({ body, request }) => {
       const access = await actor(request);
       if (access.response) return access.response;

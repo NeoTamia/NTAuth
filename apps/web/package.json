@@ -10,6 +10,7 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@neotamia/permissions": "workspace:*",
     "nuxt": "4.5.2",
     "qrcode": "1.5.4",
     "vue": "3.5.41",

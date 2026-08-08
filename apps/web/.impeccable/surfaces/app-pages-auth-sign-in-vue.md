@@ -11,13 +11,14 @@ related_targets:
     "app/pages/admin/security/mfa.vue",
     "app/pages/admin/oauth-clients.vue",
     "app/pages/admin/organizations.vue",
+    "app/pages/admin/policies.vue",
   ]
 ---
 
 ## Scope and mode
 
 Operate flow covering sign-in, password recovery, password reset, invitation acceptance, sign-out,
-MFA enrollment, the MFA-gated OAuth client registry and tenant administration.
+MFA enrollment, the MFA-gated OAuth client registry, tenant administration and policy editing.
 
 ## Audience and job
 
@@ -34,6 +35,10 @@ identity existence.
 Administrators also navigate an isolated tenant register, unlock identity details
 with a fresh MFA challenge, and manage organization state, memberships and
 invitations without losing the last active administrator.
+
+Policy authors work inside an explicit tenant and service scope, move between a
+structured statement editor and lossless JSON, and review validation, differences
+and immutable version hashes before an audited write.
 
 ## Constraints
 

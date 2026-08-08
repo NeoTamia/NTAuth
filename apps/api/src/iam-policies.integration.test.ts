@@ -142,6 +142,16 @@ describeWithDatabase("IAM policy API", () => {
     const createdBody = (await created.json()) as { policy: { id: string } };
     const policyId = createdBody.policy.id;
 
+    const listed = await request(
+      `/api/v1/iam/policies?organization_id=${organizationId}&service=${service}`,
+      { method: "GET" },
+      "list",
+    );
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toEqual([
+      expect.objectContaining({ currentVersion: 1, id: policyId, name: "Reports", service }),
+    ]);
+
     const updated = await request(
       `/api/v1/iam/policies/${policyId}`,
       { body: JSON.stringify({ document: document("Deny"), expectedVersion: 1 }), method: "PUT" },

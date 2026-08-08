@@ -42,14 +42,44 @@ describe("auth handler", () => {
   it("mounts Better Auth without shadowing service endpoints", async () => {
     const app = createApp({
       authHandler: (request) => Response.json({ path: new URL(request.url).pathname }),
+      corsOrigins: ["http://localhost:3000"],
     });
 
-    const authResponse = await app.handle(new Request("http://localhost/api/auth/get-session"));
+    const authResponse = await app.handle(
+      new Request("http://localhost/api/auth/get-session", {
+        headers: { origin: "http://localhost:3000" },
+      }),
+    );
     expect(authResponse.status).toBe(200);
     expect(await authResponse.json()).toEqual({ path: "/api/auth/get-session" });
+    expect(authResponse.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
 
     const healthResponse = await app.handle(new Request("http://localhost/health"));
     expect(healthResponse.status).toBe(200);
     expect(await healthResponse.json()).toEqual({ status: "ok" });
+  });
+});
+
+describe("browser API boundary", () => {
+  it("permits the explicit headers used by authenticated MFA requests", async () => {
+    const response = await createApp({ corsOrigins: ["http://localhost:3000"] }).handle(
+      new Request("http://localhost/api/v1/organizations", {
+        headers: {
+          "access-control-request-headers": "content-type,x-ntauth-totp,x-request-id",
+          "access-control-request-method": "GET",
+          origin: "http://localhost:3000",
+        },
+        method: "OPTIONS",
+      }),
+    );
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
+    expect(response.headers.get("access-control-allow-headers")).toBe(
+      "authorization, content-type, if-none-match, x-ntauth-totp, x-request-id",
+    );
+    expect(response.headers.get("access-control-expose-headers")).toBe(
+      "etag, location, www-authenticate",
+    );
+    expect(response.headers.get("access-control-allow-credentials")).toBe("true");
   });
 });

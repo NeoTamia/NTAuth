@@ -9,6 +9,7 @@ import {
   IamPolicyAuthorizationError,
   IamPolicyConflictError,
   IamPolicyValidationError,
+  listIamPolicies,
   rollbackIamPolicy,
   setIamPolicyStatus,
 } from "./iam-policies";
@@ -98,6 +99,11 @@ describeWithDatabase("IAM policy versioning", () => {
     );
     expect(created.policy.currentVersion).toBe(1);
     expect(created.version.documentHash).toMatch(/^[0-9a-f]{64}$/);
+    await expect(
+      listIamPolicies(connection, { organizationId, service }, actor(ownerId, "list")),
+    ).resolves.toEqual([
+      expect.objectContaining({ currentVersion: 1, id: created.policy.id, name: "Reports" }),
+    ]);
 
     const updated = await createIamPolicyVersion(
       connection,
@@ -204,6 +210,9 @@ describeWithDatabase("IAM policy versioning", () => {
         { document: document("Allow"), name: "Cross tenant", organizationId, service },
         actor(outsiderId, "denied"),
       ),
+    ).rejects.toBeInstanceOf(IamPolicyAuthorizationError);
+    await expect(
+      listIamPolicies(connection, { organizationId, service }, actor(outsiderId, "list-denied")),
     ).rejects.toBeInstanceOf(IamPolicyAuthorizationError);
 
     const denied = await connection.db

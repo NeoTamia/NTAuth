@@ -55,6 +55,7 @@ export {
   IamPolicyConflictError,
   IamPolicyNotFoundError,
   IamPolicyValidationError,
+  listIamPolicies,
   rollbackIamPolicy,
   setIamPolicyStatus,
 } from "./iam-policies";

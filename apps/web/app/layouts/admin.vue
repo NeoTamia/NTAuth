@@ -27,6 +27,7 @@ async function signOut() {
         <NuxtLink to="/admin">Vue d’ensemble</NuxtLink>
         <NuxtLink to="/admin/security/mfa">Sécurité MFA</NuxtLink>
         <NuxtLink to="/admin/organizations">Organisations</NuxtLink>
+        <NuxtLink to="/admin/policies">Policies IAM</NuxtLink>
         <NuxtLink to="/admin/oauth-clients">Applications OAuth</NuxtLink>
         <span aria-disabled="true">Utilisateurs — bientôt</span>
       </nav>

@@ -45,6 +45,53 @@ export class IamPolicyNotFoundError extends Error {
 
 export { PolicyValidationError as IamPolicyValidationError };
 
+export async function listIamPolicies(
+  connection: DatabaseConnection,
+  input: { organizationId: string; service?: string },
+  actor: Actor,
+) {
+  const result = await connection.db.transaction(async (transaction) => {
+    if (!(await canManage(transaction, actor.userId, input.organizationId))) {
+      await audit(transaction, {
+        action: "iam.policy.list",
+        actor,
+        organizationId: input.organizationId,
+        outcome: "denied",
+        service: input.service ?? "*",
+      });
+      return { kind: "denied" as const };
+    }
+    const policies = await transaction
+      .select({
+        currentVersion: iamPolicies.currentVersion,
+        id: iamPolicies.id,
+        name: iamPolicies.name,
+        organizationId: iamPolicies.organizationId,
+        service: iamPolicies.service,
+        status: iamPolicies.status,
+        updatedAt: iamPolicies.updatedAt,
+      })
+      .from(iamPolicies)
+      .where(
+        and(
+          eq(iamPolicies.organizationId, input.organizationId),
+          input.service ? eq(iamPolicies.service, input.service) : undefined,
+        ),
+      )
+      .orderBy(asc(iamPolicies.name), asc(iamPolicies.id));
+    await audit(transaction, {
+      action: "iam.policy.list",
+      actor,
+      organizationId: input.organizationId,
+      outcome: "success",
+      service: input.service ?? "*",
+    });
+    return { kind: "success" as const, policies };
+  });
+  if (result.kind === "denied") throw new IamPolicyAuthorizationError();
+  return result.policies;
+}
+
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value && typeof value === "object") {

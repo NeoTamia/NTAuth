@@ -46,25 +46,38 @@ export const createApp = (
     userRoutes?: ReturnType<typeof createUserRoutes>;
   } = {},
 ) => {
-  const app = new Elysia().use(cors({ origin: options.corsOrigins }));
+  const routes = new Elysia();
 
-  if (options.auditEventRoutes) app.use(options.auditEventRoutes);
-  if (options.authHandler) app.mount(options.authHandler);
-  if (options.discoveryRoutes) app.use(options.discoveryRoutes);
-  if (options.emailVerificationRoutes) app.use(options.emailVerificationRoutes);
-  if (options.effectivePolicyRoutes) app.use(options.effectivePolicyRoutes);
-  if (options.invitationRoutes) app.use(options.invitationRoutes);
-  if (options.iamAttachmentRoutes) app.use(options.iamAttachmentRoutes);
-  if (options.iamCatalogRoutes) app.use(options.iamCatalogRoutes);
-  if (options.iamPolicyRoutes) app.use(options.iamPolicyRoutes);
-  if (options.mfaRoutes) app.use(options.mfaRoutes);
-  if (options.organizationRoutes) app.use(options.organizationRoutes);
-  if (options.passwordRoutes) app.use(options.passwordRoutes);
-  if (options.signingKeyRoutes) app.use(options.signingKeyRoutes);
-  if (options.serviceGrantRoutes) app.use(options.serviceGrantRoutes);
-  if (options.userRoutes) app.use(options.userRoutes);
+  if (options.auditEventRoutes) routes.use(options.auditEventRoutes);
+  if (options.authHandler) routes.mount(options.authHandler);
+  if (options.discoveryRoutes) routes.use(options.discoveryRoutes);
+  if (options.emailVerificationRoutes) routes.use(options.emailVerificationRoutes);
+  if (options.effectivePolicyRoutes) routes.use(options.effectivePolicyRoutes);
+  if (options.invitationRoutes) routes.use(options.invitationRoutes);
+  if (options.iamAttachmentRoutes) routes.use(options.iamAttachmentRoutes);
+  if (options.iamCatalogRoutes) routes.use(options.iamCatalogRoutes);
+  if (options.iamPolicyRoutes) routes.use(options.iamPolicyRoutes);
+  if (options.mfaRoutes) routes.use(options.mfaRoutes);
+  if (options.organizationRoutes) routes.use(options.organizationRoutes);
+  if (options.passwordRoutes) routes.use(options.passwordRoutes);
+  if (options.signingKeyRoutes) routes.use(options.signingKeyRoutes);
+  if (options.serviceGrantRoutes) routes.use(options.serviceGrantRoutes);
+  if (options.userRoutes) routes.use(options.userRoutes);
 
-  return app
+  return new Elysia()
+    .use(
+      cors({
+        allowedHeaders: [
+          "authorization",
+          "content-type",
+          "if-none-match",
+          "x-ntauth-totp",
+          "x-request-id",
+        ],
+        exposeHeaders: ["etag", "location", "www-authenticate"],
+        origin: options.corsOrigins,
+      }),
+    )
     .get("/health", () => ({ status: "ok" }))
     .get("/ready", async ({ set }) => {
       const checks = options.readiness ?? { postgres: available, redis: available };
@@ -80,5 +93,6 @@ export const createApp = (
       }
 
       return { checks: status, status: "ready" as const };
-    });
+    })
+    .mount(routes.handle);
 };
