@@ -1,10 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import type { DatabaseConnection } from "./client";
 import {
   account,
   auditEvents,
   organizationMembers,
+  organizations,
   platformRoleAssignments,
   session,
   user,
@@ -33,6 +34,149 @@ export class InvalidUserLifecycleTransitionError extends Error {
     super("Invalid user lifecycle transition");
     this.name = "InvalidUserLifecycleTransitionError";
   }
+}
+
+export async function listPlatformUsers(
+  connection: DatabaseConnection,
+  input: {
+    limit: number;
+    offset: number;
+    query?: string;
+    status?: UserStatus;
+  },
+  actor: Actor,
+) {
+  const result = await connection.db.transaction(async (transaction) => {
+    if (!(await isPlatformAdmin(transaction, actor.userId))) {
+      await transaction.insert(auditEvents).values({
+        action: "user.list",
+        actorUserId: actor.userId,
+        metadata: { limit: input.limit, offset: input.offset },
+        outcome: "denied",
+        requestId: actor.requestId,
+        resourceType: "user",
+      });
+      return { kind: "denied" as const };
+    }
+    const filter = and(
+      input.status ? eq(user.status, input.status) : undefined,
+      input.query
+        ? or(ilike(user.name, `%${input.query}%`), ilike(user.email, `%${input.query}%`))
+        : undefined,
+    );
+    const rows = await transaction
+      .select({
+        createdAt: user.createdAt,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        id: user.id,
+        name: user.name,
+        organizationCount: countDistinct(organizationMembers.organizationId),
+        sessionCount: sql<number>`count(distinct ${session.id}) filter (where ${session.expiresAt} > now())::int`,
+        status: user.status,
+        statusChangedAt: user.statusChangedAt,
+        updatedAt: user.updatedAt,
+      })
+      .from(user)
+      .leftJoin(session, eq(session.userId, user.id))
+      .leftJoin(organizationMembers, eq(organizationMembers.userId, user.id))
+      .where(filter)
+      .groupBy(user.id)
+      .orderBy(desc(user.createdAt), desc(user.id))
+      .limit(input.limit + 1)
+      .offset(input.offset);
+    const [{ total = 0 } = {}] = await transaction
+      .select({ total: count() })
+      .from(user)
+      .where(filter);
+    const items = rows.slice(0, input.limit);
+    await transaction.insert(auditEvents).values({
+      action: "user.list",
+      actorUserId: actor.userId,
+      metadata: {
+        count: items.length,
+        filtered: Boolean(input.query || input.status),
+        limit: input.limit,
+        offset: input.offset,
+      },
+      outcome: "success",
+      requestId: actor.requestId,
+      resourceType: "user",
+    });
+    return {
+      items,
+      kind: "success" as const,
+      nextOffset: rows.length > input.limit ? input.offset + input.limit : null,
+      total,
+    };
+  });
+  if (result.kind === "denied") throw new UserLifecycleAuthorizationError();
+  return { items: result.items, nextOffset: result.nextOffset, total: result.total };
+}
+
+export async function getPlatformUserAdministration(
+  connection: DatabaseConnection,
+  userId: string,
+  actor: Actor,
+) {
+  const result = await connection.db.transaction(async (transaction) => {
+    if (!(await isPlatformAdmin(transaction, actor.userId))) {
+      await auditDenied(transaction, "user.read", userId, actor);
+      return { kind: "denied" as const };
+    }
+    const [identity] = await transaction
+      .select({
+        createdAt: user.createdAt,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        id: user.id,
+        name: user.name,
+        status: user.status,
+        statusChangedAt: user.statusChangedAt,
+        updatedAt: user.updatedAt,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!identity) return { kind: "not_found" as const };
+    const sessions = await transaction
+      .select({
+        createdAt: session.createdAt,
+        expiresAt: session.expiresAt,
+        id: session.id,
+        ipAddress: session.ipAddress,
+        updatedAt: session.updatedAt,
+        userAgent: session.userAgent,
+      })
+      .from(session)
+      .where(eq(session.userId, userId))
+      .orderBy(desc(session.updatedAt), desc(session.id));
+    const memberships = await transaction
+      .select({
+        organizationId: organizationMembers.organizationId,
+        organizationName: organizations.name,
+        organizationSlug: organizations.slug,
+        role: organizationMembers.role,
+        status: organizationMembers.status,
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationId))
+      .where(eq(organizationMembers.userId, userId))
+      .orderBy(desc(organizationMembers.updatedAt));
+    await transaction.insert(auditEvents).values({
+      action: "user.read",
+      actorUserId: actor.userId,
+      metadata: { memberships: memberships.length, sessions: sessions.length },
+      outcome: "success",
+      requestId: actor.requestId,
+      resourceId: userId,
+      resourceType: "user",
+    });
+    return { identity, kind: "success" as const, memberships, sessions };
+  });
+  if (result.kind === "denied") throw new UserLifecycleAuthorizationError();
+  if (result.kind === "not_found") throw new UserLifecycleNotFoundError();
+  return { identity: result.identity, memberships: result.memberships, sessions: result.sessions };
 }
 
 async function isPlatformAdmin(

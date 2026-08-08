@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
 
 import {
   account,
@@ -10,6 +11,7 @@ import {
   generateTotpSecret,
   mfaEnrollments,
   platformRoleAssignments,
+  session,
   totpCounter,
   user,
   type DatabaseConnection,
@@ -165,6 +167,73 @@ describeWithDatabase("user lifecycle API", () => {
       );
     expect((await changeStatus()).status).toBe(200);
     expect((await changeStatus()).status).toBe(403);
+
+    const freshMfaCode = async () => {
+      const nextSecret = generateTotpSecret();
+      const nextCounter = totpCounter();
+      await connection.db
+        .update(mfaEnrollments)
+        .set({
+          encryptedSecret: await encryptTotpSecret(nextSecret, applicationSecret),
+          lastUsedCounter: nextCounter - 1,
+          verifiedAt: new Date(),
+        })
+        .where(eq(mfaEnrollments.userId, adminId));
+      return generateTotpCode(nextSecret, nextCounter);
+    };
+    const listCode = await freshMfaCode();
+    const listed = await app().handle(
+      new Request(`http://localhost/api/v1/users?query=api-lifecycle-target&limit=20`, {
+        headers: {
+          cookie,
+          "x-ntauth-totp": listCode,
+          "x-request-id": `${runId}-list`,
+        },
+      }),
+    );
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toMatchObject({
+      items: [expect.objectContaining({ id: targetId, status: "suspended" })],
+      total: 1,
+    });
+
+    await connection.db.insert(session).values({
+      expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+      id: crypto.randomUUID(),
+      token: `api-registry-${runId}`,
+      userAgent: "Chrome",
+      userId: targetId,
+    });
+    const detailCode = await freshMfaCode();
+    const detail = await app().handle(
+      new Request(`http://localhost/api/v1/users/${targetId}`, {
+        headers: {
+          cookie,
+          "x-ntauth-totp": detailCode,
+          "x-request-id": `${runId}-detail`,
+        },
+      }),
+    );
+    expect(detail.status).toBe(200);
+    const detailBody = (await detail.json()) as { sessions: Record<string, unknown>[] };
+    expect(detailBody.sessions).toHaveLength(1);
+    expect(detailBody.sessions[0]).not.toHaveProperty("token");
+
+    const revokeCode = await freshMfaCode();
+    const revoked = await app().handle(
+      new Request(`http://localhost/api/v1/users/${targetId}/sessions/revoke`, {
+        body: JSON.stringify({ reason: "administrative" }),
+        headers: {
+          "content-type": "application/json",
+          cookie,
+          "x-ntauth-totp": revokeCode,
+          "x-request-id": `${runId}-revoke`,
+        },
+        method: "POST",
+      }),
+    );
+    expect(revoked.status).toBe(200);
+    expect(await revoked.json()).toEqual({ revokedCount: 1 });
   });
 
   test("enrolls and verifies TOTP through the authenticated API", async () => {

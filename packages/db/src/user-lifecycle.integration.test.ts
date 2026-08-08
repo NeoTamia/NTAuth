@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
 import { applyMigrations } from "./migrations";
+import { revokeUserSessions } from "./sessions";
 import {
   account,
   auditEvents,
@@ -14,7 +15,9 @@ import {
 } from "./schema";
 import {
   deleteUser,
+  getPlatformUserAdministration,
   InvalidUserLifecycleTransitionError,
+  listPlatformUsers,
   setUserStatus,
   UserLifecycleAuthorizationError,
 } from "./user-lifecycle";
@@ -95,6 +98,46 @@ describeWithDatabase("user lifecycle", () => {
       .where(eq(auditEvents.requestId, `${runId}-denied`));
     expect(target?.status).toBe("active");
     expect(audit).toMatchObject({ outcome: "denied", action: "user.deactivate" });
+  });
+
+  test("lists, filters and inspects identities without exposing session tokens", async () => {
+    await connection.db.insert(session).values({
+      expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+      id: crypto.randomUUID(),
+      ipAddress: "127.0.0.1",
+      token: `registry-${runId}`,
+      userAgent: "Chrome",
+      userId: targetId,
+    });
+    const registry = await listPlatformUsers(
+      connection,
+      { limit: 1, offset: 0, query: `lifecycle-target-${runId}` },
+      { requestId: `${runId}-list`, userId: adminId },
+    );
+    expect(registry.total).toBe(1);
+    expect(registry.items).toEqual([
+      expect.objectContaining({ id: targetId, sessionCount: 1, status: "active" }),
+    ]);
+    const detail = await getPlatformUserAdministration(connection, targetId, {
+      requestId: `${runId}-read`,
+      userId: adminId,
+    });
+    expect(detail.sessions).toHaveLength(1);
+    expect(detail.sessions[0]).not.toHaveProperty("token");
+    await expect(
+      revokeUserSessions(
+        connection,
+        { reason: "administrative", userId: targetId },
+        { requestId: `${runId}-revoke`, userId: adminId },
+      ),
+    ).resolves.toBe(1);
+    await expect(
+      listPlatformUsers(
+        connection,
+        { limit: 20, offset: 0 },
+        { requestId: `${runId}-list-denied`, userId: unauthorizedId },
+      ),
+    ).rejects.toBeInstanceOf(UserLifecycleAuthorizationError);
   });
 
   test("anonymizes deletion while preserving audit identity and makes it terminal", async () => {

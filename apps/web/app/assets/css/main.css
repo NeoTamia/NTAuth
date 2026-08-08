@@ -1169,6 +1169,244 @@ button:not(:disabled):hover,
 .version-history li small {
   grid-column: 2 / -1;
 }
+.user-admin {
+  width: min(100%, 78rem);
+}
+.user-admin__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: end;
+  padding-bottom: clamp(2rem, 5vw, 4rem);
+  border-bottom: 1px solid #c3cbc5;
+}
+.user-admin__header h1 {
+  max-width: 11ch;
+  margin: 0 0 1rem;
+  font-size: clamp(3rem, 7vw, 6.25rem);
+  line-height: 0.92;
+  letter-spacing: -0.065em;
+}
+.user-admin__header p,
+.user-filters > div > p,
+.user-register header p,
+.user-detail > header p {
+  color: #536158;
+}
+.user-filters {
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.65fr) minmax(22rem, 1.35fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: start;
+  margin-top: 3rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.user-filters h2,
+.user-register h2,
+.user-detail h2,
+.user-detail h3 {
+  margin: 0;
+}
+.user-filters form {
+  display: grid;
+  gap: 1rem;
+}
+.filter-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.user-workspace {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+  gap: 1.5rem;
+  align-items: start;
+  margin-top: 1.5rem;
+}
+.user-register,
+.user-detail {
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.user-register {
+  position: sticky;
+  top: 1rem;
+}
+.user-register > header,
+.user-detail > header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem;
+  border-bottom: 1px solid #aab5ad;
+}
+.user-register header p,
+.user-detail > header p {
+  margin: 0.25rem 0 0;
+}
+.user-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.user-list li + li {
+  border-top: 1px solid #c3cbc5;
+}
+.user-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+.user-list button:hover,
+.user-list button[aria-current="true"] {
+  background: #dde5df;
+}
+.user-list button span:last-child {
+  text-align: right;
+}
+.user-list strong,
+.user-list small {
+  display: block;
+}
+.user-list small {
+  margin-top: 0.2rem;
+  color: #536158;
+  overflow-wrap: anywhere;
+}
+.registry-pagination {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-top: 1px solid #aab5ad;
+}
+.registry-pagination > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.registry-pagination .mfa-code-field {
+  margin-top: 0.5rem;
+}
+.user-detail {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+.user-detail > header {
+  margin: calc(clamp(1.25rem, 3vw, 2rem) * -1);
+  margin-bottom: 0;
+}
+.user-detail--empty {
+  min-height: 19rem;
+  align-content: center;
+}
+.identity-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 2rem 0 0;
+  background: #aab5ad;
+  border: 1px solid #aab5ad;
+}
+.identity-facts > div {
+  padding: 1rem;
+  background: #f5f7f3;
+}
+.identity-facts dt {
+  color: #536158;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.identity-facts dd {
+  margin: 0.35rem 0 0;
+  font-weight: 800;
+}
+.membership-overview,
+.session-overview {
+  margin-top: 2.25rem;
+}
+.membership-overview > header,
+.session-overview > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #7f8d84;
+}
+.membership-overview > header span,
+.session-overview > header span {
+  color: #536158;
+  font-weight: 800;
+}
+.membership-overview ul,
+.session-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.membership-overview li,
+.session-list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-block: 0.9rem;
+  border-bottom: 1px solid #cbd2cc;
+}
+.membership-overview li strong,
+.membership-overview li small,
+.session-list li strong,
+.session-list li small {
+  display: block;
+}
+.membership-overview li small,
+.session-list li small {
+  margin-top: 0.15rem;
+  color: #536158;
+}
+.session-state {
+  color: #176b43;
+  font-weight: 800;
+  text-align: right;
+}
+.session-state--expired {
+  color: #755a4a;
+}
+.session-revocation,
+.status-editor {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2.25rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #aab5ad;
+}
+.session-revocation {
+  border-top-color: #b56b4d;
+}
+.confirmation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  line-height: 1.45;
+}
+.confirmation input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+}
 .error-page {
   width: min(100% - 2rem, 48rem);
   margin: 0 auto;
@@ -1312,6 +1550,9 @@ button:not(:disabled):hover,
   .policy-admin__header,
   .policy-scope,
   .policy-workspace,
+  .user-admin__header,
+  .user-filters,
+  .user-workspace,
   .inline-fields {
     grid-template-columns: 1fr;
   }
@@ -1324,6 +1565,37 @@ button:not(:disabled):hover,
   .policy-workspace {
     width: 100%;
     grid-template-columns: minmax(0, 1fr);
+  }
+  .user-admin__header h1 {
+    font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+  .user-register {
+    position: static;
+  }
+  .user-workspace {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .user-list button,
+  .identity-facts {
+    grid-template-columns: 1fr;
+  }
+  .user-list button span:last-child,
+  .session-state {
+    text-align: left;
+  }
+  .registry-pagination > div {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .registry-pagination .field,
+  .registry-pagination input {
+    width: 100%;
+    min-width: 0;
+  }
+  .membership-overview li,
+  .session-list li {
+    flex-direction: column;
   }
   .policy-editor__heading {
     align-items: flex-start;

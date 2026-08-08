@@ -120,8 +120,10 @@ export {
 } from "./service-grants";
 export {
   deleteUser,
+  getPlatformUserAdministration,
   InvalidUserLifecycleTransitionError,
   isUserActive,
+  listPlatformUsers,
   permitsAuthentication,
   setUserStatus,
   UserLifecycleAuthorizationError,
