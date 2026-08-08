@@ -6,6 +6,16 @@ export {
 } from "./email-verification";
 export { applyMigrations, rollbackLastMigration } from "./migrations";
 export {
+  createIamCatalogEntry,
+  createService,
+  getServiceCatalogue,
+  IamCatalogAuthorizationError,
+  IamCatalogConflictError,
+  IamCatalogNotFoundError,
+  setIamCatalogEntryStatus,
+  updateService,
+} from "./iam-catalog";
+export {
   getNtscoutClient,
   NTSCOUT_CLIENT_ID,
   NTSCOUT_SCOPES,

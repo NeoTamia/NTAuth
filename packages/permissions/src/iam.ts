@@ -88,6 +88,25 @@ function splitIdentifier(value: string) {
   return { segments, service: service ?? "" };
 }
 
+export function isPolicyIdentifier(
+  value: string,
+  kind: "action" | "resource",
+  expectedService?: string,
+) {
+  if (value.length === 0 || value.length > POLICY_LIMITS.identifierLength) return false;
+  const { segments, service } = splitIdentifier(value);
+  const segmentPattern = kind === "action" ? actionSegmentPattern : resourceSegmentPattern;
+  const wildcardIndex = segments.indexOf("*");
+  return (
+    servicePattern.test(service) &&
+    (!expectedService || service === expectedService) &&
+    segments.length > 0 &&
+    segments.every((segment) => segment === "*" || segmentPattern.test(segment)) &&
+    (wildcardIndex === -1 || wildcardIndex === segments.length - 1) &&
+    segments.filter((segment) => segment === "*").length <= 1
+  );
+}
+
 function validateIdentifier(
   value: unknown,
   kind: "action" | "resource",
@@ -103,16 +122,8 @@ function validateIdentifier(
     addIssue(issues, path, "limit", `${kind} length is invalid`);
     return;
   }
-  const { segments, service } = splitIdentifier(value);
-  const segmentPattern = kind === "action" ? actionSegmentPattern : resourceSegmentPattern;
-  const wildcardIndex = segments.indexOf("*");
-  const valid =
-    servicePattern.test(service) &&
-    segments.length > 0 &&
-    segments.every((segment) => segment === "*" || segmentPattern.test(segment)) &&
-    (wildcardIndex === -1 || wildcardIndex === segments.length - 1) &&
-    segments.filter((segment) => segment === "*").length <= 1;
-  if (!valid) {
+  const { service } = splitIdentifier(value);
+  if (!isPolicyIdentifier(value, kind)) {
     addIssue(issues, path, "format", `${kind} identifier or wildcard is invalid`);
     return;
   }

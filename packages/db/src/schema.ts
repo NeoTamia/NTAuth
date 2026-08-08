@@ -252,6 +252,8 @@ export type OrganizationRole = "admin" | "member" | "owner";
 export type MembershipStatus = "active" | "suspended";
 export type PlatformRole = "platform_admin";
 export type ServiceGrantStatus = "active" | "inactive" | "revoked";
+export type ServiceStatus = "active" | "inactive";
+export type IamCatalogKind = "action" | "resource";
 
 export const organizations = pgTable(
   "organizations",
@@ -346,6 +348,59 @@ export const serviceGrants = pgTable(
     check(
       "service_grants_revocation_check",
       sql`(${table.status} = 'revoked' and ${table.revokedAt} is not null and ${table.revokedByUserId} is not null) or (${table.status} <> 'revoked' and ${table.revokedAt} is null and ${table.revokedByUserId} is null)`,
+    ),
+  ],
+);
+
+export const services = pgTable(
+  "services",
+  {
+    key: varchar("key", { length: 63 }).primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    status: varchar("status", { length: 16 }).$type<ServiceStatus>().notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("services_key_check", sql`${table.key} ~ '^[a-z][a-z0-9-]{0,62}$'`),
+    check("services_name_check", sql`length(trim(${table.name})) > 0`),
+    check("services_status_check", sql`${table.status} in ('active', 'inactive')`),
+    index("services_owner_idx").on(table.ownerUserId),
+  ],
+);
+
+export const iamCatalogEntries = pgTable(
+  "iam_catalog_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    service: varchar("service", { length: 63 })
+      .notNull()
+      .references(() => services.key, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 16 }).$type<IamCatalogKind>().notNull(),
+    identifier: varchar("identifier", { length: 256 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    status: varchar("status", { length: 16 }).$type<ServiceStatus>().notNull().default("active"),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("iam_catalog_entries_service_kind_identifier_unique").on(
+      table.service,
+      table.kind,
+      table.identifier,
+    ),
+    index("iam_catalog_entries_lookup_idx").on(table.service, table.kind, table.status),
+    check("iam_catalog_entries_kind_check", sql`${table.kind} in ('action', 'resource')`),
+    check("iam_catalog_entries_status_check", sql`${table.status} in ('active', 'inactive')`),
+    check(
+      "iam_catalog_entries_ownership_check",
+      sql`${table.identifier} like ${table.service} || ':%'`,
     ),
   ],
 );

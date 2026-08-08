@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 
 import type { createInvitationRoutes } from "./invitations";
+import type { createIamCatalogRoutes } from "./iam-catalog";
 import type { createDiscoveryRoutes } from "./auth/discovery";
 import type { createEmailVerificationRoutes } from "./email-verification";
 import type { createMfaRoutes } from "./mfa";
@@ -26,6 +27,7 @@ export const createApp = (
     discoveryRoutes?: ReturnType<typeof createDiscoveryRoutes>;
     emailVerificationRoutes?: ReturnType<typeof createEmailVerificationRoutes>;
     invitationRoutes?: ReturnType<typeof createInvitationRoutes>;
+    iamCatalogRoutes?: ReturnType<typeof createIamCatalogRoutes>;
     mfaRoutes?: ReturnType<typeof createMfaRoutes>;
     passwordRoutes?: ReturnType<typeof createPasswordRoutes>;
     readiness?: ReadinessChecks;
@@ -40,6 +42,7 @@ export const createApp = (
   if (options.discoveryRoutes) app.use(options.discoveryRoutes);
   if (options.emailVerificationRoutes) app.use(options.emailVerificationRoutes);
   if (options.invitationRoutes) app.use(options.invitationRoutes);
+  if (options.iamCatalogRoutes) app.use(options.iamCatalogRoutes);
   if (options.mfaRoutes) app.use(options.mfaRoutes);
   if (options.passwordRoutes) app.use(options.passwordRoutes);
   if (options.signingKeyRoutes) app.use(options.signingKeyRoutes);

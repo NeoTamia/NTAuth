@@ -206,13 +206,12 @@ export async function createServiceGrant(
       return { grant: grant!, kind: "success" as const };
     });
   } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error as { code?: unknown }).code === "23505"
-    ) {
-      throw new ServiceGrantConflictError();
+    let current = error;
+    while (current && typeof current === "object") {
+      if ("code" in current && (current as { code?: unknown }).code === "23505") {
+        throw new ServiceGrantConflictError();
+      }
+      current = "cause" in current ? (current as { cause?: unknown }).cause : undefined;
     }
     throw error;
   }

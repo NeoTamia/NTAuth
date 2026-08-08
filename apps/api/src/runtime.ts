@@ -8,6 +8,7 @@ import { createAuditedAuthHandler } from "./auth/audited-handler";
 import { createDiscoveryRoutes } from "./auth/discovery";
 import { createEmailVerificationRoutes } from "./email-verification";
 import { createInvitationRoutes } from "./invitations";
+import { createIamCatalogRoutes } from "./iam-catalog";
 import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
 import { createSigningKeyRoutes } from "./signing-keys";
@@ -39,6 +40,11 @@ export function createRuntime(environment: ApiEnvironment) {
   const discoveryRoutes = createDiscoveryRoutes(auth);
   const invitationRoutes = createInvitationRoutes({
     acceptInvitationURL: `${environment.CORS_ORIGINS[0]}/auth/accept-invitation`,
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
+  const iamCatalogRoutes = createIamCatalogRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
     auth,
     database,
@@ -98,6 +104,7 @@ export function createRuntime(environment: ApiEnvironment) {
     discoveryRoutes,
     emailVerificationRoutes,
     invitationRoutes,
+    iamCatalogRoutes,
     mfaRoutes,
     passwordRoutes,
     readiness,
