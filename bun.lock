@@ -65,6 +65,35 @@
         "typescript": "6.0.3",
       },
     },
+    "examples/elysia-resource-server": {
+      "name": "@neotamia/example-elysia-resource-server",
+      "version": "0.0.0",
+      "dependencies": {
+        "@neotamia/elysia-auth": "workspace:*",
+        "elysia": "1.4.29",
+      },
+      "devDependencies": {
+        "@neotamia/config": "workspace:*",
+        "@types/bun": "1.3.14",
+        "typescript": "6.0.3",
+      },
+    },
+    "examples/nuxt-bff": {
+      "name": "@neotamia/example-nuxt-bff",
+      "version": "0.0.0",
+      "dependencies": {
+        "@neotamia/nuxt-auth": "workspace:*",
+        "nuxt": "4.5.2",
+        "vue": "3.5.41",
+        "vue-router": "5.2.0",
+      },
+      "devDependencies": {
+        "@neotamia/config": "workspace:*",
+        "@types/bun": "1.3.14",
+        "typescript": "6.0.3",
+        "vue-tsc": "3.3.9",
+      },
+    },
     "packages/config": {
       "name": "@neotamia/config",
       "version": "0.0.0",
@@ -392,6 +421,10 @@
     "@neotamia/db": ["@neotamia/db@workspace:packages/db"],
 
     "@neotamia/elysia-auth": ["@neotamia/elysia-auth@workspace:packages/elysia-auth"],
+
+    "@neotamia/example-elysia-resource-server": ["@neotamia/example-elysia-resource-server@workspace:examples/elysia-resource-server"],
+
+    "@neotamia/example-nuxt-bff": ["@neotamia/example-nuxt-bff@workspace:examples/nuxt-bff"],
 
     "@neotamia/ntauth-api": ["@neotamia/ntauth-api@workspace:apps/api"],
 

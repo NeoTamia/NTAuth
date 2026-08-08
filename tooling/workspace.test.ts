@@ -22,7 +22,9 @@ const workspaceManifestPaths = async () => {
     return Array.fromAsync(glob.scan({ cwd: rootDirectory, onlyFiles: true }));
   };
 
-  const paths = await Promise.all(["apps/*/package.json", "packages/*/package.json"].map(scan));
+  const paths = await Promise.all(
+    ["apps/*/package.json", "examples/*/package.json", "packages/*/package.json"].map(scan),
+  );
 
   return paths.flat().toSorted();
 };
@@ -40,7 +42,7 @@ describe("monorepo workspaces", () => {
     const root = await readManifest("package.json");
 
     expect(root.private).toBe(true);
-    expect(root.workspaces).toEqual(["apps/*", "packages/*"]);
+    expect(root.workspaces).toEqual(["apps/*", "examples/*", "packages/*"]);
     expect(root.scripts).toMatchObject({
       build: "turbo run build",
       dev: "turbo run dev",
