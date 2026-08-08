@@ -7,6 +7,7 @@ import type { createEmailVerificationRoutes } from "./email-verification";
 import type { createMfaRoutes } from "./mfa";
 import type { createPasswordRoutes } from "./passwords";
 import type { createSigningKeyRoutes } from "./signing-keys";
+import type { createServiceGrantRoutes } from "./service-grants";
 import type { createUserRoutes } from "./users";
 
 export type ReadinessChecks = {
@@ -29,6 +30,7 @@ export const createApp = (
     passwordRoutes?: ReturnType<typeof createPasswordRoutes>;
     readiness?: ReadinessChecks;
     signingKeyRoutes?: ReturnType<typeof createSigningKeyRoutes>;
+    serviceGrantRoutes?: ReturnType<typeof createServiceGrantRoutes>;
     userRoutes?: ReturnType<typeof createUserRoutes>;
   } = {},
 ) => {
@@ -41,6 +43,7 @@ export const createApp = (
   if (options.mfaRoutes) app.use(options.mfaRoutes);
   if (options.passwordRoutes) app.use(options.passwordRoutes);
   if (options.signingKeyRoutes) app.use(options.signingKeyRoutes);
+  if (options.serviceGrantRoutes) app.use(options.serviceGrantRoutes);
   if (options.userRoutes) app.use(options.userRoutes);
 
   return app

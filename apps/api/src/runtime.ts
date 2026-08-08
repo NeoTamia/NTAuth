@@ -11,6 +11,7 @@ import { createInvitationRoutes } from "./invitations";
 import { createMfaRoutes } from "./mfa";
 import { createPasswordRoutes } from "./passwords";
 import { createSigningKeyRoutes } from "./signing-keys";
+import { createServiceGrantRoutes } from "./service-grants";
 import { createUserRoutes } from "./users";
 
 export function createRuntime(environment: ApiEnvironment) {
@@ -66,6 +67,11 @@ export function createRuntime(environment: ApiEnvironment) {
     auth,
     database,
   });
+  const serviceGrantRoutes = createServiceGrantRoutes({
+    applicationSecret: environment.BETTER_AUTH_SECRET,
+    auth,
+    database,
+  });
 
   const connectRedis = async () => {
     if (redis.isOpen) return;
@@ -96,6 +102,7 @@ export function createRuntime(environment: ApiEnvironment) {
     passwordRoutes,
     readiness,
     signingKeyRoutes,
+    serviceGrantRoutes,
     userRoutes,
     async close() {
       const closures: Promise<unknown>[] = [database.close()];

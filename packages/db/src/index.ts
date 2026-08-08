@@ -48,6 +48,16 @@ export {
 } from "./organizations";
 export { revokeUserSessions, SessionRevocationAuthorizationError } from "./sessions";
 export {
+  createServiceGrant,
+  hasActiveServiceGrant,
+  listServiceGrants,
+  revokeServiceGrant,
+  ServiceGrantAuthorizationError,
+  ServiceGrantConflictError,
+  ServiceGrantNotFoundError,
+  setServiceGrantActive,
+} from "./service-grants";
+export {
   deleteUser,
   InvalidUserLifecycleTransitionError,
   isUserActive,

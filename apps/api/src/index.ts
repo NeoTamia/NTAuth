@@ -14,6 +14,8 @@ const app = createApp({
   mfaRoutes: runtime.mfaRoutes,
   passwordRoutes: runtime.passwordRoutes,
   readiness: runtime.readiness,
+  serviceGrantRoutes: runtime.serviceGrantRoutes,
+  signingKeyRoutes: runtime.signingKeyRoutes,
   userRoutes: runtime.userRoutes,
 }).listen({
   hostname: environment.API_HOST,

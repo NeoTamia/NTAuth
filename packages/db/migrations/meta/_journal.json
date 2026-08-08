@@ -92,6 +92,13 @@
       "when": 1786192086565,
       "tag": "0012_smooth_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786193725774,
+      "tag": "0013_steep_daredevil",
+      "breakpoints": true
     }
   ]
 }

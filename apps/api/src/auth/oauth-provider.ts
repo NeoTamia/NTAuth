@@ -7,6 +7,7 @@ import { currentOAuthOrganization } from "./oauth-organization";
 
 import {
   enforcePlatformAdminMfa,
+  hasActiveServiceGrant,
   organizationMembers,
   platformRoleAssignments,
   type DatabaseConnection,
@@ -62,6 +63,18 @@ async function ntscoutAccessTokenClaims(
     )
     .limit(1);
   if (!membership) {
+    throw new APIError("BAD_REQUEST", {
+      error: "invalid_request",
+      error_description: "access token context is invalid",
+    });
+  }
+  if (
+    !(await hasActiveServiceGrant(database, {
+      organizationId: info.referenceId,
+      service: NTSCOUT_SERVICE,
+      userId: info.user.id,
+    }))
+  ) {
     throw new APIError("BAD_REQUEST", {
       error: "invalid_request",
       error_description: "access token context is invalid",

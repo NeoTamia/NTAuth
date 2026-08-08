@@ -24,6 +24,7 @@ import {
   platformRoleAssignments,
   provisionNtscoutClient,
   session,
+  serviceGrants,
   totpCounter,
   user,
   verification,
@@ -796,6 +797,36 @@ describeWithDatabase("OAuth provider integration", () => {
       error_description: "requested resource invalid",
     });
 
+    const missingGrantVerifier = "ntscout-missing-grant-verifier-123456789012345678901234";
+    const missingGrantAuthorization = await authorizePublicClient({
+      clientId: NTSCOUT_CLIENT_ID,
+      nonce: `ntscout-missing-grant-nonce-${runId}`,
+      redirectUri,
+      requestId: "ntscout-authorize-missing-grant",
+      scope: "openid ntscout:access",
+      state: `ntscout-missing-grant-state-${runId}`,
+      verifier: missingGrantVerifier,
+    });
+    const missingGrant = await exchangeCode({
+      clientId: NTSCOUT_CLIENT_ID,
+      code: missingGrantAuthorization.searchParams.get("code")!,
+      redirectUri,
+      requestId: "ntscout-token-missing-grant",
+      resource: NTSCOUT_AUDIENCE,
+      verifier: missingGrantVerifier,
+    });
+    expect(missingGrant.status).toBe(400);
+    expect(await missingGrant.json()).toEqual({
+      error: "invalid_request",
+      error_description: "access token context is invalid",
+    });
+    await connection.db.insert(serviceGrants).values({
+      createdByUserId: adminId,
+      organizationId,
+      service: NTSCOUT_SERVICE,
+      userId: adminId,
+    });
+
     const verifier = "ntscout-verifier-1234567890123456789012345678901234";
     const authorization = await authorizePublicClient({
       clientId: NTSCOUT_CLIENT_ID,
@@ -1338,6 +1369,15 @@ describeWithDatabase("OAuth provider integration", () => {
       NTSCOUT_REDIRECT_URIS: [redirectUri],
       requestId: `${runId}-lifecycle-seed`,
     });
+    await connection.db
+      .insert(serviceGrants)
+      .values({
+        createdByUserId: adminId,
+        organizationId,
+        service: NTSCOUT_SERVICE,
+        userId: adminId,
+      })
+      .onConflictDoNothing();
     await connection.db.insert(oauthConsents).values({
       clientId: NTSCOUT_CLIENT_ID,
       id: crypto.randomUUID(),

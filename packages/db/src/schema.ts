@@ -251,6 +251,7 @@ export type OrganizationStatus = "active" | "suspended";
 export type OrganizationRole = "admin" | "member" | "owner";
 export type MembershipStatus = "active" | "suspended";
 export type PlatformRole = "platform_admin";
+export type ServiceGrantStatus = "active" | "inactive" | "revoked";
 
 export const organizations = pgTable(
   "organizations",
@@ -307,6 +308,45 @@ export const platformRoleAssignments = pgTable(
   (table) => [
     primaryKey({ columns: [table.userId, table.role] }),
     check("platform_role_assignments_role_check", sql`${table.role} in ('platform_admin')`),
+  ],
+);
+
+export const serviceGrants = pgTable(
+  "service_grants",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    service: varchar("service", { length: 63 }).notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 16 })
+      .$type<ServiceGrantStatus>()
+      .notNull()
+      .default("active"),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    revokedByUserId: text("revoked_by_user_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("service_grants_current_subject_unique")
+      .on(table.organizationId, table.service, table.userId)
+      .where(sql`${table.status} <> 'revoked'`),
+    index("service_grants_subject_idx").on(table.userId, table.organizationId, table.service),
+    check("service_grants_service_check", sql`${table.service} ~ '^[a-z][a-z0-9-]{0,62}$'`),
+    check("service_grants_status_check", sql`${table.status} in ('active', 'inactive', 'revoked')`),
+    check(
+      "service_grants_revocation_check",
+      sql`(${table.status} = 'revoked' and ${table.revokedAt} is not null and ${table.revokedByUserId} is not null) or (${table.status} <> 'revoked' and ${table.revokedAt} is null and ${table.revokedByUserId} is null)`,
+    ),
   ],
 );
 
