@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
 import { desc, eq } from "drizzle-orm";
 
+import { NTSCOUT_AUDIENCE, NTSCOUT_SERVICE } from "@neotamia/permissions";
+
 import {
   account,
   applyMigrations,
@@ -204,6 +206,7 @@ describeWithDatabase("OAuth provider integration", () => {
     code: string;
     redirectUri: string;
     requestId: string;
+    resource?: string;
     verifier: string;
   }) =>
     handler()(
@@ -214,6 +217,7 @@ describeWithDatabase("OAuth provider integration", () => {
           code_verifier: input.verifier,
           grant_type: "authorization_code",
           redirect_uri: input.redirectUri,
+          ...(input.resource ? { resource: input.resource } : {}),
         }),
         headers: {
           "content-type": "application/x-www-form-urlencoded",
@@ -222,6 +226,43 @@ describeWithDatabase("OAuth provider integration", () => {
         method: "POST",
       }),
     );
+
+  async function verifyEs256Jwt(token: string) {
+    const [encodedHeader, encodedPayload, encodedSignature] = token.split(".");
+    expect(encodedHeader).toBeTruthy();
+    expect(encodedPayload).toBeTruthy();
+    expect(encodedSignature).toBeTruthy();
+    const header = JSON.parse(Buffer.from(encodedHeader!, "base64url").toString("utf8")) as {
+      alg: string;
+      kid: string;
+    };
+    expect(header.alg).toBe("ES256");
+    const [storedKey] = await connection.db
+      .select({ publicKey: jwksTable.publicKey })
+      .from(jwksTable)
+      .where(eq(jwksTable.id, header.kid))
+      .limit(1);
+    expect(storedKey).toBeDefined();
+    const publicKey = await crypto.subtle.importKey(
+      "jwk",
+      JSON.parse(storedKey!.publicKey),
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"],
+    );
+    expect(
+      await crypto.subtle.verify(
+        { hash: "SHA-256", name: "ECDSA" },
+        publicKey,
+        Buffer.from(encodedSignature!, "base64url"),
+        new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`),
+      ),
+    ).toBe(true);
+    return JSON.parse(Buffer.from(encodedPayload!, "base64url").toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+  }
 
   test("mounts protocol endpoints on the Drizzle-backed provider", async () => {
     const response = await handler()(
@@ -689,6 +730,30 @@ describeWithDatabase("OAuth provider integration", () => {
       userId: adminId,
     });
 
+    const invalidResourceVerifier = "ntscout-invalid-resource-verifier-123456789012345678901234";
+    const invalidResourceAuthorization = await authorizePublicClient({
+      clientId: NTSCOUT_CLIENT_ID,
+      nonce: `ntscout-invalid-resource-nonce-${runId}`,
+      redirectUri,
+      requestId: "ntscout-authorize-invalid-resource",
+      scope: "openid ntscout:access",
+      state: `ntscout-invalid-resource-state-${runId}`,
+      verifier: invalidResourceVerifier,
+    });
+    const invalidResource = await exchangeCode({
+      clientId: NTSCOUT_CLIENT_ID,
+      code: invalidResourceAuthorization.searchParams.get("code")!,
+      redirectUri,
+      requestId: "ntscout-token-invalid-resource",
+      resource: "urn:neotamia:service:unregistered",
+      verifier: invalidResourceVerifier,
+    });
+    expect(invalidResource.status).toBe(400);
+    expect(await invalidResource.json()).toEqual({
+      error: "invalid_request",
+      error_description: "requested resource invalid",
+    });
+
     const verifier = "ntscout-verifier-1234567890123456789012345678901234";
     const authorization = await authorizePublicClient({
       clientId: NTSCOUT_CLIENT_ID,
@@ -704,6 +769,7 @@ describeWithDatabase("OAuth provider integration", () => {
       code: authorization.searchParams.get("code")!,
       redirectUri,
       requestId: "ntscout-token",
+      resource: NTSCOUT_AUDIENCE,
       verifier,
     });
     expect(token.status).toBe(200);
@@ -715,9 +781,55 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(tokenSet.access_token).toBeTruthy();
     expect(tokenSet.id_token).toBeTruthy();
     expect(tokenSet.refresh_token).toStartWith("ntauth_refresh_");
-    const ntscoutIdToken = JSON.parse(
-      Buffer.from(tokenSet.id_token.split(".")[1]!, "base64url").toString("utf8"),
-    ) as Record<string, unknown>;
+    const accessToken = await verifyEs256Jwt(tokenSet.access_token);
+    const now = Math.floor(Date.now() / 1000);
+    expect(accessToken).toMatchObject({
+      azp: NTSCOUT_CLIENT_ID,
+      iss: baseURL,
+      organization_id: organizationId,
+      service: NTSCOUT_SERVICE,
+      sub: adminId,
+    });
+    expect(accessToken.aud).toEqual([NTSCOUT_AUDIENCE, `${baseURL}/oauth2/userinfo`]);
+    expect(accessToken.scope).toBe("openid profile email offline_access ntscout:access");
+    expect(accessToken.policies_etag).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(typeof accessToken.jti).toBe("string");
+    expect(String(accessToken.jti)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect((accessToken.exp as number) - (accessToken.iat as number)).toBe(15 * 60);
+    expect(accessToken.iat as number).toBeLessThanOrEqual(now);
+    expect(accessToken.exp as number).toBeGreaterThan(now);
+    expect(accessToken).not.toHaveProperty("environment");
+    expect(accessToken).not.toHaveProperty("managedBy");
+    expect(accessToken).not.toHaveProperty("metadata");
+    expect(accessToken).not.toHaveProperty("role");
+    expect(typeof accessToken.sid).toBe("string");
+    expect(Object.keys(accessToken).toSorted()).toEqual(
+      [
+        "aud",
+        "azp",
+        "exp",
+        "iat",
+        "iss",
+        "jti",
+        "organization_id",
+        "policies_etag",
+        "scope",
+        "service",
+        "sid",
+        "sub",
+      ].toSorted(),
+    );
+
+    const ntscoutIdToken = await verifyEs256Jwt(tokenSet.id_token);
+    expect(ntscoutIdToken).toMatchObject({
+      aud: NTSCOUT_CLIENT_ID,
+      iss: baseURL,
+      nonce: `ntscout-nonce-${runId}`,
+      sub: adminId,
+    });
+    expect((ntscoutIdToken.exp as number) - (ntscoutIdToken.iat as number)).toBe(15 * 60);
     expect(ntscoutIdToken).toMatchObject({
       email: `oauth-registry-admin-${runId}@example.test`,
       email_verified: true,
@@ -727,6 +839,67 @@ describeWithDatabase("OAuth provider integration", () => {
     expect(ntscoutIdToken).not.toHaveProperty("managedBy");
     expect(ntscoutIdToken).not.toHaveProperty("metadata");
     expect(ntscoutIdToken).not.toHaveProperty("role");
+
+    const userInfo = await handler()(
+      new Request(`${baseURL}/oauth2/userinfo`, {
+        headers: {
+          authorization: `Bearer ${tokenSet.access_token}`,
+          "x-request-id": `${runId}-ntscout-userinfo-valid`,
+        },
+      }),
+    );
+    expect(userInfo.status).toBe(200);
+    expect(await userInfo.json()).toMatchObject({
+      email: `oauth-registry-admin-${runId}@example.test`,
+      email_verified: true,
+      sub: adminId,
+    });
+
+    const tokenParts = tokenSet.access_token.split(".");
+    const signatureStart = tokenParts[2]![0]!;
+    tokenParts[2] = `${signatureStart === "A" ? "B" : "A"}${tokenParts[2]!.slice(1)}`;
+    const tamperedToken = tokenParts.join(".");
+    const tampered = await handler()(
+      new Request(`${baseURL}/oauth2/userinfo`, {
+        headers: {
+          authorization: `Bearer ${tamperedToken}`,
+          "x-request-id": `${runId}-ntscout-userinfo-tampered`,
+        },
+      }),
+    );
+    expect(tampered.status).toBe(401);
+    expect(tampered.headers.get("www-authenticate")).toBe('Bearer error="invalid_token"');
+    expect(await tampered.json()).toEqual({
+      error: "invalid_token",
+      error_description: "access token is invalid",
+    });
+
+    const expiredToken = await auth().api.signJWT({
+      body: {
+        payload: {
+          aud: NTSCOUT_AUDIENCE,
+          azp: NTSCOUT_CLIENT_ID,
+          exp: now - 1,
+          iat: now - 16 * 60,
+          iss: baseURL,
+          scope: "openid ntscout:access",
+          sub: adminId,
+        },
+      },
+    });
+    const expiredUserInfo = await handler()(
+      new Request(`${baseURL}/oauth2/userinfo`, {
+        headers: {
+          authorization: `Bearer ${expiredToken.token}`,
+          "x-request-id": `${runId}-ntscout-userinfo-expired`,
+        },
+      }),
+    );
+    expect(expiredUserInfo.status).toBe(401);
+    expect(await expiredUserInfo.json()).toEqual({
+      error: "invalid_token",
+      error_description: "access token is invalid",
+    });
     const [storedRefresh] = await connection.db
       .select({ organizationId: oauthRefreshTokens.referenceId })
       .from(oauthRefreshTokens)

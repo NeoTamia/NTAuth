@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { oidcProvider } from "better-auth/plugins";
+
+import { NTSCOUT_AUDIENCE } from "@neotamia/permissions";
+
 import { createOAuthProviderPlugin, oauthProviderConfig } from "./oauth-provider";
 
 describe("Better Auth provider decision", () => {
@@ -28,6 +31,7 @@ describe("Better Auth provider decision", () => {
       scopes: ["openid", "profile", "email", "offline_access", "ntscout:access"],
       storeClientSecret: "hashed",
       storeTokens: "hashed",
+      validAudiences: [NTSCOUT_AUDIENCE],
     });
     expect(oauthProviderConfig.grantTypes).not.toContain("client_credentials");
   });

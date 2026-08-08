@@ -1,4 +1,8 @@
+import type { JSONWebKeySet } from "better-auth";
+import { verifyJwsAccessToken } from "better-auth/oauth2";
+
 import { auditEvents, type DatabaseConnection } from "@neotamia/db";
+import { NTSCOUT_AUDIENCE, NTSCOUT_SERVICE } from "@neotamia/permissions";
 
 import type { createAuth } from "./auth";
 import {
@@ -27,6 +31,7 @@ const sensitiveEndpoints = new Set([
   "rotate-secret",
   "token",
   "update-client",
+  "userinfo",
 ]);
 
 async function oauthOutcome(response: Response): Promise<"denied" | "success"> {
@@ -50,6 +55,53 @@ async function oauthOutcome(response: Response): Promise<"denied" | "success"> {
     }
   }
   return "success";
+}
+
+async function validateUserInfoToken(auth: Auth, request: Request) {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return;
+  const token = authorization.slice("Bearer ".length);
+  const url = new URL(request.url);
+  const issuer = `${url.origin}${url.pathname.slice(0, -"/oauth2/userinfo".length)}`;
+  try {
+    const payload = await verifyJwsAccessToken(token, {
+      jwksFetch: async () => {
+        const response = await auth.handler(new Request(`${issuer}/jwks`));
+        if (!response.ok) throw new Error("JWKS unavailable");
+        return (await response.json()) as JSONWebKeySet;
+      },
+      verifyOptions: {
+        algorithms: ["ES256"],
+        audience: NTSCOUT_AUDIENCE,
+        issuer,
+      },
+    });
+    const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
+    if (
+      typeof payload.sub !== "string" ||
+      payload.azp !== NTSCOUT_SERVICE ||
+      typeof payload.sid !== "string" ||
+      typeof payload.jti !== "string" ||
+      !uuidPattern.test(payload.jti) ||
+      typeof payload.organization_id !== "string" ||
+      !uuidPattern.test(payload.organization_id) ||
+      payload.service !== NTSCOUT_SERVICE ||
+      typeof payload.policies_etag !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/.test(payload.policies_etag) ||
+      !scopes.includes("openid") ||
+      !scopes.includes("ntscout:access")
+    ) {
+      throw new Error("Invalid NTAuth access-token claims");
+    }
+  } catch {
+    return Response.json(
+      { error: "invalid_token", error_description: "access token is invalid" },
+      {
+        headers: { "www-authenticate": 'Bearer error="invalid_token"' },
+        status: 401,
+      },
+    );
+  }
 }
 
 export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnection) {
@@ -95,17 +147,21 @@ export function createAuditedAuthHandler(auth: Auth, database: DatabaseConnectio
         organizationDenied = true;
       }
     }
-    const response = organizationDenied
-      ? Response.json(
-          {
-            error: endpoint === "token" ? "invalid_grant" : "invalid_request",
-            error_description: "organization context is invalid",
-          },
-          { status: 400 },
-        )
-      : organizationId
-        ? await withOAuthOrganization(organizationId, () => auth.handler(request))
-        : await auth.handler(request);
+    const invalidUserInfoToken =
+      endpoint === "userinfo" ? await validateUserInfoToken(auth, request) : undefined;
+    const response = invalidUserInfoToken
+      ? invalidUserInfoToken
+      : organizationDenied
+        ? Response.json(
+            {
+              error: endpoint === "token" ? "invalid_grant" : "invalid_request",
+              error_description: "organization context is invalid",
+            },
+            { status: 400 },
+          )
+        : organizationId
+          ? await withOAuthOrganization(organizationId, () => auth.handler(request))
+          : await auth.handler(request);
     if (
       response.ok &&
       (endpoint === "create-client" || endpoint === "rotate-secret" || endpoint === "token")

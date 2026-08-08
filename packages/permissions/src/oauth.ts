@@ -25,14 +25,18 @@ export type OAuthScope = keyof typeof OAUTH_SCOPE_CATALOG;
 
 export const OAUTH_SCOPES = Object.freeze(Object.keys(OAUTH_SCOPE_CATALOG) as OAuthScope[]);
 export const NTSCOUT_SCOPES = OAUTH_SCOPES;
+export const NTSCOUT_SERVICE = "ntscout";
+export const NTSCOUT_AUDIENCE = "urn:neotamia:service:ntscout";
 
 export const NTAUTH_ACCESS_TOKEN_CLAIMS = Object.freeze([
   "iss",
   "sub",
   "aud",
+  "azp",
   "exp",
   "iat",
   "jti",
+  "sid",
   "organization_id",
   "service",
   "scope",

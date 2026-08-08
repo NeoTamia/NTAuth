@@ -10,6 +10,8 @@ NTAuth V1 exposes a closed scope catalogue. Clients can receive only the interse
 | `offline_access` | Issue a refresh-token family after consent | None                                                              |
 | `ntscout:access` | Access NTScout for the bound organization  | `organization_id`, `service`, `policies_etag` in its access token |
 
-Access tokens use only `iss`, `sub`, `aud`, `exp`, `iat`, `jti`, `organization_id`, `service`, `scope`, and `policies_etag`. ID tokens and userinfo add profile or email data only when their corresponding scopes were granted. Client metadata, organization metadata, roles, policy documents, and internal database fields are never copied into a token.
+Access tokens use only `iss`, `sub`, `aud`, `azp`, `exp`, `iat`, `jti`, `sid`, `organization_id`, `service`, `scope`, and `policies_etag`. `azp` identifies the registered OAuth client and `sid` binds the token to its authenticated session. ID tokens and userinfo add profile or email data only when their corresponding scopes were granted. Client metadata, organization metadata, roles, policy documents, and internal database fields are never copied into a token.
 
 The `organization_id` is derived from the server-validated authorization context. `service` is derived from the registered client contract, and `policies_etag` identifies the effective policy snapshot; none of these claims accept arbitrary request values.
+
+NTScout access tokens use the registered audience `urn:neotamia:service:ntscout`. Their policy ETag is a SHA-256 digest of the server-side effective membership snapshot and changes when that snapshot changes.
