@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  packages: write
 
 concurrency:
   group: npm-release
@@ -52,8 +53,16 @@ jobs:
         if: github.event_name == 'push'
         run: bun run release:verify --publish
 
-      - name: Publish to npm with provenance
+      - name: Prepare shared registry artifacts
+        run: bun run release:prepare
+
+      - name: Verify registry mirror without publishing
+        if: github.event_name != 'push'
+        run: bun run release:publish --dry-run
+
+      - name: Publish identical artifacts to npm and GitHub Packages
         if: github.event_name == 'push'
-        run: bun run release
+        run: bun run release:publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

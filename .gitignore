@@ -4,6 +4,7 @@ node_modules/
 dist/
 .turbo/
 coverage/
+release-artifacts/
 .env
 .env.*
 !.env.example

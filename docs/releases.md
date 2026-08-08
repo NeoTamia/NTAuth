@@ -72,7 +72,16 @@ Conditions :
 
 ## Miroir GitHub Packages
 
-Le miroir ne reconstruit pas le package. La CI conserve le tarball npm produit, calcule son SHA-256, puis publie exactement cet artefact vers GitHub Packages avec la même version.
+Le miroir ne reconstruit pas le package. `release:prepare` produit une fois chaque tarball et écrit
+son SHA-256 et sa taille dans `release-artifacts/manifest.json`. `release:publish` vérifie ce
+manifeste avant chaque envoi, puis publie exactement le même fichier sur npm public et
+`npm.pkg.github.com` avec la même version.
+
+Avant chaque envoi, le publieur consulte les deux registres. Une relance après succès npm et échec
+GitHub saute npm et reprend uniquement le miroir. Toute exception recalcule l’état des deux
+registres et signale explicitement la publication partielle. Le `GITHUB_TOKEN` du workflow dispose
+uniquement de `contents: read` et `packages: write` ; npm utilise son secret séparé et la provenance
+OIDC.
 
 La release échoue si :
 
