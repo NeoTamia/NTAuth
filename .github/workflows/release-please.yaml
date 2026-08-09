@@ -13,7 +13,7 @@ concurrency:
 jobs:
   release-please:
     name: Release Please
-    uses: NeoTamia/actions/.github/workflows/release-please.yml@main
+    uses: NeoTamia/actions/.github/workflows/release-please.yml@0661f5c4d1d3400b1530be186fe879ef68148f90 # main
     permissions:
       contents: write
       pull-requests: write
@@ -23,7 +23,7 @@ jobs:
     name: Gitflow release
     needs: release-please
     if: ${{ needs.release-please.outputs.releases_created == 'true' }}
-    uses: NeoTamia/actions/.github/workflows/gitflow-release.yml@main
+    uses: NeoTamia/actions/.github/workflows/gitflow-release.yml@0661f5c4d1d3400b1530be186fe879ef68148f90 # main
     permissions:
       contents: write
     secrets: inherit
