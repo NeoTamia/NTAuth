@@ -8,8 +8,6 @@ export default defineNuxtConfig({
   routeRules: {
     "/**": {
       headers: {
-        "Content-Security-Policy":
-          "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'",
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Resource-Policy": "same-origin",
         "Permissions-Policy": "camera=(), geolocation=(), microphone=()",

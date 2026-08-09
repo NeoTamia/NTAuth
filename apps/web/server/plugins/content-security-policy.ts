@@ -1,0 +1,28 @@
+const policy = (nonce: string) =>
+  [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "img-src 'self' data:",
+    "object-src 'none'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline'",
+  ].join("; ");
+
+const addNonce = (fragment: string, nonce: string) =>
+  fragment.replace(/<script(?=[\s>])/g, `<script nonce="${nonce}"`);
+
+export default defineNitroPlugin((nitro) => {
+  nitro.hooks.hook("render:html", (html, { event }) => {
+    const nonce = crypto.randomUUID();
+
+    html.head = html.head.map((fragment) => addNonce(fragment, nonce));
+    html.body = html.body.map((fragment) => addNonce(fragment, nonce));
+    html.bodyAppend = html.bodyAppend.map((fragment) => addNonce(fragment, nonce));
+    html.bodyPrepend = html.bodyPrepend.map((fragment) => addNonce(fragment, nonce));
+    setResponseHeader(event, "Content-Security-Policy", policy(nonce));
+  });
+});
