@@ -20,9 +20,26 @@ describe("local infrastructure", () => {
 
     expect(compose.match(/healthcheck:/g)).toHaveLength(6);
     expect(compose).toContain("postgres-data:/var/lib/postgresql");
+    expect(compose).toContain("init-test-database.sql:/docker-entrypoint-initdb.d/");
     expect(compose).toContain("redis-data:/data");
     expect(compose).toContain("mailpit-data:/data");
     expect(compose).toContain("${POSTGRES_HOST_PORT:-5432}:5432");
+  });
+
+  test("isolates local integration tests from the application database", async () => {
+    const compose = await composeFile.text();
+    const exampleEnvironment = await Bun.file(new URL("../.env.example", import.meta.url)).text();
+    const rootPackage = await Bun.file(new URL("../package.json", import.meta.url)).text();
+    const initializer = await Bun.file(
+      new URL("../deploy/postgres/init-test-database.sql", import.meta.url),
+    ).text();
+
+    expect(exampleEnvironment).toContain(
+      "TEST_DATABASE_URL=postgres://ntauth:ntauth@localhost:5432/ntauth_test",
+    );
+    expect(initializer).toContain("CREATE DATABASE ntauth_test");
+    expect(compose).toContain("init-test-database.sql");
+    expect(rootPackage).toContain("tooling/assert-test-database.ts");
   });
 
   test("builds every application from versioned slim runtimes", async () => {

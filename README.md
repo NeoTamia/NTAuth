@@ -45,6 +45,10 @@ bun run db:migrate
 bun run db:rollback
 ```
 
+Local integration tests use the separate `ntauth_test` database created by Compose. `bun run test`
+refuses to start outside CI when `TEST_DATABASE_URL` targets the application database, preventing
+an interrupted test run from polluting local development data.
+
 Public sign-up is disabled, so a fresh environment must bootstrap its first platform administrator
 after migrations. For local development, run the interactive bootstrap after starting PostgreSQL
 and applying migrations:

@@ -33,7 +33,8 @@ describe("GitHub Actions CI", () => {
     expect(workflow).toContain("run: bun install --frozen-lockfile");
     expect(workflow).toContain("run: bun run check");
     expect(workflow).toContain("TEST_DATABASE_URL:");
-    expect(workflow).toContain("pg_isready -U ntauth -d ntauth");
+    expect(workflow).toContain("pg_isready -U ntauth -d ntauth_test");
+    expect(workflow).toContain("127.0.0.1:5432/ntauth_test");
     expect(workflow).toContain("redis-cli ping");
   });
 

@@ -22,10 +22,9 @@
     "release:prepare": "bun tooling/prepare-release-artifacts.ts",
     "release:publish": "bun tooling/publish-release-artifacts.ts",
     "release:verify": "bun tooling/verify-release.ts",
-    "test": "bun test tooling && turbo run test --concurrency=1",
+    "test": "bun --env-file=.env tooling/assert-test-database.ts && bun test tooling && bun --env-file=.env turbo run test --concurrency=1 --env-mode=loose",
     "typecheck": "turbo run typecheck"
   },
-  "packageManager": "bun@1.3.14",
   "devDependencies": {
     "@types/bun": "1.3.14",
     "oxfmt": "0.62.0",
@@ -35,5 +34,6 @@
   },
   "engines": {
     "bun": "1.3.14"
-  }
+  },
+  "packageManager": "bun@1.3.14"
 }

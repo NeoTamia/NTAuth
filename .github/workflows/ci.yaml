@@ -59,13 +59,13 @@ jobs:
       postgres:
         image: postgres:18.4-trixie@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
         env:
-          POSTGRES_DB: ntauth
+          POSTGRES_DB: ntauth_test
           POSTGRES_PASSWORD: ntauth
           POSTGRES_USER: ntauth
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U ntauth -d ntauth"
+          --health-cmd "pg_isready -U ntauth -d ntauth_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -80,9 +80,9 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgres://ntauth:ntauth@127.0.0.1:5432/ntauth
+      DATABASE_URL: postgres://ntauth:ntauth@127.0.0.1:5432/ntauth_test
       REDIS_URL: redis://127.0.0.1:6379
-      TEST_DATABASE_URL: postgres://ntauth:ntauth@127.0.0.1:5432/ntauth
+      TEST_DATABASE_URL: postgres://ntauth:ntauth@127.0.0.1:5432/ntauth_test
 
     steps:
       - name: Check out repository
