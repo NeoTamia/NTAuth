@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { authErrorMessage } from "~/utils/auth";
-import { mfaChallengeHeaders, validTotpCode } from "~/utils/mfa";
 import {
   matchesGrantSearch,
   SERVICE_GRANT_STATUSES,
@@ -34,6 +33,7 @@ type Grant = {
 };
 
 const { request } = useAuthApi();
+const { challengeHeaders, challengeReady } = useMfaChallenge();
 const services = ref<Service[]>([]);
 const organizations = ref<Organization[]>([]);
 const catalogueState = ref<LoadState>("locked");
@@ -99,13 +99,13 @@ function safeError(error: unknown, fallback: string) {
 }
 
 async function unlockCatalogue() {
-  if (!validTotpCode(catalogueCode.value)) return;
+  if (!challengeReady(catalogueCode.value)) return;
   catalogueState.value = "loading";
   catalogueError.value = "";
   try {
     const result = await request<{ organizations: Organization[]; services: Service[] }>(
       "/api/v1/service-grants/administration",
-      { headers: mfaChallengeHeaders(catalogueCode.value) },
+      { headers: challengeHeaders(catalogueCode.value) },
     );
     services.value = result.services;
     organizations.value = result.organizations;
@@ -134,14 +134,14 @@ function selectOrganization(organization: Organization) {
 }
 
 async function loadWorkspace() {
-  if (!selectedOrganization.value || !validTotpCode(workspaceCode.value)) return;
+  if (!selectedOrganization.value || !challengeReady(workspaceCode.value)) return;
   workspaceState.value = "loading";
   workspaceError.value = "";
   try {
     const params = new URLSearchParams({ organizationId: selectedOrganization.value.id });
     const result = await request<{ detail: OrganizationDetail; grants: Grant[] }>(
       `/api/v1/service-grants/administration?${params}`,
-      { headers: mfaChallengeHeaders(workspaceCode.value) },
+      { headers: challengeHeaders(workspaceCode.value) },
     );
     organizationDetail.value = result.detail;
     grants.value = result.grants;
@@ -163,7 +163,7 @@ async function createGrant() {
     !selectedOrganization.value ||
     !createService.value ||
     !createUserId.value ||
-    !validTotpCode(createCode.value)
+    !challengeReady(createCode.value)
   )
     return;
   createPending.value = true;
@@ -176,7 +176,7 @@ async function createGrant() {
         service: createService.value,
         userId: createUserId.value,
       },
-      headers: mfaChallengeHeaders(createCode.value),
+      headers: challengeHeaders(createCode.value),
       method: "POST",
     });
     grants.value = [grant, ...grants.value];
@@ -206,7 +206,7 @@ async function executeAction() {
     !selectedGrant.value ||
     !preparedAction.value ||
     !confirmAction.value ||
-    !validTotpCode(actionCode.value)
+    !challengeReady(actionCode.value)
   )
     return;
   actionPending.value = true;
@@ -215,7 +215,7 @@ async function executeAction() {
   try {
     if (preparedAction.value === "revoke") {
       await request(`/api/v1/service-grants/${selectedGrant.value.id}`, {
-        headers: mfaChallengeHeaders(actionCode.value),
+        headers: challengeHeaders(actionCode.value),
         method: "DELETE",
       });
       selectedGrant.value.status = "revoked";
@@ -223,7 +223,7 @@ async function executeAction() {
     } else {
       const updated = await request<Grant>(`/api/v1/service-grants/${selectedGrant.value.id}`, {
         body: { active: preparedAction.value === "activate" },
-        headers: mfaChallengeHeaders(actionCode.value),
+        headers: challengeHeaders(actionCode.value),
         method: "PATCH",
       });
       Object.assign(selectedGrant.value, updated);
@@ -270,11 +270,13 @@ async function executeAction() {
     >
       <div>
         <h2 id="grant-gate-title">Ouvrir le catalogue administré</h2>
-        <p>Un code MFA frais protège la liste des organisations et des services disponibles.</p>
+        <p>
+          Une session d’administration active protège la liste des organisations et des services.
+        </p>
       </div>
       <form method="post" @submit.prevent="unlockCatalogue">
         <MfaCodeField id="grant-catalogue-code" v-model="catalogueCode" label="Code MFA" />
-        <button type="submit" :disabled="!validTotpCode(catalogueCode)">
+        <button type="submit" :disabled="!challengeReady(catalogueCode)">
           Charger le catalogue
         </button>
       </form>
@@ -340,9 +342,11 @@ async function executeAction() {
           <MfaCodeField
             id="grant-workspace-code"
             v-model="workspaceCode"
-            label="Nouveau code MFA pour cette portée"
+            label="Code MFA pour réactiver la session"
           />
-          <button type="submit" :disabled="!validTotpCode(workspaceCode)">Charger les accès</button>
+          <button type="submit" :disabled="!challengeReady(workspaceCode)">
+            Charger les accès
+          </button>
         </form>
         <LoadingSkeleton
           v-else-if="workspaceState === 'loading'"
@@ -403,7 +407,7 @@ async function executeAction() {
               <button
                 type="submit"
                 :disabled="
-                  createPending || !createService || !createUserId || !validTotpCode(createCode)
+                  createPending || !createService || !createUserId || !challengeReady(createCode)
                 "
               >
                 {{ createPending ? "Création…" : "Accorder l’accès" }}
@@ -513,7 +517,7 @@ async function executeAction() {
                 <button
                   type="submit"
                   :aria-busy="actionPending"
-                  :disabled="actionPending || !confirmAction || !validTotpCode(actionCode)"
+                  :disabled="actionPending || !confirmAction || !challengeReady(actionCode)"
                 >
                   {{ actionPending ? "Application…" : "Appliquer maintenant" }}
                 </button>

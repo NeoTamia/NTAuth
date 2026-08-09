@@ -79,7 +79,7 @@ describe("policy editor", () => {
       "/history",
     ])
       expect(page).toContain(path);
-    expect(page.match(/mfaChallengeHeaders/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(page.match(/challengeHeaders/g)?.length).toBeGreaterThanOrEqual(4);
     expect(page).toContain("policy_conflict");
     expect(page).toContain("validateEditablePolicy");
     expect(page).toContain('aria-live="polite"');

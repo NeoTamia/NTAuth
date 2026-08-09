@@ -243,7 +243,9 @@ L’audit est écrit dans la transaction métier lorsqu’il prouve une mutation
 - CSP définie par Nuxt/reverse proxy ;
 - protection CSRF de Better Auth conservée ;
 - rate limiting global et renforcé sur login, token, invitation et récupération ;
-- MFA obligatoire pour les rôles plateforme ;
+- MFA obligatoire pour les rôles plateforme : un challenge TOTP à usage unique élève uniquement
+  la session authentifiée pendant 10 minutes. L’expiration est vérifiée côté serveur et un nouvel
+  enrôlement annule toutes les élévations existantes ;
 - secrets fournis par l’environnement ou des fichiers Docker secrets, jamais committés ;
 - logs structurés avec redaction ;
 - validation stricte de l’issuer, de l’audience, de l’expiration et des scopes par les resource servers.

@@ -16,7 +16,7 @@ describe("audit event consultation", () => {
     ).text();
     expect(page).toContain("/api/v1/audit-events/scopes");
     expect(page).toContain("/api/v1/audit-events/export");
-    expect(page.match(/mfaChallengeHeaders/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(page.match(/challengeHeaders/g)?.length).toBeGreaterThanOrEqual(3);
     expect(page).toContain("pageCursors");
     expect(page).toContain("confirmExport");
     expect(page).toContain("URL.createObjectURL");

@@ -30,7 +30,9 @@ function objectBody(value: unknown): Record<string, unknown> | undefined {
 
 async function actorFrom(auth: Auth, headers: Headers, requestId: string) {
   const current = await auth.api.getSession({ headers });
-  return current ? { requestId, userId: current.user.id } : undefined;
+  return current
+    ? { requestId, sessionId: current.session.id, userId: current.user.id }
+    : undefined;
 }
 
 function maskEmail(email: string): string {

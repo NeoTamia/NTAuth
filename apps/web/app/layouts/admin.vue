@@ -4,6 +4,16 @@ const signOutError = ref("");
 const { request } = useAuthApi();
 const route = useRoute();
 const { data: mfaStatus } = await useMfaStatus();
+const mfaClock = useState("mfa-elevation-clock", () => Date.now());
+let mfaClockTimer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  mfaClock.value = Date.now();
+  mfaClockTimer = setInterval(() => {
+    mfaClock.value = Date.now();
+  }, 5_000);
+});
+onBeforeUnmount(() => clearInterval(mfaClockTimer));
 
 const mfaSetupRequired = computed(() => mfaStatus.value && mfaStatus.value.status !== "verified");
 const onMfaPage = computed(() => route.path === "/admin/security/mfa");

@@ -57,7 +57,7 @@ export function createOrganizationRoutes(options: {
     const current = await options.auth.api.getSession({ headers: request.headers });
     if (!current)
       return { response: problem(401, "authentication_required", "Authentication required") };
-    const actor = { requestId, userId: current.user.id };
+    const actor = { requestId, sessionId: current.session.id, userId: current.user.id };
     try {
       await enforceRequestMfa(options.database, options.applicationSecret, request, actor);
       return { actor };

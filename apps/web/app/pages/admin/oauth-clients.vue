@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { authErrorMessage } from "~/utils/auth";
-import { mfaChallengeHeaders, validTotpCode } from "~/utils/mfa";
 import {
   clientKind,
   clientPayload,
@@ -25,6 +24,7 @@ type OAuthClient = {
 };
 
 const { request } = useAuthApi();
+const { challengeHeaders, challengeReady } = useMfaChallenge();
 const clients = ref<OAuthClient[]>([]);
 const listCode = ref("");
 const listState = ref<"locked" | "loading" | "ready" | "error" | "forbidden">("locked");
@@ -52,10 +52,10 @@ const canCreate = computed(
   () =>
     name.value.trim().length > 0 &&
     redirectUris.value.trim().length > 0 &&
-    validTotpCode(createCode.value) &&
+    challengeReady(createCode.value) &&
     !createPending.value,
 );
-const canAct = computed(() => validTotpCode(actionCode.value) && !actionPending.value);
+const canAct = computed(() => challengeReady(actionCode.value) && !actionPending.value);
 
 function safeError(error: unknown, fallback: string) {
   const candidate = error as { status?: number; statusCode?: number };
@@ -67,13 +67,13 @@ function safeError(error: unknown, fallback: string) {
 }
 
 async function unlockRegistry() {
-  if (!validTotpCode(listCode.value)) return;
+  if (!challengeReady(listCode.value)) return;
   listState.value = "loading";
   listError.value = "";
   try {
     clients.value =
       (await request<OAuthClient[]>("/api/auth/oauth2/get-clients", {
-        headers: mfaChallengeHeaders(listCode.value),
+        headers: challengeHeaders(listCode.value),
       })) ?? [];
     listState.value = "ready";
   } catch (error) {
@@ -111,7 +111,7 @@ async function createClient() {
           redirectUris: redirectUris.value,
           scopes: selectedScopes.value,
         }),
-        headers: mfaChallengeHeaders(createCode.value),
+        headers: challengeHeaders(createCode.value),
         method: "POST",
       },
     );
@@ -148,7 +148,7 @@ async function updateClient() {
     const uris = normalizeRedirectUris(editRedirectUris.value);
     await request("/api/auth/oauth2/update-client", {
       body: { client_id: selected.value.client_id, update: { redirect_uris: uris } },
-      headers: mfaChallengeHeaders(actionCode.value),
+      headers: challengeHeaders(actionCode.value),
       method: "POST",
     });
     selected.value.redirect_uris = uris;
@@ -173,7 +173,7 @@ async function rotateSecret() {
       "/api/auth/oauth2/client/rotate-secret",
       {
         body: { client_id: selected.value.client_id },
-        headers: mfaChallengeHeaders(actionCode.value),
+        headers: challengeHeaders(actionCode.value),
         method: "POST",
       },
     );
@@ -193,7 +193,7 @@ async function deleteClient() {
   try {
     await request("/api/auth/oauth2/delete-client", {
       body: { client_id: selected.value.client_id },
-      headers: mfaChallengeHeaders(actionCode.value),
+      headers: challengeHeaders(actionCode.value),
       method: "POST",
     });
     clients.value = clients.value.filter(
@@ -263,7 +263,7 @@ async function deleteClient() {
         </p>
         <button
           type="submit"
-          :disabled="!validTotpCode(listCode) || listState === 'loading'"
+          :disabled="!challengeReady(listCode) || listState === 'loading'"
           :aria-busy="listState === 'loading'"
         >
           {{ listState === "loading" ? "Ouverture…" : "Vérifier et ouvrir" }}
@@ -315,7 +315,7 @@ async function deleteClient() {
             id="oauth-action-code"
             v-model="actionCode"
             :disabled="Boolean(actionPending)"
-            label="Nouveau code MFA pour l’action"
+            label="Code MFA pour réactiver la session"
             described-by="oauth-action-scope"
           />
           <p id="oauth-action-scope" class="form-guidance">

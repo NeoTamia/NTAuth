@@ -498,6 +498,7 @@ describeWithDatabase("OAuth provider integration", () => {
         "oauth.get-client",
         "oauth.rotate-secret",
         "oauth.update-client",
+        "mfa.challenge",
       ].toSorted(),
     );
   });

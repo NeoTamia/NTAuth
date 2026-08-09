@@ -44,7 +44,7 @@ describe("OAuth client administration", () => {
     expect(clientKind({ token_endpoint_auth_method: "client_secret_basic" })).toBe("confidential");
   });
 
-  test("keeps every registry mutation behind a fresh MFA challenge", async () => {
+  test("keeps every registry mutation behind session MFA", async () => {
     const page = await Bun.file(
       new URL("../../app/pages/admin/oauth-clients.vue", import.meta.url),
     ).text();
@@ -56,7 +56,7 @@ describe("OAuth client administration", () => {
       "/api/auth/oauth2/delete-client",
     ])
       expect(page).toContain(endpoint);
-    expect(page).toContain("mfaChallengeHeaders");
+    expect(page).toContain("challengeHeaders");
     expect(page).toContain("createdSecret");
     expect(page).toContain("rotatedSecret");
     expect(page).toContain("confirmDelete");

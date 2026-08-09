@@ -66,7 +66,9 @@ export function createServiceGrantRoutes(options: {
   const actorFrom = async (request: Request) => {
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     const current = await options.auth.api.getSession({ headers: request.headers });
-    return current ? { requestId, userId: current.user.id } : undefined;
+    return current
+      ? { requestId, sessionId: current.session.id, userId: current.user.id }
+      : undefined;
   };
   const privilegedActor = async (request: Request) => {
     const actor = await actorFrom(request);

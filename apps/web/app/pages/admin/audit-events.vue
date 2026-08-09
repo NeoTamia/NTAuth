@@ -6,7 +6,6 @@ import {
   type AuditOutcome,
 } from "~/utils/audit-events";
 import { authErrorMessage } from "~/utils/auth";
-import { mfaChallengeHeaders, validTotpCode } from "~/utils/mfa";
 
 definePageMeta({ layout: "admin" });
 useHead({ title: "Journal d’audit — NTAuth" });
@@ -33,6 +32,7 @@ type AuditPage = {
 
 const PAGE_SIZE = 25;
 const { request } = useAuthApi();
+const { challengeHeaders, challengeReady } = useMfaChallenge();
 const organizations = ref<Organization[]>([]);
 const services = ref<Service[]>([]);
 const scopesState = ref<LoadState>("locked");
@@ -102,13 +102,13 @@ function buildQuery(cursor?: string) {
 }
 
 async function unlockScopes() {
-  if (!validTotpCode(scopesCode.value)) return;
+  if (!challengeReady(scopesCode.value)) return;
   scopesState.value = "loading";
   scopesError.value = "";
   try {
     const result = await request<{ organizations: Organization[]; services: Service[] }>(
       "/api/v1/audit-events/scopes",
-      { headers: mfaChallengeHeaders(scopesCode.value) },
+      { headers: challengeHeaders(scopesCode.value) },
     );
     organizations.value = result.organizations;
     services.value = result.services;
@@ -137,13 +137,13 @@ function resetJournal() {
 }
 
 async function loadEvents(targetIndex = 0, cursor?: string) {
-  if (!validTotpCode(journalCode.value)) return;
+  if (!challengeReady(journalCode.value)) return;
   journalState.value = "loading";
   journalError.value = "";
   selectedEvent.value = null;
   try {
     const result = await request<AuditPage>(`/api/v1/audit-events?${buildQuery(cursor)}`, {
-      headers: mfaChallengeHeaders(journalCode.value),
+      headers: challengeHeaders(journalCode.value),
     });
     events.value = result.events;
     retentionDays.value = result.retentionDays;
@@ -180,7 +180,7 @@ async function inspectEvent(event: AuditEvent) {
 }
 
 async function exportEvents() {
-  if (!confirmExport.value || !validTotpCode(exportCode.value)) return;
+  if (!confirmExport.value || !challengeReady(exportCode.value)) return;
   exportPending.value = true;
   exportMessage.value = "";
   exportError.value = false;
@@ -188,7 +188,7 @@ async function exportEvents() {
     const params = buildQuery();
     params.delete("limit");
     const blob = await request<Blob>(`/api/v1/audit-events/export?${params}`, {
-      headers: mfaChallengeHeaders(exportCode.value),
+      headers: challengeHeaders(exportCode.value),
       responseType: "blob",
     });
     const url = URL.createObjectURL(blob);
@@ -236,11 +236,13 @@ async function exportEvents() {
     <section v-if="scopesState === 'locked'" class="audit-gate" aria-labelledby="audit-gate-title">
       <div>
         <h2 id="audit-gate-title">Déverrouiller les portées autorisées</h2>
-        <p>Un code MFA frais protège la découverte des organisations et services consultables.</p>
+        <p>
+          Une session d’administration active protège la découverte des organisations et services.
+        </p>
       </div>
       <form method="post" @submit.prevent="unlockScopes">
         <MfaCodeField id="audit-scopes-code" v-model="scopesCode" label="Code MFA" />
-        <button type="submit" :disabled="!validTotpCode(scopesCode)">Charger les portées</button>
+        <button type="submit" :disabled="!challengeReady(scopesCode)">Charger les portées</button>
       </form>
     </section>
     <LoadingSkeleton v-else-if="scopesState === 'loading'" label="Chargement des portées d’audit" />
@@ -347,7 +349,7 @@ async function exportEvents() {
           <button
             type="submit"
             :disabled="
-              !validTotpCode(journalCode) ||
+              !challengeReady(journalCode) ||
               (scopeMode === 'organization' ? !organizationId : !service)
             "
           >
@@ -357,7 +359,7 @@ async function exportEvents() {
       </section>
 
       <p v-if="journalState === 'locked'" class="state-panel">
-        Définissez les filtres puis fournissez un code MFA frais.
+        Définissez les filtres puis activez votre session d’administration si nécessaire.
       </p>
       <LoadingSkeleton
         v-else-if="journalState === 'loading'"
@@ -405,7 +407,7 @@ async function exportEvents() {
               <button
                 type="button"
                 class="text-button"
-                :disabled="pageIndex === 0 || !validTotpCode(journalCode)"
+                :disabled="pageIndex === 0 || !challengeReady(journalCode)"
                 @click="previousPage"
               >
                 Page précédente
@@ -413,7 +415,7 @@ async function exportEvents() {
               <button
                 type="button"
                 class="text-button"
-                :disabled="!nextCursor || !validTotpCode(journalCode)"
+                :disabled="!nextCursor || !challengeReady(journalCode)"
                 @click="nextPage"
               >
                 Page suivante
@@ -422,7 +424,7 @@ async function exportEvents() {
             <MfaCodeField
               id="audit-page-code"
               v-model="journalCode"
-              label="Nouveau code MFA pour paginer"
+              label="Code MFA pour réactiver la session"
             />
           </footer>
         </div>
@@ -513,7 +515,7 @@ async function exportEvents() {
           <button
             type="submit"
             :aria-busy="exportPending"
-            :disabled="exportPending || !confirmExport || !validTotpCode(exportCode)"
+            :disabled="exportPending || !confirmExport || !challengeReady(exportCode)"
           >
             {{ exportPending ? "Génération…" : "Télécharger le CSV" }}
           </button>

@@ -91,7 +91,7 @@ explicitement par le propriétaire du risque. Une tâche planifiée ne vaut pas 
 - secrets clients et tokens opaques stockés sous forme hashée ;
 - access tokens ES256 courts, refresh tokens rotatifs et révocables ;
 - sélection d'organisation et grant de service vérifiés avant émission ;
-- MFA frais sur les opérations plateforme ;
+- challenge TOTP à usage unique ouvrant une élévation serveur de 10 minutes, liée à une seule session ;
 - IAM fail-closed, Deny prioritaire et ETag réévalué à chaque requête protégée ;
 - audit des mutations sensibles dans la transaction métier ;
 - images applicatives non-root basées sur des variantes `slim` exactes ;

@@ -11,6 +11,7 @@ import {
   MfaEnrollmentAuthorizationError,
   MfaEnrollmentRequiredError,
   platformRoleAssignments,
+  session,
   verifyMfaEnrollment,
   type DatabaseConnection,
 } from "@neotamia/db";
@@ -54,12 +55,13 @@ export async function enforceRequestMfa(
   database: DatabaseConnection,
   applicationSecret: string,
   request: Request,
-  actor: { requestId: string; userId: string },
+  actor: { requestId: string; sessionId: string; userId: string },
 ) {
   await enforcePlatformAdminMfa(database, {
     applicationSecret,
     code: request.headers.get("x-ntauth-totp") ?? undefined,
     requestId: actor.requestId,
+    sessionId: actor.sessionId,
     userId: actor.userId,
   });
 }
@@ -86,7 +88,17 @@ export function createMfaRoutes(options: {
         .from(mfaEnrollments)
         .where(eq(mfaEnrollments.userId, current.user.id))
         .limit(1);
+      const [activeSession] = await options.database.db
+        .select({ mfaVerifiedUntil: session.mfaVerifiedUntil })
+        .from(session)
+        .where(and(eq(session.id, current.session.id), eq(session.userId, current.user.id)))
+        .limit(1);
+      const now = new Date();
       return Response.json({
+        elevatedUntil:
+          activeSession?.mfaVerifiedUntil && activeSession.mfaVerifiedUntil > now
+            ? activeSession.mfaVerifiedUntil.toISOString()
+            : null,
         status: !enrollment ? "not_enrolled" : enrollment.verifiedAt ? "verified" : "pending",
       });
     })
@@ -133,6 +145,7 @@ export function createMfaRoutes(options: {
           applicationSecret: options.applicationSecret,
           code: input.code,
           requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
+          sessionId: current.session.id,
           userId: current.user.id,
         });
         return Response.json({ status: "verified" });

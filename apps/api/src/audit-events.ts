@@ -114,6 +114,7 @@ export function createAuditEventRoutes(options: {
       return { response: problem(401, "authentication_required", "Authentication required") };
     const actor = {
       requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
+      sessionId: current.session.id,
       userId: current.user.id,
     };
     try {

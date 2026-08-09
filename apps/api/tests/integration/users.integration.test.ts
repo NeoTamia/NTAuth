@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
 
 import {
   account,
@@ -143,7 +142,7 @@ describeWithDatabase("user lifecycle API", () => {
     expect(change.status).toBe(401);
   });
 
-  test("requires an enrolled, non-replayed TOTP for a platform action", async () => {
+  test("elevates the authenticated session after one non-replayed TOTP", async () => {
     const secret = generateTotpSecret();
     const counter = totpCounter();
     const code = await generateTotpCode(secret, counter);
@@ -153,41 +152,28 @@ describeWithDatabase("user lifecycle API", () => {
       userId: adminId,
       verifiedAt: new Date(),
     });
-    const changeStatus = () =>
+    const changeStatus = (mfaCode?: string) =>
       app().handle(
         new Request(`http://localhost/api/v1/users/${targetId}/status`, {
           body: JSON.stringify({ status: "suspended" }),
           headers: {
             "content-type": "application/json",
             cookie,
-            "x-ntauth-totp": code,
+            ...(mfaCode ? { "x-ntauth-totp": mfaCode } : {}),
             "x-request-id": `${runId}-suspend`,
           },
           method: "PATCH",
         }),
       );
-    expect((await changeStatus()).status).toBe(200);
-    expect((await changeStatus()).status).toBe(403);
+    expect((await changeStatus(code)).status).toBe(200);
+    // The second request reaches the business conflict instead of failing MFA:
+    // the same authenticated session remains elevated without another code.
+    expect((await changeStatus()).status).toBe(409);
 
-    const freshMfaCode = async () => {
-      const nextSecret = generateTotpSecret();
-      const nextCounter = totpCounter();
-      await connection.db
-        .update(mfaEnrollments)
-        .set({
-          encryptedSecret: await encryptTotpSecret(nextSecret, applicationSecret),
-          lastUsedCounter: nextCounter - 1,
-          verifiedAt: new Date(),
-        })
-        .where(eq(mfaEnrollments.userId, adminId));
-      return generateTotpCode(nextSecret, nextCounter);
-    };
-    const listCode = await freshMfaCode();
     const listed = await app().handle(
       new Request(`http://localhost/api/v1/users?query=api-lifecycle-target&limit=20`, {
         headers: {
           cookie,
-          "x-ntauth-totp": listCode,
           "x-request-id": `${runId}-list`,
         },
       }),
@@ -205,12 +191,10 @@ describeWithDatabase("user lifecycle API", () => {
       userAgent: "Chrome",
       userId: targetId,
     });
-    const detailCode = await freshMfaCode();
     const detail = await app().handle(
       new Request(`http://localhost/api/v1/users/${targetId}`, {
         headers: {
           cookie,
-          "x-ntauth-totp": detailCode,
           "x-request-id": `${runId}-detail`,
         },
       }),
@@ -220,14 +204,12 @@ describeWithDatabase("user lifecycle API", () => {
     expect(detailBody.sessions).toHaveLength(1);
     expect(detailBody.sessions[0]).not.toHaveProperty("token");
 
-    const revokeCode = await freshMfaCode();
     const revoked = await app().handle(
       new Request(`http://localhost/api/v1/users/${targetId}/sessions/revoke`, {
         body: JSON.stringify({ reason: "administrative" }),
         headers: {
           "content-type": "application/json",
           cookie,
-          "x-ntauth-totp": revokeCode,
           "x-request-id": `${runId}-revoke`,
         },
         method: "POST",
@@ -254,7 +236,7 @@ describeWithDatabase("user lifecycle API", () => {
     const pendingStatus = await app().handle(
       new Request("http://localhost/api/v1/mfa/status", { headers: { cookie } }),
     );
-    expect(await pendingStatus.json()).toEqual({ status: "pending" });
+    expect(await pendingStatus.json()).toEqual({ elevatedUntil: null, status: "pending" });
     const { totpURI } = (await enrolled.json()) as { totpURI: string };
     const secret = new URL(totpURI).searchParams.get("secret")!;
     const code = await generateTotpCode(secret, totpCounter());
@@ -273,6 +255,9 @@ describeWithDatabase("user lifecycle API", () => {
     const activeStatus = await app().handle(
       new Request("http://localhost/api/v1/mfa/status", { headers: { cookie } }),
     );
-    expect(await activeStatus.json()).toEqual({ status: "verified" });
+    expect(await activeStatus.json()).toEqual({
+      elevatedUntil: expect.any(String),
+      status: "verified",
+    });
   });
 });

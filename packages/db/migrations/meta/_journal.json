@@ -134,6 +134,13 @@
       "when": 1786230000000,
       "tag": "0018_audit_delete_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786316400000,
+      "tag": "0019_mfa_session_elevation",
+      "breakpoints": true
     }
   ]
 }

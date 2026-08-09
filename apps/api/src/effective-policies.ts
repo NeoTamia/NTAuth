@@ -71,6 +71,7 @@ export function createEffectivePolicyRoutes(options: {
       if (!bearer) {
         await enforceRequestMfa(options.database, options.applicationSecret, request, {
           requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
+          sessionId: current!.session.id,
           userId,
         });
       }

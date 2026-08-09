@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { authErrorMessage } from "~/utils/auth";
-import { mfaChallengeHeaders, validTotpCode } from "~/utils/mfa";
 import {
   MEMBERSHIP_STATUSES,
   membershipStatusLabel,
@@ -45,6 +44,7 @@ type OrganizationDetail = {
 };
 
 const { request } = useAuthApi();
+const { challengeHeaders, challengeReady } = useMfaChallenge();
 const organizations = ref<OrganizationSummary[]>([]);
 const listState = ref<"locked" | "loading" | "ready" | "error" | "forbidden">("locked");
 const listCode = ref("");
@@ -93,7 +93,7 @@ const canCreate = computed(
   () =>
     createName.value.trim().length > 0 &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(createSlug.value) &&
-    validTotpCode(createCode.value) &&
+    challengeReady(createCode.value) &&
     !createPending.value,
 );
 
@@ -118,13 +118,13 @@ function safeError(error: unknown, fallback: string) {
 }
 
 async function unlockOrganizations() {
-  if (!validTotpCode(listCode.value)) return;
+  if (!challengeReady(listCode.value)) return;
   listState.value = "loading";
   listError.value = "";
   try {
     organizations.value =
       (await request<OrganizationSummary[]>("/api/v1/organizations", {
-        headers: mfaChallengeHeaders(listCode.value),
+        headers: challengeHeaders(listCode.value),
       })) ?? [];
     listState.value = "ready";
   } catch (error) {
@@ -148,13 +148,13 @@ function selectOrganization(organization: OrganizationSummary) {
 }
 
 async function loadDetail() {
-  if (!selectedSummary.value || !validTotpCode(detailCode.value)) return;
+  if (!selectedSummary.value || !challengeReady(detailCode.value)) return;
   detailState.value = "loading";
   detailError.value = "";
   try {
     detail.value = await request<OrganizationDetail>(
       `/api/v1/organizations/${selectedSummary.value.id}`,
-      { headers: mfaChallengeHeaders(detailCode.value) },
+      { headers: challengeHeaders(detailCode.value) },
     );
     editName.value = detail.value.organization.name;
     editStatus.value = detail.value.organization.status;
@@ -184,7 +184,7 @@ async function createOrganizationEntry() {
   try {
     const created = await request<OrganizationSummary>("/api/v1/organizations", {
       body: { name: createName.value.trim(), slug: createSlug.value },
-      headers: mfaChallengeHeaders(createCode.value),
+      headers: challengeHeaders(createCode.value),
       method: "POST",
     });
     const summary = { ...created, administratorCount: 0, memberCount: 0 };
@@ -204,7 +204,7 @@ async function createOrganizationEntry() {
 }
 
 async function saveOrganization() {
-  if (!detail.value || !validTotpCode(organizationCode.value) || organizationPending.value) return;
+  if (!detail.value || !challengeReady(organizationCode.value) || organizationPending.value) return;
   organizationPending.value = true;
   organizationMessage.value = "";
   try {
@@ -212,7 +212,7 @@ async function saveOrganization() {
       `/api/v1/organizations/${detail.value.organization.id}`,
       {
         body: { name: editName.value.trim(), status: editStatus.value },
-        headers: mfaChallengeHeaders(organizationCode.value),
+        headers: challengeHeaders(organizationCode.value),
         method: "PATCH",
       },
     );
@@ -237,7 +237,7 @@ function editMember(member: OrganizationMember) {
 }
 
 async function saveMember() {
-  if (!detail.value || !selectedMember.value || !validTotpCode(memberCode.value)) return;
+  if (!detail.value || !selectedMember.value || !challengeReady(memberCode.value)) return;
   memberPending.value = true;
   memberMessage.value = "";
   memberError.value = false;
@@ -246,7 +246,7 @@ async function saveMember() {
       `/api/v1/organizations/${detail.value.organization.id}/members/${selectedMember.value.userId}`,
       {
         body: { role: memberRole.value, status: memberStatus.value },
-        headers: mfaChallengeHeaders(memberCode.value),
+        headers: challengeHeaders(memberCode.value),
         method: "PATCH",
       },
     );
@@ -268,7 +268,7 @@ async function saveMember() {
 }
 
 async function inviteMember() {
-  if (!detail.value || !validTotpCode(invitationCode.value) || invitationPending.value) return;
+  if (!detail.value || !challengeReady(invitationCode.value) || invitationPending.value) return;
   invitationPending.value = true;
   invitationMessage.value = "";
   invitationError.value = false;
@@ -279,7 +279,7 @@ async function inviteMember() {
         organizationId: detail.value.organization.id,
         role: invitationRole.value,
       },
-      headers: mfaChallengeHeaders(invitationCode.value),
+      headers: challengeHeaders(invitationCode.value),
       method: "POST",
     });
     detail.value.invitations.unshift({
@@ -310,14 +310,14 @@ async function cancelInvitation() {
     !detail.value ||
     !selectedInvitation.value ||
     !confirmCancel.value ||
-    !validTotpCode(cancelCode.value)
+    !challengeReady(cancelCode.value)
   )
     return;
   cancelPending.value = true;
   cancelMessage.value = "";
   try {
     await request(`/api/v1/invitations/${selectedInvitation.value.id}`, {
-      headers: mfaChallengeHeaders(cancelCode.value),
+      headers: challengeHeaders(cancelCode.value),
       method: "DELETE",
     });
     detail.value.invitations = detail.value.invitations.filter(
@@ -363,7 +363,7 @@ async function cancelInvitation() {
 
     <section v-if="listState !== 'ready'" class="registry-gate" aria-labelledby="org-gate-title">
       <h2 id="org-gate-title">Ouvrir le registre protégé</h2>
-      <p>Un code MFA frais limite l’exposition des tenants que vous pouvez administrer.</p>
+      <p>Une session d’administration active protège la liste des tenants que vous administrez.</p>
       <form method="post" aria-describedby="org-gate-message" @submit.prevent="unlockOrganizations">
         <MfaCodeField
           id="organizations-list-code"
@@ -383,7 +383,7 @@ async function cancelInvitation() {
         </p>
         <button
           type="submit"
-          :disabled="!validTotpCode(listCode) || listState === 'loading'"
+          :disabled="!challengeReady(listCode) || listState === 'loading'"
           :aria-busy="listState === 'loading'"
         >
           {{ listState === "loading" ? "Ouverture…" : "Vérifier et ouvrir" }}
@@ -438,7 +438,10 @@ async function cancelInvitation() {
             method="post"
             @submit.prevent="loadDetail"
           >
-            <p>Le détail contient des identités. Saisissez un nouveau code MFA pour l’afficher.</p>
+            <p>
+              Le détail contient des identités. Activez votre session d’administration pour
+              l’afficher.
+            </p>
             <MfaCodeField
               id="organization-detail-code"
               v-model="detailCode"
@@ -457,7 +460,7 @@ async function cancelInvitation() {
             </p>
             <button
               type="submit"
-              :disabled="!validTotpCode(detailCode) || detailState === 'loading'"
+              :disabled="!challengeReady(detailCode) || detailState === 'loading'"
               :aria-busy="detailState === 'loading'"
             >
               {{ detailState === "loading" ? "Chargement…" : "Afficher le détail" }}
@@ -506,7 +509,7 @@ async function cancelInvitation() {
               <button
                 type="submit"
                 :disabled="
-                  !editName.trim() || !validTotpCode(organizationCode) || organizationPending
+                  !editName.trim() || !challengeReady(organizationCode) || organizationPending
                 "
               >
                 {{ organizationPending ? "Enregistrement…" : "Enregistrer le tenant" }}
@@ -582,7 +585,7 @@ async function cancelInvitation() {
                     "Portée : rôle et accès de cette seule identité. Le dernier administrateur est protégé."
                   }}
                 </p>
-                <button type="submit" :disabled="!validTotpCode(memberCode) || memberPending">
+                <button type="submit" :disabled="!challengeReady(memberCode) || memberPending">
                   {{ memberPending ? "Enregistrement…" : "Mettre à jour le membership" }}
                 </button>
               </form>
@@ -638,7 +641,7 @@ async function cancelInvitation() {
                 <button
                   type="submit"
                   :disabled="
-                    !invitationEmail.trim() || !validTotpCode(invitationCode) || invitationPending
+                    !invitationEmail.trim() || !challengeReady(invitationCode) || invitationPending
                   "
                 >
                   {{ invitationPending ? "Création…" : "Créer l’invitation" }}
@@ -689,7 +692,7 @@ async function cancelInvitation() {
                 <button
                   type="submit"
                   class="danger-button"
-                  :disabled="!confirmCancel || !validTotpCode(cancelCode) || cancelPending"
+                  :disabled="!confirmCancel || !challengeReady(cancelCode) || cancelPending"
                 >
                   {{ cancelPending ? "Annulation…" : "Annuler définitivement l’invitation" }}
                 </button>

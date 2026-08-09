@@ -2,7 +2,6 @@
 import type { PolicyDocument, PolicyEffect, PolicyStatement } from "@neotamia/permissions";
 
 import { authErrorMessage } from "~/utils/auth";
-import { mfaChallengeHeaders, validTotpCode } from "~/utils/mfa";
 import {
   emptyPolicyDocument,
   identifierLines,
@@ -42,6 +41,7 @@ type PolicyVersion = {
 type PolicyHistory = { policy: PolicySummary; versions: PolicyVersion[] };
 
 const { request } = useAuthApi();
+const { challengeHeaders, challengeReady } = useMfaChallenge();
 const organizations = ref<OrganizationSummary[]>([]);
 const organizationState = ref<LoadState>("locked");
 const organizationCode = ref("");
@@ -89,7 +89,7 @@ const canSave = computed(
   () =>
     Boolean(validation.value.document) &&
     policyName.value.trim().length > 0 &&
-    validTotpCode(saveCode.value) &&
+    challengeReady(saveCode.value) &&
     !savePending.value,
 );
 
@@ -111,13 +111,13 @@ function safeError(error: unknown, fallback: string) {
 }
 
 async function unlockOrganizations() {
-  if (!validTotpCode(organizationCode.value)) return;
+  if (!challengeReady(organizationCode.value)) return;
   organizationState.value = "loading";
   organizationError.value = "";
   try {
     organizations.value =
       (await request<OrganizationSummary[]>("/api/v1/organizations", {
-        headers: mfaChallengeHeaders(organizationCode.value),
+        headers: challengeHeaders(organizationCode.value),
       })) ?? [];
     organizationState.value = organizations.value.length ? "ready" : "empty";
   } catch (error) {
@@ -141,7 +141,7 @@ function changeOrganization() {
 
 async function loadWorkspace() {
   if (!organizationId.value || !/^[a-z][a-z0-9-]{0,62}$/.test(service.value)) return;
-  if (!validTotpCode(workspaceCode.value)) return;
+  if (!challengeReady(workspaceCode.value)) return;
   workspaceState.value = "loading";
   workspaceError.value = "";
   selectedPolicy.value = null;
@@ -154,7 +154,7 @@ async function loadWorkspace() {
     const [loadedCatalogue, loadedPolicies] = await Promise.all([
       request<Catalogue>(`/api/v1/iam/catalog/${encodeURIComponent(service.value)}`),
       request<PolicySummary[]>(`/api/v1/iam/policies?${query}`, {
-        headers: mfaChallengeHeaders(workspaceCode.value),
+        headers: challengeHeaders(workspaceCode.value),
       }),
     ]);
     catalogue.value = loadedCatalogue;
@@ -201,13 +201,13 @@ function selectPolicy(policy: PolicySummary) {
 }
 
 async function loadHistory() {
-  if (!selectedPolicy.value || !validTotpCode(historyCode.value)) return;
+  if (!selectedPolicy.value || !challengeReady(historyCode.value)) return;
   historyState.value = "loading";
   historyError.value = "";
   try {
     const result = await request<PolicyHistory>(
       `/api/v1/iam/policies/${selectedPolicy.value.id}/history`,
-      { headers: mfaChallengeHeaders(historyCode.value) },
+      { headers: challengeHeaders(historyCode.value) },
     );
     selectedPolicy.value = result.policy;
     history.value = result.versions;
@@ -278,7 +278,7 @@ async function savePolicy() {
               document: validation.value.document,
               expectedVersion: selectedPolicy.value.currentVersion,
             },
-            headers: mfaChallengeHeaders(saveCode.value),
+            headers: challengeHeaders(saveCode.value),
             method: "PUT",
           },
         )
@@ -289,7 +289,7 @@ async function savePolicy() {
             organizationId: organizationId.value,
             service: catalogue.value.service.key,
           },
-          headers: mfaChallengeHeaders(saveCode.value),
+          headers: challengeHeaders(saveCode.value),
           method: "POST",
         });
     selectedPolicy.value = result.policy;
@@ -345,14 +345,14 @@ async function savePolicy() {
       aria-labelledby="policy-org-gate"
     >
       <h2 id="policy-org-gate">Choisir une portée protégée</h2>
-      <p>Un code MFA frais ouvre uniquement la liste des tenants que vous administrez.</p>
+      <p>Une session d’administration active protège la liste des tenants que vous administrez.</p>
       <form method="post" @submit.prevent="unlockOrganizations">
         <MfaCodeField
           id="policy-organization-code"
           v-model="organizationCode"
           label="Code MFA à 6 chiffres"
         />
-        <button type="submit" :disabled="!validTotpCode(organizationCode)">
+        <button type="submit" :disabled="!challengeReady(organizationCode)">
           Afficher les tenants
         </button>
       </form>
@@ -422,7 +422,7 @@ async function savePolicy() {
           />
           <button
             type="submit"
-            :disabled="!organizationId || !service || !validTotpCode(workspaceCode)"
+            :disabled="!organizationId || !service || !challengeReady(workspaceCode)"
           >
             Charger le catalogue et les policies
           </button>
@@ -501,7 +501,7 @@ async function savePolicy() {
               v-model="historyCode"
               label="Code MFA pour cet historique"
             />
-            <button type="submit" :disabled="!validTotpCode(historyCode)">Ouvrir la policy</button>
+            <button type="submit" :disabled="!challengeReady(historyCode)">Ouvrir la policy</button>
           </form>
         </section>
         <LoadingSkeleton

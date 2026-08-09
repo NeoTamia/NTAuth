@@ -54,6 +54,7 @@ export const session = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    mfaVerifiedUntil: timestamp("mfa_verified_until", { withTimezone: true }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

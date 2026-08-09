@@ -34,8 +34,8 @@ auditable.
 L’interface Nuxt et l’API Elysia sont servies en même origine en production sur
 `auth.neotamia.re`. Les comptes sont créés par invitation ; l’inscription publique
 est interdite. NTScout est le premier client OAuth/OIDC. Les utilisateurs peuvent
-changer d’organisation, tandis que les actions plateforme exigent un challenge
-TOTP récent.
+changer d’organisation, tandis que les actions plateforme exigent une session
+d’administration activée par un challenge TOTP récent.
 
 ## Capabilities and Constraints
 

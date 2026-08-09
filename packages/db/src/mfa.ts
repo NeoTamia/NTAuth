@@ -1,6 +1,7 @@
 import type { DatabaseConnection } from "./client";
 
 const PERIOD_SECONDS = 30;
+export const MFA_ELEVATION_SECONDS = 10 * 60;
 const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 export class MfaEnrollmentRequiredError extends Error {
@@ -155,6 +156,9 @@ export async function beginMfaEnrollment(
         verified_at = null, last_used_counter = null, updated_at = excluded.updated_at
     `;
     await transaction`
+      update session set mfa_verified_until = null where user_id = ${input.userId}
+    `;
+    await transaction`
       insert into audit_events (actor_user_id, action, resource_type, resource_id, outcome, request_id, metadata)
       values (${input.userId}, 'mfa.enrollment.start', 'user', ${input.userId}, 'success', ${`mfa-enroll:${crypto.randomUUID()}`}, '{}'::jsonb)
     `;
@@ -173,7 +177,13 @@ export async function beginMfaEnrollment(
 
 export async function verifyMfaEnrollment(
   connection: DatabaseConnection,
-  input: { applicationSecret: string; code: string; requestId: string; userId: string },
+  input: {
+    applicationSecret: string;
+    code: string;
+    requestId: string;
+    sessionId: string;
+    userId: string;
+  },
   now = new Date(),
 ) {
   const result = await connection.client.begin(async (transaction) => {
@@ -204,6 +214,11 @@ export async function verifyMfaEnrollment(
       update mfa_enrollments set verified_at = ${now.toISOString()}, last_used_counter = ${counter}, updated_at = ${now.toISOString()}
       where user_id = ${input.userId}
     `;
+    const elevatedUntil = new Date(now.getTime() + MFA_ELEVATION_SECONDS * 1_000);
+    await transaction`
+      update session set mfa_verified_until = ${elevatedUntil.toISOString()}
+      where id = ${input.sessionId} and user_id = ${input.userId} and expires_at > ${now.toISOString()}
+    `;
     await transaction`
       insert into audit_events (actor_user_id, action, resource_type, resource_id, outcome, request_id, metadata)
       values (${input.userId}, 'mfa.enrollment.verify', 'user', ${input.userId}, 'success', ${input.requestId}, '{}'::jsonb)
@@ -215,7 +230,13 @@ export async function verifyMfaEnrollment(
 
 export async function enforcePlatformAdminMfa(
   connection: DatabaseConnection,
-  input: { applicationSecret: string; code?: string; requestId: string; userId: string },
+  input: {
+    applicationSecret: string;
+    code?: string;
+    requestId: string;
+    sessionId: string;
+    userId: string;
+  },
   now = new Date(),
 ) {
   const outcome = await connection.client.begin(async (transaction) => {
@@ -236,6 +257,18 @@ export async function enforcePlatformAdminMfa(
       `;
       return "enrollment_required" as const;
     }
+    const [activeSession] = await transaction<{ mfaVerifiedUntil: Date | string | null }[]>`
+      select mfa_verified_until as "mfaVerifiedUntil" from session
+      where id = ${input.sessionId} and user_id = ${input.userId} and expires_at > ${now.toISOString()}
+      for update
+    `;
+    if (!activeSession) return "invalid" as const;
+    const mfaVerifiedUntil = activeSession.mfaVerifiedUntil
+      ? new Date(activeSession.mfaVerifiedUntil)
+      : undefined;
+    if (mfaVerifiedUntil && mfaVerifiedUntil > now) {
+      return "elevated" as const;
+    }
     const counter = input.code
       ? await matchingCounter(
           await decryptTotpSecret(enrollment.encryptedSecret, input.applicationSecret),
@@ -253,6 +286,15 @@ export async function enforcePlatformAdminMfa(
     await transaction`
       update mfa_enrollments set last_used_counter = ${counter}, updated_at = ${now.toISOString()}
       where user_id = ${input.userId}
+    `;
+    const elevatedUntil = new Date(now.getTime() + MFA_ELEVATION_SECONDS * 1_000);
+    await transaction`
+      update session set mfa_verified_until = ${elevatedUntil.toISOString()}
+      where id = ${input.sessionId} and user_id = ${input.userId}
+    `;
+    await transaction`
+      insert into audit_events (actor_user_id, action, resource_type, resource_id, outcome, request_id, metadata)
+      values (${input.userId}, 'mfa.challenge', 'session', ${input.sessionId}, 'success', ${input.requestId}, ${JSON.stringify({ elevatedUntil: elevatedUntil.toISOString() })}::jsonb)
     `;
     return "verified" as const;
   });

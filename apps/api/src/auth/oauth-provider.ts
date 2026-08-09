@@ -155,6 +155,7 @@ export const createOAuthProviderPlugin = (options?: {
           applicationSecret: options.applicationSecret,
           code: headers.get("x-ntauth-totp") ?? undefined,
           requestId: headers.get("x-request-id") ?? crypto.randomUUID(),
+          sessionId: session.id,
           userId: session.userId,
         });
         return true;

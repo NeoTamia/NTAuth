@@ -38,5 +38,8 @@ describe("MFA administration flow", () => {
     expect(layout).toContain("Activez la MFA avant de continuer");
     expect(layout).toContain("Terminez la configuration MFA");
     expect(layout).toContain('to="/admin/security/mfa"');
+    expect(status).toContain("elevatedUntil");
+    expect(status).toContain("challengeReady");
+    expect(codeField).toContain("Session MFA active");
   });
 });

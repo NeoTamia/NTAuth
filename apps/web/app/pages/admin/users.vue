@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { authErrorMessage } from "~/utils/auth";
-import { mfaChallengeHeaders, validTotpCode } from "~/utils/mfa";
 import {
   sessionState,
   sessionStateLabel,
@@ -50,6 +49,7 @@ type RegistryPage = { items: UserSummary[]; nextOffset: number | null; total: nu
 
 const PAGE_SIZE = 20;
 const { request } = useAuthApi();
+const { challengeHeaders, challengeReady } = useMfaChallenge();
 const users = ref<UserSummary[]>([]);
 const registryState = ref<LoadState>("locked");
 const registryCode = ref("");
@@ -100,7 +100,7 @@ function safeError(error: unknown, fallback: string) {
 }
 
 async function loadRegistry(targetOffset = 0) {
-  if (!validTotpCode(registryCode.value)) return;
+  if (!challengeReady(registryCode.value)) return;
   registryState.value = "loading";
   registryError.value = "";
   try {
@@ -108,7 +108,7 @@ async function loadRegistry(targetOffset = 0) {
     if (query.value.trim()) params.set("query", query.value.trim());
     if (statusFilter.value) params.set("status", statusFilter.value);
     const result = await request<RegistryPage>(`/api/v1/users?${params}`, {
-      headers: mfaChallengeHeaders(registryCode.value),
+      headers: challengeHeaders(registryCode.value),
     });
     users.value = result.items;
     offset.value = targetOffset;
@@ -149,12 +149,12 @@ function selectUser(identity: UserSummary) {
 }
 
 async function loadDetail() {
-  if (!selectedSummary.value || !validTotpCode(detailCode.value)) return;
+  if (!selectedSummary.value || !challengeReady(detailCode.value)) return;
   detailState.value = "loading";
   detailError.value = "";
   try {
     detail.value = await request<UserDetail>(`/api/v1/users/${selectedSummary.value.id}`, {
-      headers: mfaChallengeHeaders(detailCode.value),
+      headers: challengeHeaders(detailCode.value),
     });
     nextStatus.value =
       detail.value.identity.status === "deleted" ? "deactivated" : detail.value.identity.status;
@@ -177,7 +177,7 @@ async function changeStatus() {
     !detail.value ||
     !selectedSummary.value ||
     !confirmStatus.value ||
-    !validTotpCode(statusCode.value)
+    !challengeReady(statusCode.value)
   )
     return;
   statusPending.value = true;
@@ -188,7 +188,7 @@ async function changeStatus() {
       `/api/v1/users/${selectedSummary.value.id}/status`,
       {
         body: { status: nextStatus.value },
-        headers: mfaChallengeHeaders(statusCode.value),
+        headers: challengeHeaders(statusCode.value),
         method: "PATCH",
       },
     );
@@ -212,7 +212,7 @@ async function revokeSessions() {
     !detail.value ||
     !selectedSummary.value ||
     !confirmRevocation.value ||
-    !validTotpCode(revokeCode.value)
+    !challengeReady(revokeCode.value)
   )
     return;
   revokePending.value = true;
@@ -223,7 +223,7 @@ async function revokeSessions() {
       `/api/v1/users/${selectedSummary.value.id}/sessions/revoke`,
       {
         body: { reason: revocationReason.value },
-        headers: mfaChallengeHeaders(revokeCode.value),
+        headers: challengeHeaders(revokeCode.value),
         method: "POST",
       },
     );
@@ -297,7 +297,7 @@ async function revokeSessions() {
           label="Code MFA pour cette page du registre"
         />
         <div class="filter-actions">
-          <button type="submit" :disabled="!validTotpCode(registryCode)">Rechercher</button>
+          <button type="submit" :disabled="!challengeReady(registryCode)">Rechercher</button>
           <button type="button" class="text-button" @click="resetFilters">
             Effacer les filtres
           </button>
@@ -306,7 +306,7 @@ async function revokeSessions() {
     </section>
 
     <p v-if="registryState === 'locked'" class="state-panel">
-      Saisissez un code MFA frais pour ouvrir le registre ou changer de page.
+      Saisissez un code MFA pour ouvrir une session d’administration de 10 minutes.
     </p>
     <LoadingSkeleton
       v-else-if="registryState === 'loading'"
@@ -324,7 +324,7 @@ async function revokeSessions() {
     </div>
     <div v-else-if="registryState === 'empty'" class="state-panel">
       <h2>Aucune identité trouvée</h2>
-      <p>Modifiez les filtres, puis utilisez un nouveau code MFA.</p>
+      <p>Modifiez les filtres. Un code MFA n’est demandé que si la session doit être réactivée.</p>
     </div>
 
     <section v-else-if="registryState === 'ready'" class="user-workspace">
@@ -361,7 +361,7 @@ async function revokeSessions() {
             <button
               type="button"
               class="text-button"
-              :disabled="offset === 0 || !validTotpCode(registryCode)"
+              :disabled="offset === 0 || !challengeReady(registryCode)"
               @click="loadRegistry(Math.max(0, offset - PAGE_SIZE))"
             >
               Page précédente
@@ -369,7 +369,7 @@ async function revokeSessions() {
             <button
               type="button"
               class="text-button"
-              :disabled="nextOffset === null || !validTotpCode(registryCode)"
+              :disabled="nextOffset === null || !challengeReady(registryCode)"
               @click="loadRegistry(nextOffset ?? offset)"
             >
               Page suivante
@@ -378,7 +378,7 @@ async function revokeSessions() {
           <MfaCodeField
             id="user-pagination-code"
             v-model="registryCode"
-            label="Nouveau code MFA pour paginer"
+            label="Code MFA pour réactiver la session"
           />
         </footer>
       </aside>
@@ -402,13 +402,13 @@ async function revokeSessions() {
           method="post"
           @submit.prevent="loadDetail"
         >
-          <p>Un code MFA frais limite l’exposition des sessions de cette identité.</p>
+          <p>Une session d’administration active protège l’accès aux sessions de cette identité.</p>
           <MfaCodeField
             id="user-detail-code"
             v-model="detailCode"
             label="Code MFA pour ce détail"
           />
-          <button type="submit" :disabled="!validTotpCode(detailCode)">Ouvrir l’identité</button>
+          <button type="submit" :disabled="!challengeReady(detailCode)">Ouvrir l’identité</button>
         </form>
         <LoadingSkeleton
           v-else-if="detailState === 'loading'"
@@ -521,7 +521,7 @@ async function revokeSessions() {
             <button
               type="submit"
               :aria-busy="revokePending"
-              :disabled="!confirmRevocation || !validTotpCode(revokeCode) || revokePending"
+              :disabled="!confirmRevocation || !challengeReady(revokeCode) || revokePending"
             >
               {{ revokePending ? "Révocation…" : "Révoquer les sessions" }}
             </button>
@@ -568,7 +568,7 @@ async function revokeSessions() {
                 detail.identity.status === 'deleted' ||
                 nextStatus === detail.identity.status ||
                 !confirmStatus ||
-                !validTotpCode(statusCode) ||
+                !challengeReady(statusCode) ||
                 statusPending
               "
             >

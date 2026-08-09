@@ -29,6 +29,7 @@ export function createSigningKeyRoutes(options: {
       try {
         await enforceRequestMfa(options.database, options.applicationSecret, request, {
           requestId,
+          sessionId: current.session.id,
           userId: current.user.id,
         });
       } catch (error) {

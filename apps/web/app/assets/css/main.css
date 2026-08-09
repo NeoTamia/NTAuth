@@ -598,6 +598,19 @@ button:not(:disabled):hover,
   color: #1c5941;
   white-space: nowrap;
 }
+.mfa-elevation-status {
+  display: grid;
+  gap: 0.25rem;
+  padding-block: 0.75rem;
+  border-block: 1px solid #7f9b8d;
+}
+.mfa-elevation-status strong {
+  color: #1c5941;
+}
+.mfa-elevation-status span {
+  color: #45544c;
+  font-size: 0.875rem;
+}
 
 .oauth-admin {
   max-width: 76rem;

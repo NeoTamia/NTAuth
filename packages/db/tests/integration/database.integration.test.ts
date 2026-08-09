@@ -64,24 +64,26 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0018_audit_delete_guard");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0019_mfa_session_elevation");
 
-    const [auditGuard] = await connection.client<{ exists: boolean }[]>`
+    const [elevationColumn] = await connection.client<{ exists: boolean }[]>`
       select exists (
-        select 1 from pg_trigger
-        where tgname = 'audit_events_guarded_delete' and not tgisinternal
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'session'
+          and column_name = 'mfa_verified_until'
       ) as exists
     `;
-    expect(auditGuard?.exists).toBe(false);
+    expect(elevationColumn?.exists).toBe(false);
 
     await applyMigrations(connection);
-    const [restoredAuditGuard] = await connection.client<{ exists: boolean }[]>`
+    const [restoredElevationColumn] = await connection.client<{ exists: boolean }[]>`
       select exists (
-        select 1 from pg_trigger
-        where tgname = 'audit_events_guarded_delete' and not tgisinternal
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'session'
+          and column_name = 'mfa_verified_until'
       ) as exists
     `;
-    expect(restoredAuditGuard?.exists).toBe(true);
+    expect(restoredElevationColumn?.exists).toBe(true);
     await expect(connection.ping()).resolves.toBeUndefined();
   });
 });

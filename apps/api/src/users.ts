@@ -29,7 +29,9 @@ function problem(status: number, code: string, title: string) {
 
 async function actorFrom(auth: Auth, headers: Headers, requestId: string) {
   const current = await auth.api.getSession({ headers });
-  return current ? { requestId, userId: current.user.id } : undefined;
+  return current
+    ? { requestId, sessionId: current.session.id, userId: current.user.id }
+    : undefined;
 }
 
 function lifecycleProblem(error: unknown) {

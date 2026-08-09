@@ -15,13 +15,13 @@ describe("organization administration", () => {
     expect(membershipStatusLabel("suspended")).toBe("Suspendu");
   });
 
-  test("keeps every tenant read and mutation behind a fresh MFA challenge", async () => {
+  test("keeps every tenant read and mutation behind session MFA", async () => {
     const page = await Bun.file(
       new URL("../../app/pages/admin/organizations.vue", import.meta.url),
     ).text();
     for (const path of ["/api/v1/organizations", "/api/v1/invitations", "/members/"])
       expect(page).toContain(path);
-    expect(page.match(/mfaChallengeHeaders/g)?.length).toBeGreaterThanOrEqual(7);
+    expect(page.match(/challengeHeaders/g)?.length).toBeGreaterThanOrEqual(7);
     expect(page).toContain("confirmCancel");
     expect(page).toContain("organization_conflict");
     expect(page).toContain('role="alert"');

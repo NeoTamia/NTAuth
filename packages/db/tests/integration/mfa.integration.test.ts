@@ -14,7 +14,7 @@ import {
   verifyMfaEnrollment,
 } from "@/mfa";
 import { applyMigrations } from "@/migrations";
-import { mfaEnrollments, platformRoleAssignments, user } from "@/schema";
+import { mfaEnrollments, platformRoleAssignments, session, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
@@ -23,6 +23,8 @@ describeWithDatabase("administrator TOTP step-up", () => {
   let connection: DatabaseConnection;
   const runId = crypto.randomUUID();
   const adminId = crypto.randomUUID();
+  const adminSessionId = crypto.randomUUID();
+  const secondAdminSessionId = crypto.randomUUID();
   const memberId = crypto.randomUUID();
   const applicationSecret = "integration-mfa-encryption-key-with-32-characters";
   const now = new Date("2026-08-08T12:00:00.000Z");
@@ -37,6 +39,20 @@ describeWithDatabase("administrator TOTP step-up", () => {
     await connection.db
       .insert(platformRoleAssignments)
       .values({ role: "platform_admin", userId: adminId });
+    await connection.db.insert(session).values([
+      {
+        expiresAt: new Date("2026-08-09T12:00:00.000Z"),
+        id: adminSessionId,
+        token: `${runId}-admin-session`,
+        userId: adminId,
+      },
+      {
+        expiresAt: new Date("2026-08-09T12:00:00.000Z"),
+        id: secondAdminSessionId,
+        token: `${runId}-second-admin-session`,
+        userId: adminId,
+      },
+    ]);
   });
 
   afterAll(async () => {
@@ -49,7 +65,12 @@ describeWithDatabase("administrator TOTP step-up", () => {
     await expect(
       enforcePlatformAdminMfa(
         connection,
-        { applicationSecret, requestId: `${runId}-missing`, userId: adminId },
+        {
+          applicationSecret,
+          requestId: `${runId}-missing`,
+          sessionId: adminSessionId,
+          userId: adminId,
+        },
         now,
       ),
     ).rejects.toBeInstanceOf(MfaEnrollmentRequiredError);
@@ -67,7 +88,7 @@ describeWithDatabase("administrator TOTP step-up", () => {
     expect(stored?.encryptedSecret.startsWith("v1:")).toBe(true);
   });
 
-  test("rejects expired enrollment codes and consumes valid counters exactly once", async () => {
+  test("elevates one session for ten minutes while keeping TOTP counters single-use", async () => {
     const enrollment = await beginMfaEnrollment(
       connection,
       { applicationSecret, issuer: "NTAuth", userId: adminId },
@@ -78,7 +99,13 @@ describeWithDatabase("administrator TOTP step-up", () => {
     await expect(
       verifyMfaEnrollment(
         connection,
-        { applicationSecret, code: expired, requestId: `${runId}-expired`, userId: adminId },
+        {
+          applicationSecret,
+          code: expired,
+          requestId: `${runId}-expired`,
+          sessionId: adminSessionId,
+          userId: adminId,
+        },
         now,
       ),
     ).rejects.toBeInstanceOf(InvalidMfaChallengeError);
@@ -86,7 +113,13 @@ describeWithDatabase("administrator TOTP step-up", () => {
     const enrollmentCode = await generateTotpCode(secret, totpCounter(now));
     await verifyMfaEnrollment(
       connection,
-      { applicationSecret, code: enrollmentCode, requestId: `${runId}-enroll`, userId: adminId },
+      {
+        applicationSecret,
+        code: enrollmentCode,
+        requestId: `${runId}-enroll`,
+        sessionId: adminSessionId,
+        userId: adminId,
+      },
       now,
     );
     await expect(
@@ -94,27 +127,53 @@ describeWithDatabase("administrator TOTP step-up", () => {
         connection,
         {
           applicationSecret,
+          requestId: `${runId}-elevated`,
+          sessionId: adminSessionId,
+          userId: adminId,
+        },
+        new Date(now.getTime() + 9 * 60_000),
+      ),
+    ).resolves.toBe("elevated");
+
+    await expect(
+      enforcePlatformAdminMfa(
+        connection,
+        {
+          applicationSecret,
           code: enrollmentCode,
-          requestId: `${runId}-enroll-reuse`,
+          requestId: `${runId}-cross-session-replay`,
+          sessionId: secondAdminSessionId,
           userId: adminId,
         },
         now,
       ),
     ).rejects.toBeInstanceOf(InvalidMfaChallengeError);
 
-    const next = new Date(now.getTime() + 30_000);
+    const next = new Date(now.getTime() + 10 * 60_000);
     const actionCode = await generateTotpCode(secret, totpCounter(next));
     await expect(
       enforcePlatformAdminMfa(
         connection,
-        { applicationSecret, code: actionCode, requestId: `${runId}-action`, userId: adminId },
+        {
+          applicationSecret,
+          code: actionCode,
+          requestId: `${runId}-action`,
+          sessionId: adminSessionId,
+          userId: adminId,
+        },
         next,
       ),
     ).resolves.toBe("verified");
     await expect(
       enforcePlatformAdminMfa(
         connection,
-        { applicationSecret, code: actionCode, requestId: `${runId}-replay`, userId: adminId },
+        {
+          applicationSecret,
+          code: actionCode,
+          requestId: `${runId}-replay`,
+          sessionId: secondAdminSessionId,
+          userId: adminId,
+        },
         next,
       ),
     ).rejects.toBeInstanceOf(InvalidMfaChallengeError);
@@ -124,7 +183,12 @@ describeWithDatabase("administrator TOTP step-up", () => {
     await expect(
       enforcePlatformAdminMfa(
         connection,
-        { applicationSecret, requestId: `${runId}-member`, userId: memberId },
+        {
+          applicationSecret,
+          requestId: `${runId}-member`,
+          sessionId: crypto.randomUUID(),
+          userId: memberId,
+        },
         now,
       ),
     ).resolves.toBe("not_required");

@@ -6,6 +6,7 @@ defineProps<{
   id: string;
   label?: string;
 }>();
+const { isElevated } = useMfaChallenge();
 
 function keepDigits(event: Event) {
   const target = event.target as HTMLInputElement;
@@ -14,7 +15,11 @@ function keepDigits(event: Event) {
 </script>
 
 <template>
-  <div class="field">
+  <div v-if="isElevated" class="mfa-elevation-status" role="status">
+    <strong>Session MFA active</strong>
+    <span>Aucun nouveau code requis pendant cette fenêtre.</span>
+  </div>
+  <div v-else class="field">
     <label :for="id">{{ label ?? "Code à 6 chiffres" }}</label>
     <input
       :id="id"
