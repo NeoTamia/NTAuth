@@ -5,6 +5,7 @@ interface PackageManifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   name: string;
+  peerDependencies?: Record<string, string>;
   private?: boolean;
   scripts?: Record<string, string>;
   version: string;
@@ -32,12 +33,37 @@ const workspaceManifestPaths = async () => {
 const dependencyEntries = (manifest: PackageManifest) => [
   ...Object.entries(manifest.dependencies ?? {}),
   ...Object.entries(manifest.devDependencies ?? {}),
+  ...Object.entries(manifest.peerDependencies ?? {}),
 ];
 
 const isExactExternalVersion = (version: string) =>
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version);
 
 describe("monorepo workspaces", () => {
+  it("keeps workspace tests outside production sources and grouped by level", async () => {
+    const paths = (
+      await Promise.all(
+        ["apps/**/*.test.ts", "examples/**/*.test.ts", "packages/**/*.test.ts"].map(
+          async (pattern) =>
+            Array.fromAsync(new Bun.Glob(pattern).scan({ cwd: rootDirectory, onlyFiles: true })),
+        ),
+      )
+    )
+      .flat()
+      .toSorted();
+
+    expect(paths.length).toBeGreaterThan(0);
+    for (const path of paths) {
+      expect(path).toMatch(/^(?:apps|examples|packages)\/[^/]+\/tests\/(?:unit|integration|e2e)\//);
+      if (path.endsWith(".integration.test.ts") || path.endsWith("/package.test.ts")) {
+        expect(path).toContain("/tests/integration/");
+      }
+      if (path.endsWith(".e2e.test.ts")) {
+        expect(path).toContain("/tests/e2e/");
+      }
+    }
+  });
+
   it("builds workspace dependencies before consuming their generated types", async () => {
     const configuration = await Bun.file(resolve(rootDirectory, "turbo.json")).json();
 
@@ -70,6 +96,9 @@ describe("monorepo workspaces", () => {
     for (const manifest of manifests) {
       expect(manifest.name).toMatch(/^@neotamia\/[a-z0-9-]+$/);
       expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
+      if (manifest.scripts?.test) {
+        expect(manifest.scripts.test).toBe("bun test tests");
+      }
     }
   });
 

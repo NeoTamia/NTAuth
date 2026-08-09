@@ -157,6 +157,21 @@ Le body peut contenir plusieurs paragraphes. Un commit doit rester cohérent et 
 - tests négatifs obligatoires pour authentification et autorisation ;
 - fixtures sans token, email réel ou secret.
 
+Chaque application, package ou exemple range ses tests hors du code de production :
+
+```text
+workspace/
+├── src/                 # code de production, sans fichier de test
+└── tests/
+    ├── unit/            # règles isolées, suffixe .test.ts
+    ├── integration/     # plusieurs composants ou services, suffixe .integration.test.ts
+    └── e2e/             # parcours externes complets, suffixe .e2e.test.ts
+```
+
+Un sous-dossier n’est créé que lorsque sa catégorie contient au moins un test. Les tests de contrat
+de packaging appartiennent à `tests/integration`. `bun test` découvre récursivement ces trois
+catégories, et les `tsconfig.json` des workspaces incluent `tests/**/*.ts` dans le contrôle de types.
+
 ## Revue
 
 Une revue vérifie au minimum :

@@ -13,7 +13,7 @@
     "./tsconfig/base.json": "./tsconfig/base.json"
   },
   "scripts": {
-    "test": "bun test",
+    "test": "bun test tests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

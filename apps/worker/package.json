@@ -8,7 +8,7 @@
     "enqueue:test": "bun src/enqueue-test.ts",
     "dev": "bun --watch src/index.ts",
     "start": "bun dist/index.js",
-    "test": "bun test",
+    "test": "bun test tests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

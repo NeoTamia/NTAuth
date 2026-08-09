@@ -54,7 +54,7 @@ Sources :
 Le prototype se trouve dans :
 
 - `apps/api/src/auth/oauth-provider.ts`
-- `apps/api/src/auth/oauth-provider.test.ts`
+- `apps/api/tests/unit/auth/oauth-provider.test.ts`
 
 Il prouve que :
 
@@ -67,7 +67,7 @@ Il prouve que :
 Commande de validation :
 
 ```bash
-bun test apps/api/src/auth/oauth-provider.test.ts
+bun test apps/api/tests/unit/auth/oauth-provider.test.ts
 ```
 
 ## Décision

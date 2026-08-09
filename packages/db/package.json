@@ -12,7 +12,7 @@
     "db:migrate": "bun src/migrate.ts up",
     "db:rollback": "bun src/migrate.ts down",
     "db:seed:ntscout": "bun src/seed-ntscout.ts",
-    "test": "bun test",
+    "test": "bun test tests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -31,7 +31,7 @@
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun --format esm --sourcemap=external --external elysia && tsc -p tsconfig.build.json",
     "prepack": "bun run build",
-    "test": "bun test",
+    "test": "bun test tests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
