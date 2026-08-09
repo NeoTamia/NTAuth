@@ -4,14 +4,14 @@ const composeFile = Bun.file(new URL("../compose.yaml", import.meta.url));
 const dockerfile = Bun.file(new URL("../Dockerfile", import.meta.url));
 
 describe("local infrastructure", () => {
-  test("pins every infrastructure image to a versioned tag", async () => {
+  test("pins every infrastructure image to an immutable digest", async () => {
     const compose = await composeFile.text();
     const images = compose.match(/^\s+image:\s+\S+$/gm) ?? [];
 
     expect(images).toHaveLength(3);
-    expect(compose).toMatch(/image: postgres:v?\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
-    expect(compose).toMatch(/image: redis:v?\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
-    expect(compose).toMatch(/image: axllent\/mailpit:v?\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
+    expect(compose).toMatch(/image: postgres:[^\s@]+@sha256:[0-9a-f]{64}$/m);
+    expect(compose).toMatch(/image: redis:[^\s@]+@sha256:[0-9a-f]{64}$/m);
+    expect(compose).toMatch(/image: axllent\/mailpit:[^\s@]+@sha256:[0-9a-f]{64}$/m);
     expect(compose).not.toMatch(/image: .+:(latest|alpine)\s*$/m);
   });
 
@@ -28,9 +28,11 @@ describe("local infrastructure", () => {
   test("builds every application from versioned slim runtimes", async () => {
     const source = await dockerfile.text();
 
-    expect(source.match(/FROM oven\/bun:\d+(?:\.\d+)+-slim(?:\s|$)/gm)).toHaveLength(2);
+    expect(source.match(/FROM oven\/bun:[^\s@]+-slim@sha256:[0-9a-f]{64}(?:\s|$)/gm)).toHaveLength(
+      2,
+    );
     expect(source.match(/^FROM runtime AS (api|migrate|web|worker)$/gm)).toHaveLength(4);
-    expect(source).toMatch(/^FROM node:\d+(?:\.\d+)+(?:-[\w.-]*slim) AS web-build$/m);
+    expect(source).toMatch(/^FROM node:[^\s@]*slim@sha256:[0-9a-f]{64} AS web-build$/m);
     expect(source).not.toMatch(/^FROM .+alpine/im);
     for (const dependency of ["libcap2", "libssl3t64", "openssl-provider-legacy"]) {
       expect(source).toMatch(new RegExp(`\\b${dependency}=[^\\s\\\\]+`));

@@ -13,7 +13,7 @@ const expectActionsPinnedToCommits = (workflow: string) => {
 };
 
 describe("GitHub Actions CI", () => {
-  test("pins actions and service images while sharing the repository Bun version", async () => {
+  test("pins actions and service images immutably while sharing the Bun version", async () => {
     const workflow = await workflowFile.text();
     const manifest = (await manifestFile.json()) as {
       engines: { bun: string };
@@ -23,8 +23,8 @@ describe("GitHub Actions CI", () => {
     expectActionsPinnedToCommits(workflow);
     expect(manifest.packageManager).toBe(`bun@${manifest.engines.bun}`);
     expect(workflow).toContain(`bun-version: ${manifest.engines.bun}`);
-    expect(workflow).toMatch(/image: postgres:\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
-    expect(workflow).toMatch(/image: redis:\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
+    expect(workflow).toMatch(/image: postgres:[^\s@]+@sha256:[0-9a-f]{64}$/m);
+    expect(workflow).toMatch(/image: redis:[^\s@]+@sha256:[0-9a-f]{64}$/m);
   });
 
   test("runs the frozen validation pipeline with integration services", async () => {
