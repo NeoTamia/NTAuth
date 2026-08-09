@@ -5,7 +5,7 @@ import {
   clientPayload,
   normalizeRedirectUris,
   OAUTH_SCOPES,
-} from "../../app/utils/oauth-clients";
+} from "@/utils/oauth-clients";
 
 describe("OAuth client administration", () => {
   test("normalizes exact HTTP(S) redirect URIs and removes duplicates", () => {

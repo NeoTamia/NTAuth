@@ -1,17 +1,17 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { applyMigrations } from "../../src/migrations";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { applyMigrations } from "@/migrations";
 import {
   changePassword,
   completePasswordReset,
   InvalidCurrentPasswordError,
   InvalidPasswordResetError,
   requestPasswordReset,
-} from "../../src/passwords";
-import { account, auditEvents, jobs, passwordResetRequests, session, user } from "../../src/schema";
+} from "@/passwords";
+import { account, auditEvents, jobs, passwordResetRequests, session, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

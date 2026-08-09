@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { mfaChallengeHeaders, totpSecretFromUri, validTotpCode } from "../../app/utils/mfa";
+import { mfaChallengeHeaders, totpSecretFromUri, validTotpCode } from "@/utils/mfa";
 
 describe("MFA administration flow", () => {
   test("accepts only complete numeric TOTP challenges", () => {

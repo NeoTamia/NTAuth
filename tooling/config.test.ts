@@ -6,7 +6,10 @@ interface OxlintConfig {
 }
 
 interface TypeScriptConfig {
-  compilerOptions?: Record<string, unknown>;
+  compilerOptions?: {
+    paths?: Record<string, string[]>;
+    [key: string]: unknown;
+  };
   extends?: string;
 }
 
@@ -48,6 +51,35 @@ describe("shared configuration", () => {
 
     for (const config of configs) {
       expect(config.extends).toMatch(/config\/tsconfig\/base\.json$/);
+    }
+  });
+
+  it("provides a source-root alias to workspace tests", async () => {
+    const sourceConfigPaths = [
+      "apps/api/tsconfig.json",
+      "apps/worker/tsconfig.json",
+      "examples/elysia-resource-server/tsconfig.json",
+      "packages/config/tsconfig.json",
+      "packages/db/tsconfig.json",
+      "packages/elysia-auth/tsconfig.json",
+      "packages/nuxt-auth/tsconfig.json",
+      "packages/observability/tsconfig.json",
+      "packages/permissions/tsconfig.json",
+      "packages/test-utils/tsconfig.json",
+    ];
+    const sourceConfigs = await Promise.all(sourceConfigPaths.map(readJson<TypeScriptConfig>));
+
+    for (const config of sourceConfigs) {
+      expect(config.compilerOptions?.paths?.["@/*"]).toEqual(["./src/*"]);
+    }
+
+    const nuxtConfigs = await Promise.all(
+      ["apps/web/tests/tsconfig.json", "examples/nuxt-bff/tests/tsconfig.json"].map(
+        readJson<TypeScriptConfig>,
+      ),
+    );
+    for (const config of nuxtConfigs) {
+      expect(config.extends).toBe("../.nuxt/tsconfig.json");
     }
   });
 

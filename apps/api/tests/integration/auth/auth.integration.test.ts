@@ -11,7 +11,7 @@ import {
   type DatabaseConnection,
 } from "@neotamia/db";
 
-import { createAuth } from "../../../src/auth/auth";
+import { createAuth } from "@/auth/auth";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

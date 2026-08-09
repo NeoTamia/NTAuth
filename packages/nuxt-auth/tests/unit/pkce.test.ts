@@ -5,7 +5,7 @@ import {
   createAuthorizationRequest,
   openAuthorizationTransaction,
   sealAuthorizationTransaction,
-} from "../../src/index";
+} from "@/index";
 
 const secret = "test-only-transaction-secret-with-32-bytes";
 

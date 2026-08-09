@@ -6,7 +6,7 @@ import {
   type DatabaseConnection,
 } from "@neotamia/db";
 
-import { JobQueue } from "../../src/queue";
+import { JobQueue } from "@/queue";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

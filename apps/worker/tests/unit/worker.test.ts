@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import type { JobQueueContract, QueuedJob } from "../../src/queue";
-import { retryBackoffMs, WorkerProcessor } from "../../src/worker";
+import type { JobQueueContract, QueuedJob } from "@/queue";
+import { retryBackoffMs, WorkerProcessor } from "@/worker";
 
 class MemoryQueue implements JobQueueContract {
   completed = 0;

@@ -15,9 +15,9 @@ import {
 } from "@neotamia/db";
 import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
-import { createApp } from "../../src/app";
-import { createAuth } from "../../src/auth/auth";
-import { createIamPolicyRoutes } from "../../src/iam-policies";
+import { createApp } from "@/app";
+import { createAuth } from "@/auth/auth";
+import { createIamPolicyRoutes } from "@/iam-policies";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

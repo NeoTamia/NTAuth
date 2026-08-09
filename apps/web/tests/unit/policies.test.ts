@@ -7,7 +7,7 @@ import {
   policyDiff,
   policyJson,
   validateEditablePolicy,
-} from "../../app/utils/policies";
+} from "@/utils/policies";
 
 const service = "reports";
 const context = {

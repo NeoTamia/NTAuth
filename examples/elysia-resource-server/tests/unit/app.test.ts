@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createExampleResourceServer } from "../../src/app";
+import { createExampleResourceServer } from "@/app";
 
 describe("Elysia resource-server example", () => {
   test("starts the protected route and returns the documented bearer error", async () => {

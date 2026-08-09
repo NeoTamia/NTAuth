@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { exportJWK, generateKeyPair, SignJWT, type JSONWebKeySet } from "jose";
 
-import { NTAuthError, createNTAuthClient } from "../../src/index";
+import { NTAuthError, createNTAuthClient } from "@/index";
 
 const issuer = "https://auth.example.test";
 const audience = "urn:neotamia:service:ntscout";

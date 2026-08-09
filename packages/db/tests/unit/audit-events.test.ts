@@ -5,7 +5,7 @@ import {
   decodeAuditCursor,
   encodeAuditCursor,
   publicIamAuditMetadata,
-} from "../../src/audit-events";
+} from "@/audit-events";
 
 describe("IAM audit event contract", () => {
   test("round-trips opaque stable cursors and rejects malformed values", () => {

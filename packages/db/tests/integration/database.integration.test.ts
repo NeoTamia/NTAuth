@@ -1,14 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
+import { createDatabase, type DatabaseConnection } from "@/client";
 import {
   applyMigrations,
   MigrationLockUnavailableError,
   rollbackLastMigration,
   withMigrationLock,
-} from "../../src/migrations";
-import { systemHealth } from "../../src/schema";
+} from "@/migrations";
+import { systemHealth } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

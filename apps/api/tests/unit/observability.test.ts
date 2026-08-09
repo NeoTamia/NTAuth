@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createStructuredLogger, MetricsRegistry } from "@neotamia/observability";
 
-import { createApiObservability } from "../../src/observability";
+import { createApiObservability } from "@/observability";
 
 describe("API observability", () => {
   test("correlates safe JSON logs and bounded-cardinality metrics", () => {

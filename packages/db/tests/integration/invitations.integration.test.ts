@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
 import {
   acceptInvitation,
   cancelInvitation,
@@ -10,9 +10,9 @@ import {
   hashInvitationToken,
   InvalidInvitationError,
   InvitationAuthorizationError,
-} from "../../src/invitations";
-import { applyMigrations } from "../../src/migrations";
-import { platformRoleAssignments, user } from "../../src/schema";
+} from "@/invitations";
+import { applyMigrations } from "@/migrations";
+import { platformRoleAssignments, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

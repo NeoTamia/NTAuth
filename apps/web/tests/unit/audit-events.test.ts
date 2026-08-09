@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  auditActionLabel,
-  auditOutcomeLabel,
-  exclusiveDayAfter,
-} from "../../app/utils/audit-events";
+import { auditActionLabel, auditOutcomeLabel, exclusiveDayAfter } from "@/utils/audit-events";
 
 describe("audit event consultation", () => {
   test("labels redacted events and builds an exclusive end date", () => {

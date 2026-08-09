@@ -19,12 +19,12 @@ import {
 } from "@neotamia/db";
 import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
-import { createApp } from "../../src/app";
-import { createAuth } from "../../src/auth/auth";
-import { createEffectivePolicyRoutes } from "../../src/effective-policies";
-import { createIamPermissionCache, type IamCacheStore } from "../../src/iam-cache";
-import { createIamPolicyRoutes } from "../../src/iam-policies";
-import { createServiceGrantRoutes } from "../../src/service-grants";
+import { createApp } from "@/app";
+import { createAuth } from "@/auth/auth";
+import { createEffectivePolicyRoutes } from "@/effective-policies";
+import { createIamPermissionCache, type IamCacheStore } from "@/iam-cache";
+import { createIamPolicyRoutes } from "@/iam-policies";
+import { createServiceGrantRoutes } from "@/service-grants";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const redisUrl = process.env.REDIS_URL;

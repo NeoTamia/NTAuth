@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { evaluatePolicy, matchesPolicyIdentifier } from "../../src/evaluator";
-import type { PolicyStatement } from "../../src/iam";
+import { evaluatePolicy, matchesPolicyIdentifier } from "@/evaluator";
+import type { PolicyStatement } from "@/iam";
 
 const context = {
   organization: { id: "org_123", role: "member", slug: "acme" },

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createClient, type RedisClientType } from "redis";
 
-import { createRedisRateLimitStore, type RateLimitStore } from "../../src/rate-limit";
+import { createRedisRateLimitStore, type RateLimitStore } from "@/rate-limit";
 
 const redisUrl = process.env.REDIS_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;

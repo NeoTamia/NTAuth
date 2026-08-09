@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { contrastRatio, meetsWcagAa } from "../../app/utils/accessibility";
+import { contrastRatio, meetsWcagAa } from "@/utils/accessibility";
 
 const adminPages = [
   "security/mfa.vue",

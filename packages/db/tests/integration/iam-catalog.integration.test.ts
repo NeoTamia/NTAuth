@@ -3,8 +3,8 @@ import { eq } from "drizzle-orm";
 
 import { validatePolicyDocument } from "@neotamia/permissions";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
 import {
   createIamCatalogEntry,
   createService,
@@ -14,9 +14,9 @@ import {
   IamCatalogNotFoundError,
   setIamCatalogEntryStatus,
   updateService,
-} from "../../src/iam-catalog";
-import { applyMigrations } from "../../src/migrations";
-import { auditEvents, platformRoleAssignments, services, user } from "../../src/schema";
+} from "@/iam-catalog";
+import { applyMigrations } from "@/migrations";
+import { auditEvents, platformRoleAssignments, services, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

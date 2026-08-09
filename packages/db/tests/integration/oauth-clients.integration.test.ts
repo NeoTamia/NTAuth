@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { applyMigrations } from "../../src/migrations";
-import { NTSCOUT_CLIENT_ID, NTSCOUT_SCOPES, provisionNtscoutClient } from "../../src/oauth-clients";
-import { auditEvents, oauthClients } from "../../src/schema";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { applyMigrations } from "@/migrations";
+import { NTSCOUT_CLIENT_ID, NTSCOUT_SCOPES, provisionNtscoutClient } from "@/oauth-clients";
+import { auditEvents, oauthClients } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

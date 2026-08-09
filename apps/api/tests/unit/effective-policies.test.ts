@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { matchesIfNoneMatch } from "../../src/effective-policies";
+import { matchesIfNoneMatch } from "@/effective-policies";
 
 describe("effective policy conditional requests", () => {
   test("uses weak comparison for GET validators", () => {

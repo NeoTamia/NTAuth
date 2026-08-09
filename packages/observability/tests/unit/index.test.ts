@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createStructuredLogger, MetricsRegistry } from "../../src/index";
+import { createStructuredLogger, MetricsRegistry } from "@/index";
 
 describe("structured operational telemetry", () => {
   test("redacts secrets and URI credentials from JSON logs", () => {

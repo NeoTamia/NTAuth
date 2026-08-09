@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { applyMigrations } from "../../src/migrations";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { applyMigrations } from "@/migrations";
 import {
   createServiceGrant,
   hasActiveServiceGrant,
@@ -12,7 +12,7 @@ import {
   ServiceGrantAuthorizationError,
   ServiceGrantConflictError,
   setServiceGrantActive,
-} from "../../src/service-grants";
+} from "@/service-grants";
 import {
   auditEvents,
   organizationMembers,
@@ -20,7 +20,7 @@ import {
   serviceGrants,
   services,
   user,
-} from "../../src/schema";
+} from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

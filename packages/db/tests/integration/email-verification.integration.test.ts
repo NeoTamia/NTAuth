@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
 import {
   completeEmailVerification,
   InvalidEmailVerificationError,
   requestEmailVerification,
-} from "../../src/email-verification";
-import { applyMigrations } from "../../src/migrations";
-import { emailVerificationRequests, jobs, user } from "../../src/schema";
+} from "@/email-verification";
+import { applyMigrations } from "@/migrations";
+import { emailVerificationRequests, jobs, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

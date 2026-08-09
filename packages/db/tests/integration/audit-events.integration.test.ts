@@ -8,11 +8,11 @@ import {
   exportIamAuditEvents,
   listIamAuditEvents,
   purgeExpiredAuditEvents,
-} from "../../src/audit-events";
-import { applyMigrations } from "../../src/migrations";
-import { auditEvents, organizationMembers, organizations, services, user } from "../../src/schema";
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
+} from "@/audit-events";
+import { applyMigrations } from "@/migrations";
+import { auditEvents, organizationMembers, organizations, services, user } from "@/schema";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

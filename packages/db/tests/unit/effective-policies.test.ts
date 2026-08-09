@@ -5,7 +5,7 @@ import {
   mergeEffectivePolicies,
   type EffectivePolicyFingerprint,
   type EffectivePolicyRow,
-} from "../../src/effective-policies";
+} from "@/effective-policies";
 
 const row = (
   policyId: string,

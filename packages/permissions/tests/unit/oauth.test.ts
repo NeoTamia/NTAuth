@@ -7,7 +7,7 @@ import {
   NTSCOUT_SCOPES,
   NTSCOUT_SERVICE,
   OAUTH_SCOPE_CATALOG,
-} from "../../src/oauth";
+} from "@/oauth";
 
 describe("OAuth scope contract", () => {
   test("keeps the V1 catalogue and minimal access-token claims stable", () => {

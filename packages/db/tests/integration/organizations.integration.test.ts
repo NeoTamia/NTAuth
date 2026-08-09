@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { applyMigrations } from "../../src/migrations";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { applyMigrations } from "@/migrations";
 import {
   addOrganizationMember,
   changeOrganizationMemberRole,
@@ -14,8 +14,8 @@ import {
   OrganizationConflictError,
   updateOrganization,
   updateOrganizationMember,
-} from "../../src/organizations";
-import { auditEvents, organizationMembers, platformRoleAssignments, user } from "../../src/schema";
+} from "@/organizations";
+import { auditEvents, organizationMembers, platformRoleAssignments, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

@@ -42,17 +42,14 @@ import {
 } from "@neotamia/db";
 import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
-import { createAuditedAuthHandler } from "../../../src/auth/audited-handler";
-import { createAuth } from "../../../src/auth/auth";
-import { createDiscoveryRoutes } from "../../../src/auth/discovery";
-import { enforceIntrospectionState } from "../../../src/auth/oauth-lifecycle";
-import {
-  SIGNING_KEY_GRACE_SECONDS,
-  SIGNING_KEY_ROTATION_SECONDS,
-} from "../../../src/auth/signing-key-policy";
-import { createApp } from "../../../src/app";
-import { createEffectivePolicyRoutes } from "../../../src/effective-policies";
-import { createSigningKeyRoutes } from "../../../src/signing-keys";
+import { createAuditedAuthHandler } from "@/auth/audited-handler";
+import { createAuth } from "@/auth/auth";
+import { createDiscoveryRoutes } from "@/auth/discovery";
+import { enforceIntrospectionState } from "@/auth/oauth-lifecycle";
+import { SIGNING_KEY_GRACE_SECONDS, SIGNING_KEY_ROTATION_SECONDS } from "@/auth/signing-key-policy";
+import { createApp } from "@/app";
+import { createEffectivePolicyRoutes } from "@/effective-policies";
+import { createSigningKeyRoutes } from "@/signing-keys";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

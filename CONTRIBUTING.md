@@ -172,6 +172,16 @@ Un sous-dossier n’est créé que lorsque sa catégorie contient au moins un te
 de packaging appartiennent à `tests/integration`. `bun test` découvre récursivement ces trois
 catégories, et les `tsconfig.json` des workspaces incluent `tests/**/*.ts` dans le contrôle de types.
 
+Les tests importent le code du workspace avec l’alias `@/`. Il pointe vers `src/` dans les
+workspaces TypeScript et vers `app/` dans les applications Nuxt :
+
+```ts
+import { createApp } from "@/app";
+import { validTotpCode } from "@/utils/mfa";
+```
+
+Les remontées relatives vers le code de production (`../../src`, `../../../src`, etc.) sont à éviter.
+
 ## Revue
 
 Une revue vérifie au minimum :

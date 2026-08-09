@@ -6,7 +6,7 @@ import {
   authErrorMessage,
   safeLocalRedirect,
   validPassword,
-} from "../../app/utils/auth";
+} from "@/utils/auth";
 
 const page = (name: string) =>
   Bun.file(new URL(`../../app/pages/auth/${name}.vue`, import.meta.url)).text();

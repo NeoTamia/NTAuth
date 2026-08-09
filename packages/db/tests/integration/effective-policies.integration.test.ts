@@ -6,27 +6,14 @@ import {
   attachIamPolicy,
   createIamGroup,
   detachIamPolicy,
-} from "../../src/iam-attachments";
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import {
-  EffectivePolicyAuthorizationError,
-  getEffectivePolicies,
-} from "../../src/effective-policies";
-import {
-  createIamPolicy,
-  createIamPolicyVersion,
-  setIamPolicyStatus,
-} from "../../src/iam-policies";
-import { applyMigrations } from "../../src/migrations";
-import { createServiceGrant, setServiceGrantActive } from "../../src/service-grants";
-import {
-  iamCatalogEntries,
-  organizationMembers,
-  organizations,
-  services,
-  user,
-} from "../../src/schema";
+} from "@/iam-attachments";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { EffectivePolicyAuthorizationError, getEffectivePolicies } from "@/effective-policies";
+import { createIamPolicy, createIamPolicyVersion, setIamPolicyStatus } from "@/iam-policies";
+import { applyMigrations } from "@/migrations";
+import { createServiceGrant, setServiceGrantActive } from "@/service-grants";
+import { iamCatalogEntries, organizationMembers, organizations, services, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

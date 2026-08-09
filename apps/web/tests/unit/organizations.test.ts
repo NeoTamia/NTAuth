@@ -4,7 +4,7 @@ import {
   membershipStatusLabel,
   organizationRoleLabel,
   organizationSlug,
-} from "../../app/utils/organizations";
+} from "@/utils/organizations";
 
 describe("organization administration", () => {
   test("derives stable slugs and French role labels", () => {

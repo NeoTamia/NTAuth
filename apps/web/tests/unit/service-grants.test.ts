@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { matchesGrantSearch, serviceGrantStatusLabel } from "../../app/utils/service-grants";
+import { matchesGrantSearch, serviceGrantStatusLabel } from "@/utils/service-grants";
 
 describe("service grant administration", () => {
   test("labels every lifecycle state and searches service or subject", () => {

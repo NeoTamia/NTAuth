@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { applyMigrations } from "../../src/migrations";
-import { revokeUserSessions } from "../../src/sessions";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { applyMigrations } from "@/migrations";
+import { revokeUserSessions } from "@/sessions";
 import {
   account,
   auditEvents,
@@ -13,7 +13,7 @@ import {
   platformRoleAssignments,
   session,
   user,
-} from "../../src/schema";
+} from "@/schema";
 import {
   deleteUser,
   getPlatformUserAdministration,
@@ -21,7 +21,7 @@ import {
   listPlatformUsers,
   setUserStatus,
   UserLifecycleAuthorizationError,
-} from "../../src/user-lifecycle";
+} from "@/user-lifecycle";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

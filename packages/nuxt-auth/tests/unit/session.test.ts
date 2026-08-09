@@ -8,7 +8,7 @@ import {
   parseCallbackParameters,
   type NTAuthSessionSnapshot,
   type NTAuthTransport,
-} from "../../src/index";
+} from "@/index";
 
 const snapshot: NTAuthSessionSnapshot = {
   expiresAt: "2026-08-08T21:00:00.000Z",

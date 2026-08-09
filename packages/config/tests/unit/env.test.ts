@@ -8,7 +8,7 @@ import {
   parseNtscoutSeedEnvironment,
   parsePublicWebEnvironment,
   parseWorkerEnvironment,
-} from "../../src/env";
+} from "@/env";
 
 const sharedEnvironment = {
   NODE_ENV: "test",

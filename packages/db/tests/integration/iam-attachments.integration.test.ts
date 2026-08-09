@@ -9,11 +9,11 @@ import {
   IamAttachmentAuthorizationError,
   IamAttachmentConflictError,
   listIamPolicyAttachments,
-} from "../../src/iam-attachments";
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { createIamPolicy } from "../../src/iam-policies";
-import { applyMigrations } from "../../src/migrations";
+} from "@/iam-attachments";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { createIamPolicy } from "@/iam-policies";
+import { applyMigrations } from "@/migrations";
 import {
   auditEvents,
   iamCatalogEntries,
@@ -21,7 +21,7 @@ import {
   organizations,
   services,
   user,
-} from "../../src/schema";
+} from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

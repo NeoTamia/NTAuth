@@ -3,7 +3,7 @@ import { oidcProvider } from "better-auth/plugins";
 
 import { NTSCOUT_AUDIENCE } from "@neotamia/permissions";
 
-import { createOAuthProviderPlugin, oauthProviderConfig } from "../../../src/auth/oauth-provider";
+import { createOAuthProviderPlugin, oauthProviderConfig } from "@/auth/oauth-provider";
 
 describe("Better Auth provider decision", () => {
   it("exposes the OAuth 2.1 endpoints required by NTAuth", () => {

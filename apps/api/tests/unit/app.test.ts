@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createStructuredLogger, MetricsRegistry } from "@neotamia/observability";
-import { createApp } from "../../src/app";
-import { createApiObservability } from "../../src/observability";
+import { createApp } from "@/app";
+import { createApiObservability } from "@/observability";
 
 describe("health endpoints", () => {
   it("reports the process as healthy", async () => {

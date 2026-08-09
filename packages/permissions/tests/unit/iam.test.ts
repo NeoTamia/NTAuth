@@ -7,7 +7,7 @@ import {
   parsePolicyDocument,
   validatePolicyDocument,
   type PolicyDocument,
-} from "../../src/iam";
+} from "@/iam";
 
 function policy(overrides: Partial<PolicyDocument> = {}): PolicyDocument {
   return {

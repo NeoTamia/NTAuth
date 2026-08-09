@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { sessionState, sessionStateLabel, userStatusLabel } from "../../app/utils/users";
+import { sessionState, sessionStateLabel, userStatusLabel } from "@/utils/users";
 
 describe("user administration", () => {
   test("labels lifecycle and session states in French", () => {

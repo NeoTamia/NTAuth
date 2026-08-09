@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
-import { ntauth } from "../../src/index";
+import { ntauth } from "@/index";
 
 describe("Elysia NTAuth plugin", () => {
   test("injects a typed request context and serializes OAuth bearer errors", async () => {

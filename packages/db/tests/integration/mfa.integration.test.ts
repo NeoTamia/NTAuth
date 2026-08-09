@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
 import {
   beginMfaEnrollment,
   enforcePlatformAdminMfa,
@@ -12,9 +12,9 @@ import {
   MfaEnrollmentRequiredError,
   totpCounter,
   verifyMfaEnrollment,
-} from "../../src/mfa";
-import { applyMigrations } from "../../src/migrations";
-import { mfaEnrollments, platformRoleAssignments, user } from "../../src/schema";
+} from "@/mfa";
+import { applyMigrations } from "@/migrations";
+import { mfaEnrollments, platformRoleAssignments, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;

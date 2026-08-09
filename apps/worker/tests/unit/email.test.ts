@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createEmailHandler } from "../../src/email";
+import { createEmailHandler } from "@/email";
 
 describe("email outbox handler", () => {
   test("uses a stable message id and propagates SMTP unavailability", async () => {

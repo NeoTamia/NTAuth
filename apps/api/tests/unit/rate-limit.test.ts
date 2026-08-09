@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createRequestRateLimiter, type RateLimitStore } from "../../src/rate-limit";
+import { createRequestRateLimiter, type RateLimitStore } from "@/rate-limit";
 
 function memoryStore() {
   const counts = new Map<string, number>();

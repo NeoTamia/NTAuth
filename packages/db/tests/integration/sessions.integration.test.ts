@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
-import { createDatabase, type DatabaseConnection } from "../../src/client";
-import { deleteAuditEventsForTest } from "../../src/test-support";
-import { applyMigrations } from "../../src/migrations";
-import { revokeUserSessions, SessionRevocationAuthorizationError } from "../../src/sessions";
-import { auditEvents, platformRoleAssignments, session, user } from "../../src/schema";
+import { createDatabase, type DatabaseConnection } from "@/client";
+import { deleteAuditEventsForTest } from "@/test-support";
+import { applyMigrations } from "@/migrations";
+import { revokeUserSessions, SessionRevocationAuthorizationError } from "@/sessions";
+import { auditEvents, platformRoleAssignments, session, user } from "@/schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
