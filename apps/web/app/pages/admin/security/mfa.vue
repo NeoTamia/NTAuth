@@ -165,6 +165,7 @@ async function verifyEnrollment() {
         <h2 id="enrollment-verify-title">2. Confirmer l’enrôlement</h2>
         <p>Saisissez le code courant pour prouver que l’application est configurée.</p>
         <form
+          method="post"
           :aria-describedby="actionError ? 'mfa-action-error' : 'mfa-code-guidance'"
           @submit.prevent="verifyEnrollment"
         >
@@ -198,6 +199,7 @@ async function verifyEnrollment() {
         Confirmez d’abord votre mot de passe. Le secret TOTP ne sera affiché qu’à l’étape suivante.
       </p>
       <form
+        method="post"
         :aria-describedby="actionError ? 'mfa-start-error' : 'mfa-password-guidance'"
         @submit.prevent="startEnrollment"
       >

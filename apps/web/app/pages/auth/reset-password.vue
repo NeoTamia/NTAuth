@@ -92,6 +92,7 @@ async function resetPassword() {
       </div>
       <form
         v-else
+        method="post"
         :aria-describedby="errorMessage ? 'reset-error' : 'password-guidance'"
         @submit.prevent="resetPassword"
       >

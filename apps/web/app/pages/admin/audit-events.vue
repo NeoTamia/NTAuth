@@ -238,7 +238,7 @@ async function exportEvents() {
         <h2 id="audit-gate-title">Déverrouiller les portées autorisées</h2>
         <p>Un code MFA frais protège la découverte des organisations et services consultables.</p>
       </div>
-      <form @submit.prevent="unlockScopes">
+      <form method="post" @submit.prevent="unlockScopes">
         <MfaCodeField id="audit-scopes-code" v-model="scopesCode" label="Code MFA" />
         <button type="submit" :disabled="!validTotpCode(scopesCode)">Charger les portées</button>
       </form>
@@ -263,7 +263,7 @@ async function exportEvents() {
             Réinitialiser le résultat
           </button>
         </header>
-        <form @submit.prevent="loadEvents(0)">
+        <form method="post" @submit.prevent="loadEvents(0)">
           <fieldset class="choice-field choice-field--inline">
             <legend>Type de portée</legend>
             <label
@@ -492,7 +492,7 @@ async function exportEvents() {
             limité à 10 000 lignes.
           </p>
         </div>
-        <form @submit.prevent="exportEvents">
+        <form method="post" @submit.prevent="exportEvents">
           <label class="confirmation">
             <input v-model="confirmExport" type="checkbox" />
             <span>Je confirme la génération auditée de ce CSV masqué.</span>

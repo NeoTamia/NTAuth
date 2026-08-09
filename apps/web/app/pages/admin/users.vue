@@ -269,7 +269,7 @@ async function revokeSessions() {
         <h2 id="user-filters-title">Registre protégé</h2>
         <p>Recherche sur le nom ou l’e-mail, avec pagination serveur.</p>
       </div>
-      <form @submit.prevent="loadRegistry(0)">
+      <form method="post" @submit.prevent="loadRegistry(0)">
         <div class="inline-fields">
           <div class="field">
             <label for="user-query">Rechercher</label
@@ -396,7 +396,12 @@ async function revokeSessions() {
           </div>
           <button type="button" class="text-button" @click="selectedSummary = null">Fermer</button>
         </header>
-        <form v-if="detailState === 'locked'" class="detail-gate" @submit.prevent="loadDetail">
+        <form
+          v-if="detailState === 'locked'"
+          class="detail-gate"
+          method="post"
+          @submit.prevent="loadDetail"
+        >
           <p>Un code MFA frais limite l’exposition des sessions de cette identité.</p>
           <MfaCodeField
             id="user-detail-code"
@@ -482,6 +487,7 @@ async function revokeSessions() {
           <form
             class="session-revocation"
             aria-describedby="session-revoke-message"
+            method="post"
             @submit.prevent="revokeSessions"
           >
             <h3>Révoquer toutes les sessions</h3>
@@ -524,6 +530,7 @@ async function revokeSessions() {
           <form
             class="status-editor"
             aria-describedby="user-status-message"
+            method="post"
             @submit.prevent="changeStatus"
           >
             <h3>Modifier le cycle de vie</h3>

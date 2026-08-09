@@ -346,7 +346,7 @@ async function savePolicy() {
     >
       <h2 id="policy-org-gate">Choisir une portée protégée</h2>
       <p>Un code MFA frais ouvre uniquement la liste des tenants que vous administrez.</p>
-      <form @submit.prevent="unlockOrganizations">
+      <form method="post" @submit.prevent="unlockOrganizations">
         <MfaCodeField
           id="policy-organization-code"
           v-model="organizationCode"
@@ -383,7 +383,7 @@ async function savePolicy() {
           <h2 id="policy-scope-title">Portée de travail</h2>
           <p>Le catalogue fixe les actions et ressources admises par le schéma.</p>
         </div>
-        <form @submit.prevent="loadWorkspace">
+        <form method="post" @submit.prevent="loadWorkspace">
           <div class="inline-fields">
             <div class="field">
               <label for="policy-organization">Organisation</label>
@@ -495,7 +495,7 @@ async function savePolicy() {
         >
           <h2 id="policy-history-gate-title">Ouvrir {{ selectedPolicy.name }}</h2>
           <p>La dernière version et son historique exigent une nouvelle preuve MFA.</p>
-          <form @submit.prevent="loadHistory">
+          <form method="post" @submit.prevent="loadHistory">
             <MfaCodeField
               id="policy-history-code"
               v-model="historyCode"
@@ -696,6 +696,7 @@ async function savePolicy() {
           <form
             class="policy-save"
             aria-describedby="policy-save-message"
+            method="post"
             @submit.prevent="savePolicy"
           >
             <MfaCodeField

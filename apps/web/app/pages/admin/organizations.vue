@@ -364,7 +364,7 @@ async function cancelInvitation() {
     <section v-if="listState !== 'ready'" class="registry-gate" aria-labelledby="org-gate-title">
       <h2 id="org-gate-title">Ouvrir le registre protégé</h2>
       <p>Un code MFA frais limite l’exposition des tenants que vous pouvez administrer.</p>
-      <form aria-describedby="org-gate-message" @submit.prevent="unlockOrganizations">
+      <form method="post" aria-describedby="org-gate-message" @submit.prevent="unlockOrganizations">
         <MfaCodeField
           id="organizations-list-code"
           v-model="listCode"
@@ -435,6 +435,7 @@ async function cancelInvitation() {
             v-if="detailState !== 'ready'"
             class="detail-gate"
             aria-describedby="detail-gate-message"
+            method="post"
             @submit.prevent="loadDetail"
           >
             <p>Le détail contient des identités. Saisissez un nouveau code MFA pour l’afficher.</p>
@@ -467,6 +468,7 @@ async function cancelInvitation() {
             <form
               class="organization-settings"
               aria-describedby="organization-update-message"
+              method="post"
               @submit.prevent="saveOrganization"
             >
               <div class="field">
@@ -542,6 +544,7 @@ async function cancelInvitation() {
                 v-if="selectedMember"
                 class="member-editor"
                 aria-describedby="member-update-message"
+                method="post"
                 @submit.prevent="saveMember"
               >
                 <h4>Modifier {{ selectedMember.name }}</h4>
@@ -593,6 +596,7 @@ async function cancelInvitation() {
               <form
                 class="invitation-form"
                 aria-describedby="invitation-message"
+                method="post"
                 @submit.prevent="inviteMember"
               >
                 <div class="inline-fields">
@@ -665,6 +669,7 @@ async function cancelInvitation() {
                 v-if="selectedInvitation"
                 class="cancel-invitation"
                 aria-describedby="cancel-message"
+                method="post"
                 @submit.prevent="cancelInvitation"
               >
                 <h4>Annuler l’invitation de {{ selectedInvitation.email }}</h4>
@@ -717,6 +722,7 @@ async function cancelInvitation() {
       </header>
       <form
         aria-describedby="organization-create-message"
+        method="post"
         @submit.prevent="createOrganizationEntry"
       >
         <div class="inline-fields">

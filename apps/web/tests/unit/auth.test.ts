@@ -58,6 +58,30 @@ describe("account access routes", () => {
     expect(reset).toContain("Demander un nouveau lien");
   });
 
+  test("fails closed with POST when Vue has not hydrated", async () => {
+    const pages = await Promise.all([
+      page("sign-in"),
+      page("forgot-password"),
+      page("reset-password"),
+      page("accept-invitation"),
+    ]);
+
+    for (const source of pages) {
+      expect(source).toMatch(/<form\b[\s\S]*?method="post"[\s\S]*?@submit\.prevent=/);
+    }
+  });
+
+  test("redacts credentials accidentally submitted in an authentication URL", async () => {
+    const middleware = await Bun.file(
+      new URL("../../server/middleware/redact-auth-query.ts", import.meta.url),
+    ).text();
+
+    expect(middleware).toContain('"/auth/sign-in": ["email", "password"]');
+    expect(middleware).toContain("url.searchParams.has(key)");
+    expect(middleware).toContain("url.searchParams.delete(key)");
+    expect(middleware).toContain("sendRedirect");
+  });
+
   test("validates invitation scope before rendering its acceptance form", async () => {
     const invitation = await page("accept-invitation");
     expect(invitation).toContain("/api/v1/invitations/validate");

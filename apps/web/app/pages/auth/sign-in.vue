@@ -61,6 +61,7 @@ async function signIn() {
       </header>
 
       <form
+        method="post"
         :aria-describedby="errorMessage ? 'sign-in-error' : 'sign-in-guidance'"
         @submit.prevent="signIn"
       >

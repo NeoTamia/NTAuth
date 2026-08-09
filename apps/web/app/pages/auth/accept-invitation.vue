@@ -155,6 +155,7 @@ async function acceptInvitation() {
       </div>
       <form
         v-else-if="invitation"
+        method="post"
         :aria-describedby="submitError ? 'invitation-error' : 'invitation-guidance'"
         @submit.prevent="acceptInvitation"
       >

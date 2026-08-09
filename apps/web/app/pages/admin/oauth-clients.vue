@@ -244,7 +244,11 @@ async function deleteClient() {
     >
       <h2 id="registry-gate-title">Ouvrir le registre protégé</h2>
       <p>Un code à usage unique est requis pour consulter les métadonnées des applications.</p>
-      <form aria-describedby="registry-gate-guidance" @submit.prevent="unlockRegistry">
+      <form
+        method="post"
+        aria-describedby="registry-gate-guidance"
+        @submit.prevent="unlockRegistry"
+      >
         <MfaCodeField id="oauth-list-code" v-model="listCode" :disabled="listState === 'loading'" />
         <p
           v-if="listError"
@@ -390,7 +394,12 @@ async function deleteClient() {
         </template>
         <p v-else>Client public : aucun secret n’a été généré.</p>
       </div>
-      <form v-else aria-describedby="oauth-create-guidance" @submit.prevent="createClient">
+      <form
+        v-else
+        method="post"
+        aria-describedby="oauth-create-guidance"
+        @submit.prevent="createClient"
+      >
         <div class="field">
           <label for="oauth-name">Nom de l’application</label
           ><input id="oauth-name" v-model="name" required autocomplete="off" />

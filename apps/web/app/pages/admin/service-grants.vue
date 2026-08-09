@@ -272,7 +272,7 @@ async function executeAction() {
         <h2 id="grant-gate-title">Ouvrir le catalogue administré</h2>
         <p>Un code MFA frais protège la liste des organisations et des services disponibles.</p>
       </div>
-      <form @submit.prevent="unlockCatalogue">
+      <form method="post" @submit.prevent="unlockCatalogue">
         <MfaCodeField id="grant-catalogue-code" v-model="catalogueCode" label="Code MFA" />
         <button type="submit" :disabled="!validTotpCode(catalogueCode)">
           Charger le catalogue
@@ -334,6 +334,7 @@ async function executeAction() {
         <form
           v-if="workspaceState === 'locked'"
           class="grant-workspace__gate"
+          method="post"
           @submit.prevent="loadWorkspace"
         >
           <MfaCodeField
@@ -364,7 +365,7 @@ async function executeAction() {
               <h3 id="grant-create-title">Accorder un service</h3>
               <p>Portée : {{ selectedOrganization.name }} uniquement.</p>
             </header>
-            <form @submit.prevent="createGrant">
+            <form method="post" @submit.prevent="createGrant">
               <div class="inline-fields">
                 <label class="field">
                   <span>Service actif</span>
@@ -490,7 +491,7 @@ async function executeAction() {
               Portée exacte : {{ selectedOrganization.name }} · {{ selectedGrant.service }} ·
               {{ memberById.get(selectedGrant.userId)?.email ?? selectedGrant.userId }}.
             </p>
-            <form @submit.prevent="executeAction">
+            <form method="post" @submit.prevent="executeAction">
               <label class="confirmation">
                 <input v-model="confirmAction" type="checkbox" />
                 <span>Je confirme l’effet immédiat de cette action auditée.</span>
