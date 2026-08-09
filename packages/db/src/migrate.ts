@@ -1,4 +1,4 @@
-import { parseDatabaseEnvironment } from "@neotamia/config";
+import { materializeSecretFiles, parseDatabaseEnvironment } from "@neotamia/config";
 
 import { createDatabase } from "./client";
 import { applyMigrations, rollbackLastMigration } from "./migrations";
@@ -9,7 +9,9 @@ if (command !== "up" && command !== "down") {
   throw new Error("Usage: bun src/migrate.ts <up|down>");
 }
 
-const environment = parseDatabaseEnvironment();
+const environment = parseDatabaseEnvironment(
+  await materializeSecretFiles(process.env, ["DATABASE_URL"]),
+);
 const connection = createDatabase(environment.DATABASE_URL, { max: 1 });
 
 try {

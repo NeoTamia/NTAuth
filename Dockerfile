@@ -2,9 +2,18 @@ FROM oven/bun:1.3.14-slim AS workspace
 WORKDIR /app
 COPY . .
 RUN bun install --frozen-lockfile
+RUN bun --filter @neotamia/permissions build
 
-FROM workspace AS migrate
-CMD ["bun", "--filter", "@neotamia/db", "db:migrate"]
+FROM workspace AS migrate-build
+RUN bun build packages/db/src/migrate.ts --outdir /app/migrate-dist --target bun
+
+FROM oven/bun:1.3.14-slim AS migrate
+WORKDIR /app
+COPY --from=migrate-build --chown=bun:bun /app/migrate-dist ./dist
+COPY --from=migrate-build --chown=bun:bun /app/packages/db/migrations ./migrations
+USER bun
+ENTRYPOINT ["bun", "dist/migrate.js"]
+CMD ["up"]
 
 FROM workspace AS api-build
 RUN bun --filter @neotamia/ntauth-api build

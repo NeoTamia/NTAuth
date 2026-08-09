@@ -8,6 +8,7 @@ release-artifacts/
 .env
 .env.*
 !.env.example
+!deploy/production.env.example
 *.log
 .DS_Store
 .idea/

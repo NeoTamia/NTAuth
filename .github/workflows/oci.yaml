@@ -1,0 +1,82 @@
+name: OCI images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+concurrency:
+  group: oci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, scan and publish ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [api, migrate, web, worker]
+
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build local scan candidate
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          context: .
+          load: true
+          push: false
+          tags: ghcr.io/${{ github.repository_owner }}/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
+          target: ${{ matrix.target }}
+
+      - name: Reject critical or high image vulnerabilities
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          exit-code: "1"
+          format: table
+          ignore-unfixed: true
+          image-ref: ghcr.io/${{ github.repository_owner }}/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
+          scanners: vuln,secret
+          severity: CRITICAL,HIGH
+
+      - name: Publish immutable image with SBOM and provenance
+        id: publish
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          cache-from: type=gha,scope=${{ matrix.target }}
+          context: .
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          platforms: linux/amd64
+          provenance: mode=max
+          push: true
+          sbom: true
+          tags: ghcr.io/${{ github.repository_owner }}/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
+          target: ${{ matrix.target }}
+
+      - name: Record deployment digest
+        run: echo '${{ matrix.target }}=${{ steps.publish.outputs.digest }}' >> "$GITHUB_STEP_SUMMARY"

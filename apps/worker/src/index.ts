@@ -1,4 +1,4 @@
-import { parseWorkerEnvironment } from "@neotamia/config";
+import { materializeSecretFiles, parseWorkerEnvironment } from "@neotamia/config";
 import { createDatabase, purgeExpiredAuditEvents } from "@neotamia/db";
 import nodemailer from "nodemailer";
 
@@ -6,7 +6,9 @@ import { createEmailHandler } from "./email";
 import { JobQueue } from "./queue";
 import { WorkerProcessor } from "./worker";
 
-const environment = parseWorkerEnvironment();
+const environment = parseWorkerEnvironment(
+  await materializeSecretFiles(process.env, ["DATABASE_URL", "REDIS_URL", "SMTP_PASSWORD"]),
+);
 const connection = createDatabase(environment.DATABASE_URL, { max: 5 });
 const queue = new JobQueue(connection, environment.JOB_LOCK_TIMEOUT_MS);
 const emailTransport = nodemailer.createTransport({

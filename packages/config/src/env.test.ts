@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  materializeSecretFiles,
   EnvironmentValidationError,
   parseApiEnvironment,
   parseDatabaseEnvironment,
@@ -16,6 +17,15 @@ const sharedEnvironment = {
 };
 
 describe("runtime environment validation", () => {
+  test("keeps an injected secret ahead of an optional file reference", async () => {
+    const environment = await materializeSecretFiles(
+      { BETTER_AUTH_SECRET: "injected", BETTER_AUTH_SECRET_FILE: "/not/read" },
+      ["BETTER_AUTH_SECRET"],
+    );
+
+    expect(environment.BETTER_AUTH_SECRET).toBe("injected");
+  });
+
   test("parses and coerces API values", () => {
     const environment = parseApiEnvironment({
       ...sharedEnvironment,

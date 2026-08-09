@@ -1,0 +1,200 @@
+name: ntauth-production
+
+x-runtime: &runtime
+  init: true
+  restart: unless-stopped
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  stop_grace_period: 30s
+
+services:
+  postgres:
+    image: postgres:18.4-trixie
+    environment:
+      POSTGRES_DB: ntauth
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_USER: ntauth
+    secrets:
+      - postgres_password
+    networks:
+      - data
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ntauth -d ntauth"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    shm_size: 256mb
+    mem_limit: 1g
+    cpus: 1.5
+
+  redis:
+    image: redis:8.8.1-alpine3.23
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    networks:
+      - data
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.75
+
+  migrate:
+    <<: *runtime
+    image: ${IMAGE_REGISTRY:-ghcr.io/neotamia}/ntauth-migrate@${MIGRATE_IMAGE_DIGEST:?set MIGRATE_IMAGE_DIGEST}
+    command: ["up"]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets:
+      - database_url
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    mem_limit: 256m
+    cpus: 0.5
+
+  api:
+    <<: *runtime
+    image: ${IMAGE_REGISTRY:-ghcr.io/neotamia}/ntauth-api@${API_IMAGE_DIGEST:?set API_IMAGE_DIGEST}
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      AUTH_BASE_URL: ${AUTH_BASE_URL:?set AUTH_BASE_URL}
+      BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+      DATABASE_URL_FILE: /run/secrets/database_url
+      NODE_ENV: production
+      RATE_LIMIT_ENABLED: "true"
+      REDIS_URL: redis://redis:6379
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:?set TRUSTED_PROXY_CIDRS}
+    secrets:
+      - better_auth_secret
+      - database_url
+    expose:
+      - "3001"
+    networks:
+      - data
+      - edge
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r=await fetch('http://localhost:3001/ready');process.exit(r.ok?0:1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 1.0
+
+  worker:
+    <<: *runtime
+    image: ${IMAGE_REGISTRY:-ghcr.io/neotamia}/ntauth-worker@${WORKER_IMAGE_DIGEST:?set WORKER_IMAGE_DIGEST}
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      EMAIL_OUTBOX_POLL_INTERVAL_MS: 1000
+      JOB_LOCK_TIMEOUT_MS: 30000
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST}
+      SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:?set SMTP_USER}
+      WORKER_HOST: 0.0.0.0
+      WORKER_PORT: 3002
+    secrets:
+      - database_url
+      - smtp_password
+    networks:
+      - data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r=await fetch('http://localhost:3002/ready');process.exit(r.ok?0:1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 1.0
+
+  web:
+    <<: *runtime
+    image: ${IMAGE_REGISTRY:-ghcr.io/neotamia}/ntauth-web@${WEB_IMAGE_DIGEST:?set WEB_IMAGE_DIGEST}
+    environment:
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+      NUXT_PUBLIC_API_BASE_URL: ${NUXT_PUBLIC_API_BASE_URL:?set NUXT_PUBLIC_API_BASE_URL}
+    expose:
+      - "3000"
+    networks:
+      - edge
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "bun", "-e", "const r=await fetch('http://localhost:3000/');process.exit(r.ok?0:1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 384m
+    cpus: 0.75
+
+networks:
+  data:
+    internal: true
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-proxy}
+
+secrets:
+  better_auth_secret:
+    file: ${BETTER_AUTH_SECRET_FILE:-./deploy/secrets/better-auth-secret}
+  database_url:
+    file: ${DATABASE_URL_FILE:-./deploy/secrets/database-url}
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:-./deploy/secrets/postgres-password}
+  smtp_password:
+    file: ${SMTP_PASSWORD_FILE:-./deploy/secrets/smtp-password}
+
+volumes:
+  postgres-data:
+  redis-data:

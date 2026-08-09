@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { readFile } from "node:fs/promises";
 
 const optionalString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -166,6 +167,24 @@ function parseEnvironment<T>(schema: z.ZodType<T>, environment: unknown): T {
   }
 
   return result.data;
+}
+
+export async function materializeSecretFiles(
+  environment: NodeJS.ProcessEnv,
+  names: ReadonlyArray<string>,
+) {
+  const resolved = { ...environment };
+  await Promise.all(
+    names.map(async (name) => {
+      if (resolved[name]?.trim()) return;
+      const path = resolved[`${name}_FILE`]?.trim();
+      if (!path) return;
+      const value = (await readFile(path, "utf8")).trimEnd();
+      if (!value) throw new Error(`Secret file for ${name} is empty`);
+      resolved[name] = value;
+    }),
+  );
+  return resolved;
 }
 
 export function parseApiEnvironment(environment: unknown = process.env) {

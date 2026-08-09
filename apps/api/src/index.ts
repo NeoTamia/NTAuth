@@ -1,9 +1,11 @@
-import { parseApiEnvironment } from "@neotamia/config";
+import { materializeSecretFiles, parseApiEnvironment } from "@neotamia/config";
 
 import { createApp } from "./app";
 import { createRuntime } from "./runtime";
 
-const environment = parseApiEnvironment();
+const environment = parseApiEnvironment(
+  await materializeSecretFiles(process.env, ["BETTER_AUTH_SECRET", "DATABASE_URL", "REDIS_URL"]),
+);
 const runtime = createRuntime(environment);
 const app = createApp({
   auditEventRoutes: runtime.auditEventRoutes,
