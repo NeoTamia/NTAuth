@@ -13,9 +13,9 @@ describe("production observability", () => {
     const compose = await composeFile.text();
     const prometheus = await prometheusFile.text();
 
-    expect(compose).toMatch(/image: prom\/prometheus:v?\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
-    expect(compose).toMatch(/image: prom\/alertmanager:v?\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
-    expect(compose).toMatch(/image: grafana\/grafana:v?\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
+    expect(compose).toMatch(/image: prom\/prometheus:[^\s@]+@sha256:[0-9a-f]{64}$/m);
+    expect(compose).toMatch(/image: prom\/alertmanager:[^\s@]+@sha256:[0-9a-f]{64}$/m);
+    expect(compose).toMatch(/image: grafana\/grafana:[^\s@]+@sha256:[0-9a-f]{64}$/m);
     expect(prometheus).toContain("api:3001");
     expect(prometheus).toContain("worker:3002");
   });

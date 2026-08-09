@@ -1,10 +1,10 @@
-FROM oven/bun:1.3.14-slim AS workspace
+FROM oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04 AS workspace
 WORKDIR /app
 COPY . .
 RUN bun install --frozen-lockfile
 RUN bun --filter @neotamia/permissions build
 
-FROM oven/bun:1.3.14-slim AS runtime
+FROM oven/bun:1.3.14-slim@sha256:d56a2534ffd262e92c12fd3249d3924d296d97086da773f821d7d0477435ea04 AS runtime
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends \
     libcap2=1:2.75-10+deb13u1+b1 \
@@ -44,7 +44,7 @@ USER bun
 EXPOSE 3002
 CMD ["bun", "dist/index.js"]
 
-FROM node:24.19.0-bookworm-slim AS web-build
+FROM node:24.19.0-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03 AS web-build
 WORKDIR /app
 COPY --from=workspace /app /app
 WORKDIR /app/apps/web
