@@ -68,9 +68,10 @@ describe("policy editor", () => {
   });
 
   test("keeps protected policy operations, validation and accessible states visible", async () => {
-    const page = await Bun.file(
-      new URL("../../app/pages/admin/policies.vue", import.meta.url),
-    ).text();
+    const [page, styles] = await Promise.all([
+      Bun.file(new URL("../../app/pages/admin/policies.vue", import.meta.url)).text(),
+      Bun.file(new URL("../../app/assets/css/main.css", import.meta.url)).text(),
+    ]);
     for (const path of [
       "/api/v1/organizations",
       "/api/v1/iam/catalog/",
@@ -84,5 +85,6 @@ describe("policy editor", () => {
     expect(page).toContain('aria-live="polite"');
     expect(page).toContain('role="alert"');
     expect(page).toContain("scrollIntoView");
+    expect(styles).toMatch(/\.access-gate form\s*{[^}]*gap: 1\.25rem;/);
   });
 });

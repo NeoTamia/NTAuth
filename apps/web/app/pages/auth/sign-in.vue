@@ -79,10 +79,7 @@ async function signIn() {
           />
         </div>
         <div class="field">
-          <div class="field__label-row">
-            <label for="password">Mot de passe</label>
-            <NuxtLink to="/auth/forgot-password">Mot de passe oublié ?</NuxtLink>
-          </div>
+          <label for="password">Mot de passe</label>
           <input
             id="password"
             v-model="password"
@@ -92,6 +89,9 @@ async function signIn() {
             required
             :disabled="pending"
           />
+          <NuxtLink class="password-recovery-link" to="/auth/forgot-password">
+            Mot de passe oublié ?
+          </NuxtLink>
         </div>
 
         <p

@@ -305,13 +305,8 @@ button:not(:disabled):hover,
 .field label {
   font-weight: 750;
 }
-.field__label-row {
-  display: flex;
-  gap: 1rem;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.field__label-row a {
+.password-recovery-link {
+  justify-self: end;
   color: #375345;
   font-size: 0.875rem;
   font-weight: 650;
@@ -630,6 +625,11 @@ button:not(:disabled):hover,
   line-height: 1.6;
 }
 .registry-gate form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.access-gate form {
   display: grid;
   gap: 1.25rem;
   margin-top: 2rem;

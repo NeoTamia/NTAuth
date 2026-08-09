@@ -48,6 +48,7 @@ describe("account access routes", () => {
       page("reset-password"),
     ]);
     expect(signIn).toContain('autocomplete="current-password"');
+    expect(signIn.indexOf('name="password"')).toBeLessThan(signIn.indexOf("Mot de passe oublié ?"));
     expect(signIn).toContain("/api/auth/sign-in/email");
     expect(signIn).toContain('role="alert"');
     expect(forgot).toContain("nous ne confirmerons pas l’existence d’un compte");
