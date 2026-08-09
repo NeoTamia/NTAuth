@@ -32,6 +32,8 @@ describe("GitHub Actions CI", () => {
 
     expect(workflow).toContain("run: bun install --frozen-lockfile");
     expect(workflow).toContain("run: bun run check");
+    expect(workflow).toContain("run: bun run test:e2e");
+    expect(workflow).toContain("bunx playwright install-deps chromium");
     expect(workflow).toContain("TEST_DATABASE_URL:");
     expect(workflow).toContain("pg_isready -U ntauth -d ntauth_test");
     expect(workflow).toContain("127.0.0.1:5432/ntauth_test");
@@ -46,6 +48,7 @@ describe("GitHub Actions CI", () => {
     expect(workflow.match(/paths:/g)).toHaveLength(2);
     expect(workflow).toContain('"apps/**"');
     expect(workflow).toContain('"packages/**"');
+    expect(workflow).toContain('"playwright.config.ts"');
     expect(workflow).not.toContain('"docs/**"');
     expect(workflow).toContain("~/.bun/install/cache");
     expect(workflow).toContain("hashFiles('bun.lock')");

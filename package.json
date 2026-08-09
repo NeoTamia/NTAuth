@@ -23,9 +23,11 @@
     "release:publish": "bun tooling/publish-release-artifacts.ts",
     "release:verify": "bun tooling/verify-release.ts",
     "test": "bun --env-file=.env tooling/assert-test-database.ts && bun test tooling && bun --env-file=.env turbo run test --concurrency=1 --env-mode=loose",
+    "test:e2e": "bun --env-file=.env tooling/assert-test-database.ts && playwright test",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "@types/bun": "1.3.14",
     "oxfmt": "0.62.0",
     "oxlint": "1.77.0",
