@@ -44,6 +44,7 @@ describe("production operations", () => {
     const bootstrapCli = await read("packages/db/src/bootstrap-admin-cli.ts");
     const compose = await read("compose.production.yaml");
     const dockerfile = await read("Dockerfile");
+    const rootPackage = await read("package.json");
     const runbook = await read("docs/operations/deployment.md");
 
     expect(bootstrap).toContain("pg_advisory_xact_lock");
@@ -53,6 +54,9 @@ describe("production operations", () => {
     expect(bootstrapCli).toContain('from "@clack/prompts"');
     expect(bootstrapCli).toContain("process.stdin.isTTY");
     expect(bootstrapCli).not.toContain("environment.NTAUTH_BOOTSTRAP_ADMIN_PASSWORD}`");
+    expect(rootPackage).toContain(
+      '"db:bootstrap-admin": "bun --env-file=.env packages/db/src/bootstrap-admin-cli.ts"',
+    );
     expect(compose).toContain('profiles: ["bootstrap"]');
     expect(compose).toContain("/run/secrets/bootstrap_admin_password");
     expect(dockerfile).toContain("packages/db/src/bootstrap-admin-cli.ts");
