@@ -5,8 +5,8 @@ NTScout is provisioned as the stable public client `ntscout`. It has no client s
 Run migrations first, then execute the idempotent seed against the target NTAuth database:
 
 ```bash
-bun --filter @neotamia/db db:migrate
-bun --filter @neotamia/db db:seed:ntscout
+bun run db:migrate
+bun run db:seed:ntscout
 ```
 
 The seed requires `DATABASE_URL`, `NTSCOUT_ENVIRONMENT`, and `NTSCOUT_REDIRECT_URIS`. The URI list is comma-separated. Running it again updates the same client and removes redirect URIs no longer present; it never creates or prints a secret. Each execution writes a correlated `oauth.client.seed` audit event containing only the environment and URI count.

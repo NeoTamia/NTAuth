@@ -13,6 +13,7 @@ Central identity, OAuth/OIDC and authorization service for NeoTamia.
 cp .env.example .env
 bun install --frozen-lockfile
 docker compose up -d postgres redis mailpit
+bun run db:migrate
 bun run dev
 ```
 
@@ -37,8 +38,8 @@ Authenticated users can list and revoke sessions through Better Auth's `/api/aut
 Apply or roll back the latest database migration with:
 
 ```bash
-bun --filter @neotamia/db db:migrate
-bun --filter @neotamia/db db:rollback
+bun run db:migrate
+bun run db:rollback
 ```
 
 The worker exposes liveness and database readiness on `http://localhost:3002/health` and `/ready`. Enqueue a persistent test job with `bun --filter @neotamia/ntauth-worker enqueue:test`; pass a number from `1` to `4` to exercise retries, for example `enqueue:test 2`.
@@ -59,7 +60,7 @@ The Better Auth OAuth provider is mounted under `/api/auth/oauth2` and persists 
 
 OIDC discovery is available at `/.well-known/openid-configuration`, OAuth authorization-server metadata at `/.well-known/oauth-authorization-server/api/auth`, and public keys at `/api/auth/jwks`. These responses expose only the configured V1 endpoints, grants, scopes, S256 challenge method, and active public ES256 keys. They carry a five-minute public cache policy, stale-while-revalidate allowance, and an ETag supporting conditional `304` responses.
 
-Provision the stable public NTScout client after migrations with `bun --filter @neotamia/db db:seed:ntscout`. The command is idempotent and takes its exact environment-specific callbacks from `NTSCOUT_REDIRECT_URIS`; see [the NTScout OAuth client runbook](./docs/operations/ntscout-oauth-client.md).
+Provision the stable public NTScout client after migrations with `bun run db:seed:ntscout`. The command is idempotent and takes its exact environment-specific callbacks from `NTSCOUT_REDIRECT_URIS`; see [the NTScout OAuth client runbook](./docs/operations/ntscout-oauth-client.md).
 
 Every authorization request must include an explicit `organization_id` UUID selected by the client. NTAuth verifies that the signed-in user has an active membership in that active organization, binds the UUID to the authorization code and refresh-token family, and verifies it again before each token issuance. Invalid, altered, suspended, or missing organization contexts receive the same protocol-safe error.
 
