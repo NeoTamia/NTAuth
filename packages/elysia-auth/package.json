@@ -1,6 +1,6 @@
 {
   "name": "@neotamia/elysia-auth",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Typed NTAuth JWT and IAM protection for Elysia resource servers.",
   "license": "UNLICENSED",
   "repository": {
