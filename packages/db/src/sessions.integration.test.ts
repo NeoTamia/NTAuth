@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import { applyMigrations } from "./migrations";
 import { revokeUserSessions, SessionRevocationAuthorizationError } from "./sessions";
 import { auditEvents, platformRoleAssignments, session, user } from "./schema";
@@ -38,7 +39,7 @@ describeWithDatabase("administrative session revocation", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.client`delete from "user" where id in (${adminId}, ${targetId})`;
     await connection.close();
   });

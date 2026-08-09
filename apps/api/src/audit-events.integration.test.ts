@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { hashPassword } from "better-auth/crypto";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import {
   account,
@@ -13,6 +13,7 @@ import {
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
+import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
 import { createApp } from "./app";
 import { createAuditEventRoutes } from "./audit-events";
@@ -112,7 +113,7 @@ describeWithDatabase("IAM audit event API", () => {
   });
 
   afterAll(async () => {
-    await connection.db.delete(auditEvents).where(like(auditEvents.requestId, `${runId}-%`));
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.db.delete(organizations).where(eq(organizations.id, otherOrganizationId));
     await connection.db.delete(services).where(eq(services.key, service));

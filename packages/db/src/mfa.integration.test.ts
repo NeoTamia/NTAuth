@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import {
   beginMfaEnrollment,
   enforcePlatformAdminMfa,
@@ -39,7 +40,7 @@ describeWithDatabase("administrator TOTP step-up", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where actor_user_id in (${adminId}, ${memberId})`;
+    await deleteAuditEventsForTest(connection, { actorUserIds: [adminId, memberId] });
     await connection.client`delete from "user" where id in (${adminId}, ${memberId})`;
     await connection.close();
   });

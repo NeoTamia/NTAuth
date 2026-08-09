@@ -17,6 +17,7 @@ import {
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
+import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
@@ -114,7 +115,7 @@ describeWithDatabase("organization administration API", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.db.delete(user).where(eq(user.id, adminId));
     await connection.db.delete(user).where(eq(user.id, memberId));

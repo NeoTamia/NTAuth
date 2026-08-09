@@ -17,6 +17,7 @@ import { createIamPolicyRoutes } from "./iam-policies";
 import { createMfaRoutes } from "./mfa";
 import { createOrganizationRoutes } from "./organizations";
 import { createPasswordRoutes } from "./passwords";
+import { createRedisRateLimitStore, createRequestRateLimiter } from "./rate-limit";
 import { createSigningKeyRoutes } from "./signing-keys";
 import { createServiceGrantRoutes } from "./service-grants";
 import { createUserRoutes } from "./users";
@@ -40,9 +41,28 @@ export function createRuntime(environment: ApiEnvironment) {
     connection: database,
     database: database.db,
     secret: environment.BETTER_AUTH_SECRET,
+    secureCookies: environment.NODE_ENV === "production",
+    trustedProxies: environment.TRUSTED_PROXY_CIDRS,
     trustedOrigins: environment.CORS_ORIGINS,
   });
   const policyCache = createIamPermissionCache({ client: redis, connect: connectRedis, database });
+  const requestLimiter = environment.RATE_LIMIT_ENABLED
+    ? createRequestRateLimiter({
+        configuration: {
+          lockoutSeconds: environment.RATE_LIMIT_LOCKOUT_SECONDS,
+          lockoutThreshold: environment.RATE_LIMIT_LOCKOUT_THRESHOLD,
+          loginMax: environment.RATE_LIMIT_LOGIN_MAX,
+          loginWindowSeconds: environment.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+          oauthMax: environment.RATE_LIMIT_OAUTH_MAX,
+          oauthWindowSeconds: environment.RATE_LIMIT_OAUTH_WINDOW_SECONDS,
+          recoveryMax: environment.RATE_LIMIT_RECOVERY_MAX,
+          recoveryWindowSeconds: environment.RATE_LIMIT_RECOVERY_WINDOW_SECONDS,
+        },
+        keySecret: environment.BETTER_AUTH_SECRET,
+        store: createRedisRateLimitStore({ client: redis, connect: connectRedis }),
+        trustProxyHeaders: environment.TRUSTED_PROXY_CIDRS.length > 0,
+      })
+    : undefined;
   const authHandler = createAuditedAuthHandler(auth, database);
   const auditEventRoutes = createAuditEventRoutes({
     applicationSecret: environment.BETTER_AUTH_SECRET,
@@ -149,6 +169,7 @@ export function createRuntime(environment: ApiEnvironment) {
     organizationRoutes,
     passwordRoutes,
     readiness,
+    requestLimiter,
     signingKeyRoutes,
     serviceGrantRoutes,
     userRoutes,

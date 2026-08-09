@@ -12,6 +12,7 @@ import {
 import { applyMigrations } from "./migrations";
 import { auditEvents, organizationMembers, organizations, services, user } from "./schema";
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
@@ -52,7 +53,7 @@ describeWithDatabase("IAM audit event journal", () => {
   });
 
   afterAll(async () => {
-    await connection.db.delete(auditEvents).where(like(auditEvents.requestId, `${runId}-%`));
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.db.delete(organizations).where(eq(organizations.id, otherOrganizationId));
     await connection.db.delete(services).where(eq(services.key, service));
@@ -200,6 +201,9 @@ describeWithDatabase("IAM audit event journal", () => {
       .from(auditEvents)
       .where(eq(auditEvents.id, old!.id));
     expect(unchanged?.outcome).toBe("success");
+    await expect(
+      connection.db.delete(auditEvents).where(eq(auditEvents.id, old!.id)).execute(),
+    ).rejects.toThrow();
 
     const removed = await purgeExpiredAuditEvents(connection, new Date("2026-08-08T00:00:00.000Z"));
     expect(removed.map(({ id }) => id)).toContain(old!.id);

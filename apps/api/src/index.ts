@@ -20,6 +20,7 @@ const app = createApp({
   organizationRoutes: runtime.organizationRoutes,
   passwordRoutes: runtime.passwordRoutes,
   readiness: runtime.readiness,
+  requestLimiter: runtime.requestLimiter,
   serviceGrantRoutes: runtime.serviceGrantRoutes,
   signingKeyRoutes: runtime.signingKeyRoutes,
   userRoutes: runtime.userRoutes,

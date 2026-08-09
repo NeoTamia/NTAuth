@@ -56,6 +56,52 @@ describeWithDatabase("Better Auth persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
+  test("forces hardened cookies for the production boundary", async () => {
+    const id = crypto.randomUUID();
+    const email = `secure-cookie-${id}@example.test`;
+    const password = "Secure-cookie-password-123!";
+    await connection.db.insert(user).values({
+      email,
+      emailVerified: true,
+      id,
+      name: "Secure cookie user",
+    });
+    await connection.db.insert(account).values({
+      accountId: id,
+      id: crypto.randomUUID(),
+      password: await hashPassword(password),
+      providerId: "credential",
+      userId: id,
+    });
+
+    try {
+      const productionAuth = createAuth({
+        baseURL: "https://auth.neotamia.re/api/auth",
+        database: connection.db,
+        secret: "integration-test-secret-with-at-least-32-characters",
+        secureCookies: true,
+        trustedOrigins: ["https://auth.neotamia.re"],
+      });
+      const response = await productionAuth.handler(
+        new Request("https://auth.neotamia.re/api/auth/sign-in/email", {
+          body: JSON.stringify({ email, password }),
+          headers: {
+            "content-type": "application/json",
+            origin: "https://auth.neotamia.re",
+          },
+          method: "POST",
+        }),
+      );
+      expect(response.status).toBe(200);
+      const cookie = response.headers.get("set-cookie") ?? "";
+      expect(cookie).toContain("Secure");
+      expect(cookie).toContain("HttpOnly");
+      expect(cookie).toContain("SameSite=Lax");
+    } finally {
+      await connection.client`delete from "user" where id = ${id}`;
+    }
+  });
+
   test("lists, minimizes, revokes, and expires persistent sessions immediately", async () => {
     const id = crypto.randomUUID();
     const email = `invited-${id}@example.test`;

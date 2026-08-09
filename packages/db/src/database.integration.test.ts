@@ -42,12 +42,12 @@ describeWithDatabase("PostgreSQL integration", () => {
   });
 
   test("rolls the latest migration down and reapplies it", async () => {
-    await expect(rollbackLastMigration(connection)).resolves.toBe("0017_audit_guard");
+    await expect(rollbackLastMigration(connection)).resolves.toBe("0018_audit_delete_guard");
 
     const [auditGuard] = await connection.client<{ exists: boolean }[]>`
       select exists (
         select 1 from pg_trigger
-        where tgname = 'audit_events_immutable_update' and not tgisinternal
+        where tgname = 'audit_events_guarded_delete' and not tgisinternal
       ) as exists
     `;
     expect(auditGuard?.exists).toBe(false);
@@ -56,7 +56,7 @@ describeWithDatabase("PostgreSQL integration", () => {
     const [restoredAuditGuard] = await connection.client<{ exists: boolean }[]>`
       select exists (
         select 1 from pg_trigger
-        where tgname = 'audit_events_immutable_update' and not tgisinternal
+        where tgname = 'audit_events_guarded_delete' and not tgisinternal
       ) as exists
     `;
     expect(restoredAuditGuard?.exists).toBe(true);

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import { applyMigrations } from "./migrations";
 import { revokeUserSessions } from "./sessions";
 import {
@@ -46,7 +47,7 @@ describeWithDatabase("user lifecycle", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.client`delete from "user" where id in (${adminId}, ${targetId}, ${unauthorizedId})`;
     await connection.close();
   });

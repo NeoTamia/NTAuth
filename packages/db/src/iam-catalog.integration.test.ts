@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { validatePolicyDocument } from "@neotamia/permissions";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import {
   createIamCatalogEntry,
   createService,
@@ -49,7 +50,7 @@ describeWithDatabase("IAM service catalogue", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.db.delete(services).where(eq(services.key, "ntscout-test"));
     await Promise.all(
       [adminId, ownerId, nextOwnerId, outsiderId].map((id) =>

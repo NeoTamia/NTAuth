@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import {
   completeEmailVerification,
   InvalidEmailVerificationError,
@@ -28,7 +29,7 @@ describeWithDatabase("mandatory email verification", () => {
 
   afterAll(async () => {
     await connection.client`delete from jobs where payload->>'to' = ${email}`;
-    await connection.client`delete from audit_events where resource_id = ${userId}`;
+    await deleteAuditEventsForTest(connection, { resourceId: userId });
     await connection.client`delete from "user" where id = ${userId}`;
     await connection.close();
   });

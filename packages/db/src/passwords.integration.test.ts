@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import { applyMigrations } from "./migrations";
 import {
   changePassword,
@@ -37,7 +38,7 @@ describeWithDatabase("password lifecycle", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where resource_id = ${userId}`;
+    await deleteAuditEventsForTest(connection, { resourceId: userId });
     await connection.client`delete from "user" where id = ${userId}`;
     await connection.close();
   });

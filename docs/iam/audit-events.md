@@ -2,9 +2,10 @@
 
 Chaque mutation de service, catalogue, grant, policy, version, groupe et
 attachement écrit un événement dans la même transaction PostgreSQL que la
-mutation métier. Une migration protège les lignes contre toute mise à jour : une
-correction produit donc toujours un nouvel événement. Seule la purge de rétention
-peut supprimer des lignes arrivées à expiration.
+mutation métier. Des triggers protègent les lignes contre toute mise à jour et
+toute suppression ordinaire : une correction produit donc toujours un nouvel
+événement. Seule une transaction activant explicitement le contexte local de
+purge peut supprimer des lignes arrivées à expiration.
 
 Un événement public contient uniquement :
 
@@ -68,4 +69,6 @@ supprimer prématurément des preuves.
 
 Les tests exécutables couvrent la redaction, l’autorisation tenant-scoped, les
 filtres invalides, la pagination concurrente à timestamps identiques,
-l’immutabilité PostgreSQL et la purge bornée.
+l’immutabilité PostgreSQL, le refus des suppressions ordinaires et la purge
+bornée. Le rollback opérationnel consiste à arrêter le worker de purge ; il ne
+faut jamais supprimer les triggers pour contourner un échec.

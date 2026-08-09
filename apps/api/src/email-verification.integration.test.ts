@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { applyMigrations, createDatabase, user, type DatabaseConnection } from "@neotamia/db";
+import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
 import { createApp } from "./app";
 import { createEmailVerificationRoutes } from "./email-verification";
@@ -22,7 +23,7 @@ describeWithDatabase("email verification API", () => {
 
   afterAll(async () => {
     await connection.client`delete from jobs where payload->>'to' = ${email}`;
-    await connection.client`delete from audit_events where resource_id = ${userId}`;
+    await deleteAuditEventsForTest(connection, { resourceId: userId });
     await connection.client`delete from "user" where id = ${userId}`;
     await connection.close();
   });

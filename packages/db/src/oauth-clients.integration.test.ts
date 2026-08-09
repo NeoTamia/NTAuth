@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import { applyMigrations } from "./migrations";
 import { NTSCOUT_CLIENT_ID, NTSCOUT_SCOPES, provisionNtscoutClient } from "./oauth-clients";
 import { auditEvents, oauthClients } from "./schema";
@@ -21,7 +22,7 @@ describeWithDatabase("NTScout OAuth client provisioning", () => {
 
   afterAll(async () => {
     await connection.db.delete(oauthClients).where(eq(oauthClients.clientId, NTSCOUT_CLIENT_ID));
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.close();
   });
 

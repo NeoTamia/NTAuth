@@ -57,6 +57,8 @@ describe("auth handler", () => {
     const healthResponse = await app.handle(new Request("http://localhost/health"));
     expect(healthResponse.status).toBe(200);
     expect(await healthResponse.json()).toEqual({ status: "ok" });
+    expect(healthResponse.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(healthResponse.headers.get("x-content-type-options")).toBe("nosniff");
   });
 });
 

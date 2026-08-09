@@ -39,6 +39,18 @@ const redisUrl = z
   .refine((value) => usesProtocol(value, /^rediss?:$/), {
     message: "URL must use Redis",
   });
+const trustedProxyCidrs = z
+  .string()
+  .default("")
+  .transform((value) =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )
+  .pipe(
+    z.array(z.string().regex(/^[0-9a-f:.]+(?:\/\d{1,3})?$/i, "Invalid proxy IP or CIDR")).max(16),
+  );
 
 const sharedEnvironmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]),
@@ -59,6 +71,16 @@ const apiEnvironmentSchema = sharedEnvironmentSchema.extend({
     .string()
     .transform((value) => value.split(",").map((origin) => origin.trim()))
     .pipe(z.array(httpUrl).min(1)),
+  RATE_LIMIT_ENABLED: optionalBoolean.default(false),
+  RATE_LIMIT_LOCKOUT_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
+  RATE_LIMIT_LOCKOUT_THRESHOLD: z.coerce.number().int().min(2).max(100).default(8),
+  RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().min(1).max(10_000).default(10),
+  RATE_LIMIT_LOGIN_WINDOW_SECONDS: z.coerce.number().int().min(1).max(86_400).default(60),
+  RATE_LIMIT_OAUTH_MAX: z.coerce.number().int().min(1).max(10_000).default(30),
+  RATE_LIMIT_OAUTH_WINDOW_SECONDS: z.coerce.number().int().min(1).max(86_400).default(60),
+  RATE_LIMIT_RECOVERY_MAX: z.coerce.number().int().min(1).max(10_000).default(5),
+  RATE_LIMIT_RECOVERY_WINDOW_SECONDS: z.coerce.number().int().min(1).max(86_400).default(300),
+  TRUSTED_PROXY_CIDRS: trustedProxyCidrs,
 });
 
 const workerEnvironmentSchema = sharedEnvironmentSchema.extend({

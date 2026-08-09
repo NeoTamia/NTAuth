@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import {
   acceptInvitation,
   cancelInvitation,
@@ -52,7 +53,9 @@ describeWithDatabase("single-use invitations", () => {
 
   afterAll(async () => {
     await connection.client`delete from jobs where deduplication_key like 'invitation:%'`;
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`} or request_id like 'invitation:%'`;
+    await deleteAuditEventsForTest(connection, {
+      requestIdPrefixes: [`${runId}-`, "invitation:"],
+    });
     await connection.client`delete from organizations where id = ${organizationId}`;
     await connection.client`delete from "user" where id in (${adminId}, ${outsiderId}) or email like ${`%-${runId}@example.test`}`;
     await connection.close();

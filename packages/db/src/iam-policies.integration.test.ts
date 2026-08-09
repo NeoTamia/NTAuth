@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import {
   createIamPolicy,
   createIamPolicyVersion,
@@ -82,7 +83,7 @@ describeWithDatabase("IAM policy versioning", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.db.delete(organizations).where(eq(organizations.id, organizationId));
     await connection.db.delete(organizations).where(eq(organizations.id, otherOrganizationId));
     await connection.db.delete(services).where(eq(services.key, service));

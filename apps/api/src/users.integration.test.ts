@@ -16,6 +16,7 @@ import {
   user,
   type DatabaseConnection,
 } from "@neotamia/db";
+import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
 import { createApp } from "./app";
 import { createAuth } from "./auth/auth";
@@ -76,7 +77,7 @@ describeWithDatabase("user lifecycle API", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.client`delete from "user" where id in (${adminId}, ${targetId})`;
     await connection.close();
   });

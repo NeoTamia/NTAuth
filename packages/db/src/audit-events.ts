@@ -296,8 +296,11 @@ export async function exportIamAuditEvents(
 }
 
 export async function purgeExpiredAuditEvents(connection: DatabaseConnection, now = new Date()) {
-  return connection.db
-    .delete(auditEvents)
-    .where(lt(auditEvents.createdAt, retentionCutoff(now)))
-    .returning({ id: auditEvents.id });
+  return connection.db.transaction(async (transaction) => {
+    await transaction.execute(sql`select set_config('ntauth.audit_purge', 'enabled', true)`);
+    return transaction
+      .delete(auditEvents)
+      .where(lt(auditEvents.createdAt, retentionCutoff(now)))
+      .returning({ id: auditEvents.id });
+  });
 }

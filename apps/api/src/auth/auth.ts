@@ -18,6 +18,8 @@ type AuthOptions = {
   connection?: DatabaseConnection;
   database: DatabaseConnection["db"];
   secret: string;
+  secureCookies?: boolean;
+  trustedProxies?: string[];
   trustedOrigins: string[];
 };
 
@@ -34,7 +36,20 @@ export function minimizeUserAgent(value: string | null | undefined): string | nu
 export function createAuth(options: AuthOptions) {
   return betterAuth({
     advanced: {
-      ipAddress: { disableIpTracking: true },
+      defaultCookieAttributes: {
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+        secure: options.secureCookies ?? false,
+      },
+      ipAddress: options.trustedProxies?.length
+        ? {
+            ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
+            trustedProxies: options.trustedProxies,
+          }
+        : { disableIpTracking: true },
+      trustedProxyHeaders: false,
+      useSecureCookies: options.secureCookies ?? false,
     },
     appName: "NTAuth",
     baseURL: options.baseURL,

@@ -27,6 +27,10 @@ describe("runtime environment validation", () => {
     });
 
     expect(environment.API_PORT).toBe(3001);
+    expect(environment.RATE_LIMIT_ENABLED).toBe(false);
+    expect(environment.RATE_LIMIT_LOGIN_MAX).toBe(10);
+    expect(environment.RATE_LIMIT_LOCKOUT_SECONDS).toBe(900);
+    expect(environment.TRUSTED_PROXY_CIDRS).toEqual([]);
     expect(environment.CORS_ORIGINS).toEqual(["http://localhost:3000", "https://auth.example.com"]);
   });
 

@@ -40,6 +40,7 @@ import {
   verification,
   type DatabaseConnection,
 } from "@neotamia/db";
+import { deleteAuditEventsForTest } from "@neotamia/db/test-support";
 
 import { createAuditedAuthHandler } from "./audited-handler";
 import { createAuth } from "./auth";
@@ -144,7 +145,7 @@ describeWithDatabase("OAuth provider integration", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     if (emergencyKeyId)
       await connection.db.delete(jwksTable).where(eq(jwksTable.id, emergencyKeyId));
     if (emergencyPreviousKeyId) {

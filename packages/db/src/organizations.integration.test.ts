@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
+import { deleteAuditEventsForTest } from "./test-support";
 import { applyMigrations } from "./migrations";
 import {
   addOrganizationMember,
@@ -55,7 +56,7 @@ describeWithDatabase("organization domain", () => {
   });
 
   afterAll(async () => {
-    await connection.client`delete from audit_events where request_id like ${`${runId}-%`}`;
+    await deleteAuditEventsForTest(connection, { requestIdPrefixes: [`${runId}-`] });
     await connection.client`delete from organizations where slug = ${`neotamia-${runId}`}`;
     await connection.client`delete from "user" where id in (${platformAdminId}, ${organizationAdminId}, ${memberId})`;
     await connection.close();

@@ -15,6 +15,7 @@ import type { createPasswordRoutes } from "./passwords";
 import type { createSigningKeyRoutes } from "./signing-keys";
 import type { createServiceGrantRoutes } from "./service-grants";
 import type { createUserRoutes } from "./users";
+import type { RequestRateLimiter } from "./rate-limit";
 
 export type ReadinessChecks = {
   postgres: () => Promise<void>;
@@ -24,6 +25,15 @@ export type ReadinessChecks = {
 type AuthHandler = (request: Request) => Promise<Response> | Response;
 
 const available = async () => undefined;
+const apiSecurityHeaders = {
+  "content-security-policy":
+    "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  "cross-origin-resource-policy": "same-origin",
+  "permissions-policy": "camera=(), geolocation=(), microphone=()",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+} as const;
 
 export const createApp = (
   options: {
@@ -40,6 +50,7 @@ export const createApp = (
     mfaRoutes?: ReturnType<typeof createMfaRoutes>;
     organizationRoutes?: ReturnType<typeof createOrganizationRoutes>;
     passwordRoutes?: ReturnType<typeof createPasswordRoutes>;
+    requestLimiter?: RequestRateLimiter;
     readiness?: ReadinessChecks;
     signingKeyRoutes?: ReturnType<typeof createSigningKeyRoutes>;
     serviceGrantRoutes?: ReturnType<typeof createServiceGrantRoutes>;
@@ -65,6 +76,20 @@ export const createApp = (
   if (options.userRoutes) routes.use(options.userRoutes);
 
   return new Elysia()
+    .onRequest(({ request }) => options.requestLimiter?.check(request))
+    .onAfterHandle(({ request, response, set }) =>
+      options.requestLimiter?.observe(
+        request,
+        response instanceof Response
+          ? response.status
+          : typeof set.status === "number"
+            ? set.status
+            : 200,
+      ),
+    )
+    .onAfterHandle(({ set }) => {
+      for (const [name, value] of Object.entries(apiSecurityHeaders)) set.headers[name] = value;
+    })
     .use(
       cors({
         allowedHeaders: [
