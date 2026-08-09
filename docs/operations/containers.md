@@ -20,13 +20,15 @@ le workflow n’a que `contents:read`, `packages:write` et `id-token:write`.
    par l’utilisateur d’exploitation. Renommer l’exemple en `production.env` et le rendre lisible
    uniquement par cet utilisateur.
 3. Créer `deploy/secrets` avec le mode `0700`, puis quatre fichiers en mode `0600` :
-   `better-auth-secret`, `database-url`, `postgres-password` et `smtp-password`.
+   `better-auth-secret`, `database-url`, `postgres-password`, `smtp-password` et
+   `grafana-admin-password`.
 4. Générer `better-auth-secret` avec au moins 32 octets aléatoires. Le mot de passe présent dans
    `database-url` doit être identique à `postgres-password`. Les fichiers ne doivent contenir que
    leur valeur, sans libellé.
 5. Connecter le reverse proxy TLS au réseau `proxy`. Router le chemin public de l’API vers
    `api:3001` et le reste vers `web:3000`. PostgreSQL, Redis et le worker ne rejoignent jamais ce
-   réseau et ne publient aucun port hôte.
+   réseau et ne publient aucun port hôte. Refuser explicitement `/metrics` au public; publier
+   Grafana sous une route séparée réservée aux opérateurs.
 
 ## Préflight reproductible
 

@@ -1,0 +1,67 @@
+groups:
+  - name: ntauth
+    rules:
+      - alert: NTAuthApiUnavailable
+        expr: up{job="ntauth-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: NTAuth API is unavailable
+          runbook: docs/operations/observability.md#api-indisponible
+      - alert: NTAuthWorkerUnavailable
+        expr: up{job="ntauth-worker"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: NTAuth worker is unavailable
+          runbook: docs/operations/observability.md#worker-indisponible
+      - alert: NTAuthApiErrorBudgetBurn
+        expr: sum(rate(ntauth_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(ntauth_http_requests_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: More than 5 percent of API requests fail
+          runbook: docs/operations/observability.md#erreurs-api
+      - alert: NTAuthApiP95LatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(ntauth_http_request_duration_seconds_bucket[10m]))) > 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: API p95 latency exceeds one second
+          runbook: docs/operations/observability.md#latence-api
+      - alert: NTAuthRateLimitStoreUnavailable
+        expr: increase(ntauth_rate_limit_rejections_total{reason="store_unavailable"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Authentication protection cannot reach its store
+          runbook: docs/operations/observability.md#redis-et-rate-limiting
+      - alert: NTAuthAuthenticationFailureSpike
+        expr: sum(rate(ntauth_auth_failures_total[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Authentication failures exceed five per second
+          runbook: docs/operations/observability.md#echecs-authentification
+      - alert: NTAuthWorkerFailedJobs
+        expr: increase(ntauth_worker_jobs_total{outcome="failed"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: A worker job exhausted all attempts
+          runbook: docs/operations/observability.md#jobs-en-echec
+      - alert: NTAuthWorkerQueueBacklog
+        expr: sum(ntauth_worker_queue_jobs{status="available"}) > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Worker queue has more than 100 available jobs
+          runbook: docs/operations/observability.md#retard-de-file

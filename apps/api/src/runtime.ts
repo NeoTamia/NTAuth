@@ -1,4 +1,5 @@
 import { createDatabase } from "@neotamia/db";
+import { createStructuredLogger } from "@neotamia/observability";
 import { createClient } from "redis";
 
 import type { ApiEnvironment } from "@neotamia/config";
@@ -18,11 +19,14 @@ import { createMfaRoutes } from "./mfa";
 import { createOrganizationRoutes } from "./organizations";
 import { createPasswordRoutes } from "./passwords";
 import { createRedisRateLimitStore, createRequestRateLimiter } from "./rate-limit";
+import { createApiObservability } from "./observability";
 import { createSigningKeyRoutes } from "./signing-keys";
 import { createServiceGrantRoutes } from "./service-grants";
 import { createUserRoutes } from "./users";
 
 export function createRuntime(environment: ApiEnvironment) {
+  const logger = createStructuredLogger("api");
+  const observability = createApiObservability({ logger });
   const database = createDatabase(environment.DATABASE_URL, { max: 5 });
   const redis = createClient({
     socket: {
@@ -34,7 +38,9 @@ export function createRuntime(environment: ApiEnvironment) {
   let redisConnection: Promise<void> | undefined;
 
   // Availability is exposed through /ready; Redis errors must not crash the process.
-  redis.on("error", () => undefined);
+  redis.on("error", (error) =>
+    logger.log("error", "redis_connection_error", { error_name: error.name }),
+  );
 
   const auth = createAuth({
     baseURL: environment.AUTH_BASE_URL,
@@ -167,6 +173,7 @@ export function createRuntime(environment: ApiEnvironment) {
     iamPolicyRoutes,
     mfaRoutes,
     organizationRoutes,
+    observability,
     passwordRoutes,
     readiness,
     requestLimiter,

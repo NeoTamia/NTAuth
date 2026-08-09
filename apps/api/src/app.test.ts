@@ -1,11 +1,29 @@
 import { describe, expect, it } from "bun:test";
+import { createStructuredLogger, MetricsRegistry } from "@neotamia/observability";
 import { createApp } from "./app";
+import { createApiObservability } from "./observability";
 
 describe("health endpoints", () => {
   it("reports the process as healthy", async () => {
     const response = await createApp().handle(new Request("http://localhost/health"));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
+  });
+
+  it("correlates requests and exposes Prometheus metrics", async () => {
+    const observability = createApiObservability({
+      logger: createStructuredLogger("api", () => undefined),
+      metrics: new MetricsRegistry(),
+    });
+    const app = createApp({ observability });
+    const response = await app.handle(
+      new Request("http://localhost/health", { headers: { "x-request-id": "health-check-1" } }),
+    );
+    expect(response.headers.get("x-request-id")).toBe("health-check-1");
+
+    const metrics = await app.handle(new Request("http://localhost/metrics"));
+    expect(metrics.headers.get("content-type")).toContain("text/plain");
+    expect(await metrics.text()).toContain("ntauth_http_requests_total");
   });
 
   it("reports the process as ready", async () => {

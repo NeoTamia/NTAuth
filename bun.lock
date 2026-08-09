@@ -23,6 +23,7 @@
         "@neotamia/config": "workspace:*",
         "@neotamia/db": "workspace:*",
         "@neotamia/elysia-auth": "workspace:*",
+        "@neotamia/observability": "workspace:*",
         "@neotamia/permissions": "workspace:*",
         "better-auth": "1.6.26",
         "drizzle-orm": "0.45.2",
@@ -58,6 +59,7 @@
       "dependencies": {
         "@neotamia/config": "workspace:*",
         "@neotamia/db": "workspace:*",
+        "@neotamia/observability": "workspace:*",
         "nodemailer": "7.0.5",
       },
       "devDependencies": {
@@ -151,6 +153,15 @@
       "peerDependencies": {
         "nuxt": "4.5.2",
         "vue": "3.5.41",
+      },
+    },
+    "packages/observability": {
+      "name": "@neotamia/observability",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@neotamia/config": "workspace:*",
+        "@types/bun": "1.3.14",
+        "typescript": "6.0.3",
       },
     },
     "packages/permissions": {
@@ -434,6 +445,8 @@
     "@neotamia/ntauth-worker": ["@neotamia/ntauth-worker@workspace:apps/worker"],
 
     "@neotamia/nuxt-auth": ["@neotamia/nuxt-auth@workspace:packages/nuxt-auth"],
+
+    "@neotamia/observability": ["@neotamia/observability@workspace:packages/observability"],
 
     "@neotamia/permissions": ["@neotamia/permissions@workspace:packages/permissions"],
 

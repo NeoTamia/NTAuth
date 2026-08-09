@@ -1,5 +1,6 @@
 import { materializeSecretFiles, parseWorkerEnvironment } from "@neotamia/config";
 import { createDatabase, purgeExpiredAuditEvents } from "@neotamia/db";
+import { createStructuredLogger, MetricsRegistry } from "@neotamia/observability";
 import nodemailer from "nodemailer";
 
 import { createEmailHandler } from "./email";
@@ -9,6 +10,8 @@ import { WorkerProcessor } from "./worker";
 const environment = parseWorkerEnvironment(
   await materializeSecretFiles(process.env, ["DATABASE_URL", "REDIS_URL", "SMTP_PASSWORD"]),
 );
+const logger = createStructuredLogger("worker");
+const metrics = new MetricsRegistry();
 const connection = createDatabase(environment.DATABASE_URL, { max: 5 });
 const queue = new JobQueue(connection, environment.JOB_LOCK_TIMEOUT_MS);
 const emailTransport = nodemailer.createTransport({
@@ -27,11 +30,47 @@ const worker = new WorkerProcessor(
     test: async (job) => {
       const failUntilAttempt = Number(job.payload.failUntilAttempt ?? 0);
       if (job.attempts <= failUntilAttempt) throw new Error("planned_test_failure");
-      console.log(`Test job completed: ${job.id}`);
+      logger.log("info", "test_job_completed", { job_id: job.id });
     },
   },
   `worker-${crypto.randomUUID()}`,
   environment.EMAIL_OUTBOX_POLL_INTERVAL_MS,
+  {
+    completed(job, durationSeconds) {
+      metrics.increment("ntauth_worker_jobs_total", "Processed worker jobs", {
+        outcome: "completed",
+        type: job.type,
+      });
+      metrics.observe(
+        "ntauth_worker_job_duration_seconds",
+        "Worker job processing latency in seconds",
+        durationSeconds,
+        { type: job.type },
+      );
+      logger.log("info", "job_completed", {
+        attempts: job.attempts,
+        job_id: job.id,
+        type: job.type,
+      });
+    },
+    retried(job, durationSeconds, terminal) {
+      metrics.increment("ntauth_worker_jobs_total", "Processed worker jobs", {
+        outcome: terminal ? "failed" : "retry",
+        type: job.type,
+      });
+      metrics.observe(
+        "ntauth_worker_job_duration_seconds",
+        "Worker job processing latency in seconds",
+        durationSeconds,
+        { type: job.type },
+      );
+      logger.log(terminal ? "error" : "warn", terminal ? "job_failed" : "job_retry_scheduled", {
+        attempts: job.attempts,
+        job_id: job.id,
+        type: job.type,
+      });
+    },
+  },
 );
 const abortController = new AbortController();
 const processing = worker.run(abortController.signal);
@@ -65,17 +104,27 @@ const server = Bun.serve({
       }
     }
 
+    if (path === "/metrics") {
+      const counts = await queue.countByStatus();
+      for (const { count, status } of counts) {
+        metrics.set("ntauth_worker_queue_jobs", "Current jobs by queue status", { status }, count);
+      }
+      return new Response(metrics.render(), {
+        headers: { "content-type": "text/plain; version=0.0.4; charset=utf-8" },
+      });
+    }
+
     return new Response("Not found", { status: 404 });
   },
 });
 
-console.log(`NTAuth worker ready on http://${server.hostname}:${server.port}`);
+logger.log("info", "worker_ready", { host: server.hostname, port: server.port });
 
 let stopping = false;
 const stop = async (signal: string) => {
   if (stopping) return;
   stopping = true;
-  console.log(`NTAuth worker received ${signal}; stopping`);
+  logger.log("info", "worker_stopping", { signal });
   clearInterval(auditRetention);
   abortController.abort();
   await processing;

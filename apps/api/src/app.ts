@@ -16,6 +16,7 @@ import type { createSigningKeyRoutes } from "./signing-keys";
 import type { createServiceGrantRoutes } from "./service-grants";
 import type { createUserRoutes } from "./users";
 import type { RequestRateLimiter } from "./rate-limit";
+import type { ApiObservability } from "./observability";
 
 export type ReadinessChecks = {
   postgres: () => Promise<void>;
@@ -49,6 +50,7 @@ export const createApp = (
     iamPolicyRoutes?: ReturnType<typeof createIamPolicyRoutes>;
     mfaRoutes?: ReturnType<typeof createMfaRoutes>;
     organizationRoutes?: ReturnType<typeof createOrganizationRoutes>;
+    observability?: ApiObservability;
     passwordRoutes?: ReturnType<typeof createPasswordRoutes>;
     requestLimiter?: RequestRateLimiter;
     readiness?: ReadinessChecks;
@@ -76,6 +78,10 @@ export const createApp = (
   if (options.userRoutes) routes.use(options.userRoutes);
 
   return new Elysia()
+    .onRequest(({ request, set }) => {
+      const requestId = options.observability?.begin(request);
+      if (requestId) set.headers["x-request-id"] = requestId;
+    })
     .onRequest(({ request }) => options.requestLimiter?.check(request))
     .onAfterHandle(({ request, response, set }) =>
       options.requestLimiter?.observe(
@@ -90,6 +96,16 @@ export const createApp = (
     .onAfterHandle(({ set }) => {
       for (const [name, value] of Object.entries(apiSecurityHeaders)) set.headers[name] = value;
     })
+    .onAfterHandle(({ request, response, set }) =>
+      options.observability?.finish(
+        request,
+        response instanceof Response
+          ? response.status
+          : typeof set.status === "number"
+            ? set.status
+            : 200,
+      ),
+    )
     .use(
       cors({
         allowedHeaders: [
@@ -110,6 +126,13 @@ export const createApp = (
       }),
     )
     .get("/health", () => ({ status: "ok" }))
+    .get(
+      "/metrics",
+      () =>
+        new Response(options.observability?.renderMetrics() ?? "", {
+          headers: { "content-type": "text/plain; version=0.0.4; charset=utf-8" },
+        }),
+    )
     .get("/ready", async ({ set }) => {
       const checks = options.readiness ?? { postgres: available, redis: available };
       const [postgres, redis] = await Promise.allSettled([checks.postgres(), checks.redis()]);
@@ -117,6 +140,9 @@ export const createApp = (
         postgres: postgres.status === "fulfilled" ? "available" : "unavailable",
         redis: redis.status === "fulfilled" ? "available" : "unavailable",
       } as const;
+
+      if (postgres.status === "rejected") options.observability?.dependencyUnavailable("postgres");
+      if (redis.status === "rejected") options.observability?.dependencyUnavailable("redis");
 
       if (postgres.status === "rejected" || redis.status === "rejected") {
         set.status = 503;

@@ -20,6 +20,7 @@ const app = createApp({
   iamPolicyRoutes: runtime.iamPolicyRoutes,
   mfaRoutes: runtime.mfaRoutes,
   organizationRoutes: runtime.organizationRoutes,
+  observability: runtime.observability,
   passwordRoutes: runtime.passwordRoutes,
   readiness: runtime.readiness,
   requestLimiter: runtime.requestLimiter,
@@ -31,13 +32,16 @@ const app = createApp({
   port: environment.API_PORT,
 });
 
-console.log(`NTAuth API listening on http://${app.server?.hostname}:${app.server?.port}`);
+runtime.observability.event("info", "api_ready", {
+  host: app.server?.hostname,
+  port: app.server?.port,
+});
 
 let stopping = false;
 const stop = async (signal: string) => {
   if (stopping) return;
   stopping = true;
-  console.log(`NTAuth API received ${signal}; stopping`);
+  runtime.observability.event("info", "api_stopping", { signal });
   await app.stop();
   await runtime.close();
 };

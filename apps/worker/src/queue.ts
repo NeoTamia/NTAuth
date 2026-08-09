@@ -54,6 +54,15 @@ export class JobQueue implements JobQueueContract {
     return created.id;
   }
 
+  async countByStatus() {
+    return this.connection.client<{ count: number; status: string }[]>`
+      select status, count(*)::integer as count
+      from jobs
+      group by status
+      order by status
+    `;
+  }
+
   async claim(workerId: string): Promise<QueuedJob | undefined> {
     const [job] = await this.connection.client<QueuedJob[]>`
       with expired as (

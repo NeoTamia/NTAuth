@@ -16,6 +16,7 @@
     "@neotamia/config": "workspace:*",
     "@neotamia/db": "workspace:*",
     "@neotamia/elysia-auth": "workspace:*",
+    "@neotamia/observability": "workspace:*",
     "@neotamia/permissions": "workspace:*",
     "better-auth": "1.6.26",
     "drizzle-orm": "0.45.2",
