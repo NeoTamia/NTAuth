@@ -7,8 +7,6 @@ import { totpSecretFromUri, validTotpCode } from "~/utils/mfa";
 definePageMeta({ layout: "admin" });
 useHead({ title: "Sécurité MFA — NTAuth" });
 
-type MfaStatus = { status: "not_enrolled" | "pending" | "verified" };
-
 const currentPassword = ref("");
 const code = ref("");
 const totpURI = ref("");
@@ -25,7 +23,7 @@ const {
   error: statusError,
   refresh: refreshStatus,
   status: loadingStatus,
-} = await useAsyncData<MfaStatus>("mfa-status", () => request("/api/v1/mfa/status"));
+} = await useMfaStatus();
 
 const secret = computed(() => totpSecretFromUri(totpURI.value));
 const canStart = computed(() => currentPassword.value.length > 0 && !starting.value);

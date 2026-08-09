@@ -21,16 +21,22 @@ describe("MFA administration flow", () => {
   });
 
   test("keeps the QR and secret scoped to the enrollment state", async () => {
-    const [page, codeField] = await Promise.all([
+    const [page, codeField, layout, status] = await Promise.all([
       Bun.file(new URL("../../app/pages/admin/security/mfa.vue", import.meta.url)).text(),
       Bun.file(new URL("../../app/components/MfaCodeField.vue", import.meta.url)).text(),
+      Bun.file(new URL("../../app/layouts/admin.vue", import.meta.url)).text(),
+      Bun.file(new URL("../../app/composables/use-mfa-status.ts", import.meta.url)).text(),
     ]);
     expect(page).toContain('v-else-if="totpURI"');
     expect(page).toContain('v-if="qrDataURL"');
     expect(page).toContain('totpURI.value = ""');
     expect(codeField).toContain('autocomplete="one-time-code"');
-    expect(page).toContain("/api/v1/mfa/status");
+    expect(page).toContain("useMfaStatus()");
+    expect(status).toContain("/api/v1/mfa/status");
     expect(page).toContain("/api/v1/mfa/enroll");
     expect(page).toContain("/api/v1/mfa/verify");
+    expect(layout).toContain("Activez la MFA avant de continuer");
+    expect(layout).toContain("Terminez la configuration MFA");
+    expect(layout).toContain('to="/admin/security/mfa"');
   });
 });

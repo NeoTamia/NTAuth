@@ -411,6 +411,21 @@ button:not(:disabled):hover,
 .admin-sidebar nav span {
   padding-block: 0.7rem;
 }
+.admin-sidebar nav .admin-sidebar__mfa-link {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-sidebar nav .admin-sidebar__mfa-link span {
+  padding: 0;
+}
+.admin-sidebar__mfa-link small {
+  color: #d77a51;
+  font-size: 0.875rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
 .admin-sidebar nav span {
   color: #98a69e;
 }
@@ -438,6 +453,30 @@ button:not(:disabled):hover,
 }
 .admin-main {
   padding: clamp(2rem, 7vw, 6rem);
+}
+.mfa-setup-notice {
+  display: flex;
+  max-width: 76rem;
+  gap: 2rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(2rem, 5vw, 4rem);
+  padding-block: 1.5rem;
+  border-block: 1px solid #d77a51;
+}
+.mfa-setup-notice h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.8rem);
+  letter-spacing: -0.025em;
+}
+.mfa-setup-notice p {
+  max-width: 68ch;
+  margin: 0;
+  color: #45544c;
+  line-height: 1.55;
+}
+.mfa-setup-notice .button {
+  flex: none;
 }
 .admin-overview header {
   padding-bottom: 3rem;
@@ -1913,6 +1952,14 @@ button:not(:disabled):hover,
   }
   .admin-main {
     min-width: 0;
+  }
+  .mfa-setup-notice {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .mfa-setup-notice .button {
+    width: 100%;
   }
   .admin-sidebar__session {
     grid-template-columns: minmax(0, 1fr) auto;

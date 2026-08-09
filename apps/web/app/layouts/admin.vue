@@ -2,6 +2,11 @@
 const pending = ref(false);
 const signOutError = ref("");
 const { request } = useAuthApi();
+const route = useRoute();
+const { data: mfaStatus } = await useMfaStatus();
+
+const mfaSetupRequired = computed(() => mfaStatus.value && mfaStatus.value.status !== "verified");
+const onMfaPage = computed(() => route.path === "/admin/security/mfa");
 
 async function signOut() {
   if (pending.value) return;
@@ -25,7 +30,12 @@ async function signOut() {
       <NuxtLink class="wordmark wordmark--light" to="/">NTAuth</NuxtLink>
       <nav aria-label="Administration">
         <NuxtLink to="/admin">Vue d’ensemble</NuxtLink>
-        <NuxtLink to="/admin/security/mfa">Sécurité MFA</NuxtLink>
+        <NuxtLink class="admin-sidebar__mfa-link" to="/admin/security/mfa">
+          <span>Sécurité MFA</span>
+          <small v-if="mfaSetupRequired">
+            {{ mfaStatus?.status === "pending" ? "À terminer" : "À activer" }}
+          </small>
+        </NuxtLink>
         <NuxtLink to="/admin/organizations">Organisations</NuxtLink>
         <NuxtLink to="/admin/policies">Policies IAM</NuxtLink>
         <NuxtLink to="/admin/oauth-clients">Applications OAuth</NuxtLink>
@@ -41,6 +51,34 @@ async function signOut() {
         <NuxtLink class="back-link" to="/">Retour au site</NuxtLink>
       </div>
     </aside>
-    <main id="admin-content" class="admin-main"><slot /></main>
+    <main id="admin-content" class="admin-main">
+      <section
+        v-if="mfaSetupRequired && !onMfaPage"
+        class="mfa-setup-notice"
+        aria-labelledby="mfa-setup-notice-title"
+      >
+        <div>
+          <h2 id="mfa-setup-notice-title">
+            {{
+              mfaStatus?.status === "pending"
+                ? "Terminez la configuration MFA"
+                : "Activez la MFA avant de continuer"
+            }}
+          </h2>
+          <p v-if="mfaStatus?.status === 'pending'">
+            L’enrôlement TOTP a commencé, mais aucun code n’a encore été confirmé. Les opérations
+            protégées resteront indisponibles jusqu’à la validation.
+          </p>
+          <p v-else>
+            Ce compte ne possède pas encore de méthode TOTP. Les opérations protégées resteront
+            indisponibles jusqu’à son activation.
+          </p>
+        </div>
+        <NuxtLink class="button" to="/admin/security/mfa">
+          {{ mfaStatus?.status === "pending" ? "Reprendre la configuration" : "Configurer la MFA" }}
+        </NuxtLink>
+      </section>
+      <slot />
+    </main>
   </div>
 </template>
