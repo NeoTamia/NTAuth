@@ -51,15 +51,21 @@ describe("npm public release", () => {
   });
 
   test("versions public packages independently with the node workspace plugin", async () => {
-    const [configuration, manifest, workflow] = await Promise.all([
+    const [configuration, formatter, manifest, workflow] = await Promise.all([
       Bun.file(resolve(root, "release-please-config.json")).json(),
+      Bun.file(resolve(root, ".oxfmtrc.json")).json(),
       Bun.file(resolve(root, ".release-please-manifest.json")).json(),
       Bun.file(resolve(root, ".github/workflows/release-please.yaml")).text(),
     ]);
 
     const paths = ["packages/permissions", "packages/elysia-auth", "packages/nuxt-auth"];
     expect(Object.keys(configuration.packages).toSorted()).toEqual(paths.toSorted());
-    expect(Object.keys(manifest).toSorted()).toEqual(paths.toSorted());
+    expect(Object.keys(manifest).every((path) => paths.includes(path))).toBe(true);
+    expect(
+      Object.values(manifest).every((version) => /^\d+\.\d+\.\d+$/.test(String(version))),
+    ).toBe(true);
+    expect(configuration["initial-version"]).toBe("0.1.0");
+    expect(formatter.ignorePatterns).toContain("packages/*/CHANGELOG.md");
     expect(configuration["separate-pull-requests"]).toBe(false);
     expect(configuration.plugins).toContainEqual({ type: "node-workspace" });
     for (const path of paths) {

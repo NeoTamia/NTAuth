@@ -35,8 +35,9 @@ Ce PR contient uniquement les versions et changelogs des packages à publier. Sa
 par composant (`permissions-vX.Y.Z`, `elysia-auth-vX.Y.Z` ou `nuxt-auth-vX.Y.Z`) puis le workflow
 Gitflow fusionne le même commit dans `main` et resynchronise `dev`.
 
-Le manifest `.release-please-manifest.json` est la source de vérité des dernières versions. Il ne
-doit pas être modifié manuellement en dehors d’un bootstrap ou d’une réparation documentée.
+Le manifest `.release-please-manifest.json` est vide pendant le bootstrap `0.1.0`, puis devient la
+source de vérité des dernières versions publiées. Il ne doit pas être modifié manuellement en dehors
+d’un bootstrap ou d’une réparation documentée.
 
 ## Publication npm
 

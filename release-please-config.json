@@ -17,6 +17,7 @@
     { "type": "chore", "section": "🔧 Other", "hidden": true }
   ],
   "include-v-in-tag": true,
+  "initial-version": "0.1.0",
   "packages": {
     "packages/elysia-auth": {
       "component": "elysia-auth",
