@@ -85,6 +85,9 @@ describe("policy editor", () => {
     expect(page).toContain('aria-live="polite"');
     expect(page).toContain('role="alert"');
     expect(page).toContain("scrollIntoView");
+    for (const [, pattern] of page.matchAll(/\bpattern="([^"]+)"/g)) {
+      expect(() => new RegExp(`^(?:${pattern})$`, "v")).not.toThrow();
+    }
     expect(styles).toMatch(/\.access-gate form\s*{[^}]*gap: 1\.25rem;/);
   });
 });

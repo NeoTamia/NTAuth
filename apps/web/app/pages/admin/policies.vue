@@ -409,7 +409,7 @@ async function savePolicy() {
                 id="policy-service"
                 v-model.trim="service"
                 required
-                pattern="[a-z][a-z0-9-]{0,62}"
+                pattern="[a-z][a-z0-9\-]{0,62}"
                 placeholder="ntscout"
                 @input="workspaceState = 'locked'"
               />
