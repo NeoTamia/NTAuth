@@ -7,12 +7,12 @@ describe("GitHub Actions CI", () => {
     const workflow = await workflowFile.text();
 
     expect(workflow).toContain(
-      "actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1",
+      "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
     );
     expect(workflow).toContain(
-      "oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2",
+      "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0",
     );
-    expect(workflow).toContain("actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3");
+    expect(workflow).toContain("actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0");
     expect(workflow).toContain("bun-version: 1.3.14");
     expect(workflow).toContain("image: postgres:18.4-trixie");
     expect(workflow).toContain("image: redis:8.8.1-alpine3.23");
@@ -29,14 +29,20 @@ describe("GitHub Actions CI", () => {
     expect(workflow).toContain("redis-cli ping");
   });
 
-  test("limits interrupted or superseded runs and uses a lockfile-only cache key", async () => {
+  test("limits execution paths and reuses safe build caches", async () => {
     const workflow = await workflowFile.text();
 
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain("timeout-minutes: 20");
-    expect(workflow).toContain("path: ~/.bun/install/cache");
+    expect(workflow.match(/paths:/g)).toHaveLength(2);
+    expect(workflow).toContain('"apps/**"');
+    expect(workflow).toContain('"packages/**"');
+    expect(workflow).not.toContain('"docs/**"');
+    expect(workflow).toContain("~/.bun/install/cache");
     expect(workflow).toContain("hashFiles('bun.lock')");
+    expect(workflow).toContain(".turbo");
+    expect(workflow).toContain("github.sha");
+    expect(workflow).toContain("restore-keys:");
     expect(workflow).not.toContain("node_modules");
-    expect(workflow).not.toContain("restore-keys:");
   });
 });

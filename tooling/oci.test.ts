@@ -8,6 +8,15 @@ describe("production OCI delivery", () => {
     const workflow = await workflowFile.text();
 
     expect(workflow).toContain("target: [api, migrate, web, worker]");
+    expect(workflow).toContain(
+      "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+    );
+    expect(workflow).toContain(
+      "docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0",
+    );
+    expect(workflow).toContain(
+      "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
+    );
     expect(workflow.match(/ghcr\.io\/neotamia\/ntauth-/g)).toHaveLength(3);
     expect(workflow).not.toContain("github.repository_owner");
     expect(workflow).toContain("sha-${{ github.sha }}");
@@ -15,6 +24,12 @@ describe("production OCI delivery", () => {
     expect(workflow).toContain('exit-code: "1"');
     expect(workflow).toContain("sbom: true");
     expect(workflow).toContain("provenance: mode=max");
+    expect(workflow).toContain("cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}");
+    expect(workflow).toContain("paths:");
+    expect(workflow).not.toContain('"docs/**"');
+    expect(workflow.indexOf("Reject critical or high")).toBeLessThan(
+      workflow.indexOf("Log in to GHCR"),
+    );
     expect(workflow).not.toMatch(/uses: [^\s]+@(main|master|v\d+)\s*$/m);
   });
 

@@ -43,6 +43,7 @@ describe("monorepo workspaces", () => {
 
     expect(configuration.tasks.typecheck.dependsOn).toContain("^build");
     expect(configuration.tasks.typecheck.dependsOn).toContain("^typecheck");
+    expect(configuration.tasks.test.cache).toBe(false);
   });
 
   it("declares the expected Bun workspace roots and root commands", async () => {

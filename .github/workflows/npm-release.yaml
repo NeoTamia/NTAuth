@@ -25,20 +25,24 @@ jobs:
 
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14
 
       - name: Restore Bun download cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-1.3.14-${{ hashFiles('bun.lock') }}
+          path: |
+            ~/.bun/install/cache
+            .turbo
+          key: ${{ runner.os }}-bun-1.3.14-turbo-${{ hashFiles('bun.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-bun-1.3.14-turbo-${{ hashFiles('bun.lock') }}-
 
       - name: Install exact dependencies
         run: bun install --frozen-lockfile
