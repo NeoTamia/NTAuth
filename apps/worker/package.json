@@ -15,7 +15,7 @@
     "@neotamia/config": "workspace:*",
     "@neotamia/db": "workspace:*",
     "@neotamia/observability": "workspace:*",
-    "nodemailer": "7.0.5"
+    "nodemailer": "7.0.13"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",
