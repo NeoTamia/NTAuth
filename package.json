@@ -15,6 +15,7 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
+    "load:test": "bun tooling/load-test.ts",
     "release": "changeset publish",
     "release:prepare": "bun tooling/prepare-release-artifacts.ts",
     "release:publish": "bun tooling/publish-release-artifacts.ts",
