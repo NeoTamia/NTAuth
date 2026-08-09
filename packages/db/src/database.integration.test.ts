@@ -2,7 +2,12 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createDatabase, type DatabaseConnection } from "./client";
-import { applyMigrations, rollbackLastMigration } from "./migrations";
+import {
+  applyMigrations,
+  MigrationLockUnavailableError,
+  rollbackLastMigration,
+  withMigrationLock,
+} from "./migrations";
 import { systemHealth } from "./schema";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -39,6 +44,23 @@ describeWithDatabase("PostgreSQL integration", () => {
       .from(systemHealth)
       .where(eq(systemHealth.component, component));
     expect(rows).toHaveLength(0);
+  });
+
+  test("fails fast when another production migration owns the advisory lock", async () => {
+    const contender = createDatabase(databaseUrl!, { max: 1 });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const owner = withMigrationLock(connection, () => held);
+
+    await Bun.sleep(10);
+    await expect(withMigrationLock(contender, async () => undefined)).rejects.toBeInstanceOf(
+      MigrationLockUnavailableError,
+    );
+    release();
+    await owner;
+    await contender.close();
   });
 
   test("rolls the latest migration down and reapplies it", async () => {

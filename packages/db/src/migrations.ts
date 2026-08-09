@@ -12,6 +12,30 @@ type Journal = {
   entries: Array<{ tag: string; when: number }>;
 };
 
+export class MigrationLockUnavailableError extends Error {
+  constructor() {
+    super("Another NTAuth migration is already running");
+    this.name = "MigrationLockUnavailableError";
+  }
+}
+
+/** The caller must use a connection configured with max: 1 so lock and unlock share a session. */
+export async function withMigrationLock<T>(
+  connection: DatabaseConnection,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const [lock] = await connection.client<{ acquired: boolean }[]>`
+    select pg_try_advisory_lock(hashtext('ntauth_production_migration')) as acquired
+  `;
+  if (!lock?.acquired) throw new MigrationLockUnavailableError();
+
+  try {
+    return await operation();
+  } finally {
+    await connection.client`select pg_advisory_unlock(hashtext('ntauth_production_migration'))`;
+  }
+}
+
 export async function applyMigrations(
   connection: DatabaseConnection,
   migrationsFolder = defaultMigrationsFolder,

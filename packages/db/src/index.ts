@@ -26,7 +26,12 @@ export {
   type EffectivePolicyRow,
   type EffectivePolicyFingerprint,
 } from "./effective-policies";
-export { applyMigrations, rollbackLastMigration } from "./migrations";
+export {
+  applyMigrations,
+  MigrationLockUnavailableError,
+  rollbackLastMigration,
+  withMigrationLock,
+} from "./migrations";
 export {
   addIamGroupMember,
   attachIamPolicy,

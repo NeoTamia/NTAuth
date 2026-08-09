@@ -1,7 +1,7 @@
 import { materializeSecretFiles, parseDatabaseEnvironment } from "@neotamia/config";
 
 import { createDatabase } from "./client";
-import { applyMigrations, rollbackLastMigration } from "./migrations";
+import { applyMigrations, rollbackLastMigration, withMigrationLock } from "./migrations";
 
 const command = process.argv[2];
 
@@ -15,13 +15,15 @@ const environment = parseDatabaseEnvironment(
 const connection = createDatabase(environment.DATABASE_URL, { max: 1 });
 
 try {
-  if (command === "up") {
-    await applyMigrations(connection);
-    console.log("Database migrations applied");
-  } else {
-    const migration = await rollbackLastMigration(connection);
-    console.log(`Database migration rolled back: ${migration}`);
-  }
+  await withMigrationLock(connection, async () => {
+    if (command === "up") {
+      await applyMigrations(connection);
+      console.log("Database migrations applied");
+    } else {
+      const migration = await rollbackLastMigration(connection);
+      console.log(`Database migration rolled back: ${migration}`);
+    }
+  });
 } finally {
   await connection.close();
 }
