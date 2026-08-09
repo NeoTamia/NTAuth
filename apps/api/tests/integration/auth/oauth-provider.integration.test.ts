@@ -141,7 +141,10 @@ describeWithDatabase("OAuth provider integration", () => {
         method: "POST",
       }),
     );
-    adminCookie = signIn.headers.get("set-cookie")!.split(";")[0]!;
+    expect(signIn.status, await signIn.clone().text()).toBe(200);
+    const cookie = signIn.headers.get("set-cookie");
+    expect(cookie).toBeTruthy();
+    adminCookie = cookie!.split(";")[0]!;
   });
 
   afterAll(async () => {
@@ -201,6 +204,7 @@ describeWithDatabase("OAuth provider integration", () => {
       .where(eq(mfaEnrollments.userId, adminId));
     const headers = new Headers(init.headers);
     headers.set("cookie", adminCookie);
+    headers.set("origin", "http://localhost");
     headers.set("x-ntauth-totp", await generateTotpCode(totpSecret, counter));
     headers.set("x-request-id", `${runId}-${requestId}`);
     return headers;
@@ -378,11 +382,15 @@ describeWithDatabase("OAuth provider integration", () => {
     const denied = await handler()(
       new Request(`${baseURL}/oauth2/create-client`, {
         body: JSON.stringify({ redirect_uris: ["https://client.example/callback"] }),
-        headers: { "content-type": "application/json", cookie: adminCookie },
+        headers: {
+          "content-type": "application/json",
+          cookie: adminCookie,
+          origin: "http://localhost",
+        },
         method: "POST",
       }),
     );
-    expect(denied.status).toBe(401);
+    expect(denied.status, await denied.clone().text()).toBe(401);
 
     const created = await privilegedRequest(
       "/oauth2/create-client",
@@ -401,7 +409,7 @@ describeWithDatabase("OAuth provider integration", () => {
       },
       "client-create",
     );
-    expect(created.status).toBe(200);
+    expect(created.status, await created.clone().text()).toBe(200);
     expect(created.headers.get("cache-control")).toBe("no-store");
     const registered = (await created.json()) as {
       client_id: string;
