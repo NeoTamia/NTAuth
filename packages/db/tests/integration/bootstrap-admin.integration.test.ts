@@ -91,6 +91,9 @@ describeWithDatabase("first platform administrator bootstrap", () => {
         password,
         requestId: `${runId}-conflict`,
       }),
-    ).rejects.toBeInstanceOf(BootstrapAdminConflictError);
+    ).rejects.toMatchObject({
+      existingAdministratorEmail: email,
+      name: BootstrapAdminConflictError.name,
+    });
   });
 });

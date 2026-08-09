@@ -3,7 +3,10 @@ import { hashPassword } from "better-auth/crypto";
 import type { DatabaseConnection } from "./client";
 
 export class BootstrapAdminConflictError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly existingAdministratorEmail?: string,
+  ) {
     super(message);
     this.name = "BootstrapAdminConflictError";
   }
@@ -39,7 +42,8 @@ export async function bootstrapPlatformAdmin(
     }
     if (administrators.length > 0) {
       throw new BootstrapAdminConflictError(
-        "A platform administrator already exists; use the authenticated administration flow",
+        "A platform administrator already exists; bootstrap cannot create another one",
+        administrators[0]?.email,
       );
     }
 

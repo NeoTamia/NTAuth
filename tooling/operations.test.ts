@@ -49,10 +49,12 @@ describe("production operations", () => {
 
     expect(bootstrap).toContain("pg_advisory_xact_lock");
     expect(bootstrap).toContain("A platform administrator already exists");
+    expect(bootstrap).toContain("existingAdministratorEmail");
     expect(bootstrap).toContain("platform_admin.bootstrap");
     expect(bootstrapCli).toContain("NTAUTH_BOOTSTRAP_ADMIN_PASSWORD_FILE");
     expect(bootstrapCli).toContain('from "@clack/prompts"');
     expect(bootstrapCli).toContain("process.stdin.isTTY");
+    expect(bootstrapCli).toContain("error instanceof BootstrapAdminConflictError");
     expect(bootstrapCli).not.toContain("environment.NTAUTH_BOOTSTRAP_ADMIN_PASSWORD}`");
     expect(rootPackage).toContain(
       '"db:bootstrap-admin": "bun --env-file=.env packages/db/src/bootstrap-admin-cli.ts"',

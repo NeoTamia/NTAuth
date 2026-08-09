@@ -1,7 +1,7 @@
 import { cancel, confirm, intro, isCancel, outro, password, text } from "@clack/prompts";
 import { materializeSecretFiles, parseBootstrapAdminEnvironment } from "@neotamia/config";
 
-import { bootstrapPlatformAdmin } from "./bootstrap-admin";
+import { bootstrapPlatformAdmin, BootstrapAdminConflictError } from "./bootstrap-admin";
 import { createDatabase } from "./client";
 
 const production = process.env.NODE_ENV === "production";
@@ -105,6 +105,20 @@ try {
   if (!production && process.stdout.isTTY) {
     outro(result.created ? "Administrator created" : "Administrator already exists");
   }
+} catch (error) {
+  if (!(error instanceof BootstrapAdminConflictError)) throw error;
+
+  const existingAdministrator =
+    !production && error.existingAdministratorEmail
+      ? ` Existing administrator: ${error.existingAdministratorEmail}.`
+      : "";
+  const message = `${error.message}.${existingAdministrator}`;
+  if (!production && process.stdout.isTTY) {
+    cancel(message);
+  } else {
+    console.error(message);
+  }
+  process.exitCode = 1;
 } finally {
   await connection.close();
 }
