@@ -8,6 +8,8 @@ describe("production OCI delivery", () => {
     const workflow = await workflowFile.text();
 
     expect(workflow).toContain("target: [api, migrate, web, worker]");
+    expect(workflow.match(/ghcr\.io\/neotamia\/ntauth-/g)).toHaveLength(3);
+    expect(workflow).not.toContain("github.repository_owner");
     expect(workflow).toContain("sha-${{ github.sha }}");
     expect(workflow).toContain("scanners: vuln,secret");
     expect(workflow).toContain('exit-code: "1"');

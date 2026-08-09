@@ -38,6 +38,13 @@ const isExactExternalVersion = (version: string) =>
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version);
 
 describe("monorepo workspaces", () => {
+  it("builds workspace dependencies before consuming their generated types", async () => {
+    const configuration = await Bun.file(resolve(rootDirectory, "turbo.json")).json();
+
+    expect(configuration.tasks.typecheck.dependsOn).toContain("^build");
+    expect(configuration.tasks.typecheck.dependsOn).toContain("^typecheck");
+  });
+
   it("declares the expected Bun workspace roots and root commands", async () => {
     const root = await readManifest("package.json");
 

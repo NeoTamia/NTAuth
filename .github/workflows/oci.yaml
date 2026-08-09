@@ -49,7 +49,7 @@ jobs:
           context: .
           load: true
           push: false
-          tags: ghcr.io/${{ github.repository_owner }}/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
+          tags: ghcr.io/neotamia/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
           target: ${{ matrix.target }}
 
       - name: Reject critical or high image vulnerabilities
@@ -58,7 +58,7 @@ jobs:
           exit-code: "1"
           format: table
           ignore-unfixed: true
-          image-ref: ghcr.io/${{ github.repository_owner }}/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
+          image-ref: ghcr.io/neotamia/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
           scanners: vuln,secret
           severity: CRITICAL,HIGH
 
@@ -75,7 +75,7 @@ jobs:
           provenance: mode=max
           push: true
           sbom: true
-          tags: ghcr.io/${{ github.repository_owner }}/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
+          tags: ghcr.io/neotamia/ntauth-${{ matrix.target }}:sha-${{ github.sha }}
           target: ${{ matrix.target }}
 
       - name: Record deployment digest
