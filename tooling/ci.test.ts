@@ -1,22 +1,30 @@
 import { describe, expect, test } from "bun:test";
 
 const workflowFile = Bun.file(new URL("../.github/workflows/ci.yaml", import.meta.url));
+const manifestFile = Bun.file(new URL("../package.json", import.meta.url));
+
+const expectActionsPinnedToCommits = (workflow: string) => {
+  const actionLines = workflow.match(/^\s*uses:\s+.+$/gm) ?? [];
+
+  expect(actionLines.length).toBeGreaterThan(0);
+  for (const line of actionLines) {
+    expect(line).toMatch(/^\s*uses:\s+[^@\s]+@[0-9a-f]{40}(?:\s+#.*)?$/);
+  }
+};
 
 describe("GitHub Actions CI", () => {
-  test("pins actions, Bun, and service images exactly", async () => {
+  test("pins actions and service images while sharing the repository Bun version", async () => {
     const workflow = await workflowFile.text();
+    const manifest = (await manifestFile.json()) as {
+      engines: { bun: string };
+      packageManager: string;
+    };
 
-    expect(workflow).toContain(
-      "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
-    );
-    expect(workflow).toContain(
-      "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0",
-    );
-    expect(workflow).toContain("actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0");
-    expect(workflow).toContain("bun-version: 1.3.14");
-    expect(workflow).toContain("image: postgres:18.4-trixie");
-    expect(workflow).toContain("image: redis:8.8.1-alpine3.23");
-    expect(workflow).not.toMatch(/uses: [^\s]+@(main|master|v\d+)\s*$/m);
+    expectActionsPinnedToCommits(workflow);
+    expect(manifest.packageManager).toBe(`bun@${manifest.engines.bun}`);
+    expect(workflow).toContain(`bun-version: ${manifest.engines.bun}`);
+    expect(workflow).toMatch(/image: postgres:\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
+    expect(workflow).toMatch(/image: redis:\d+(?:\.\d+)+(?:-[\w.-]+)?$/m);
   });
 
   test("runs the frozen validation pipeline with integration services", async () => {

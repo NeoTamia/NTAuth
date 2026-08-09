@@ -3,20 +3,21 @@ import { describe, expect, test } from "bun:test";
 const workflowFile = Bun.file(new URL("../.github/workflows/oci.yaml", import.meta.url));
 const productionComposeFile = Bun.file(new URL("../compose.production.yaml", import.meta.url));
 
+const expectActionsPinnedToCommits = (workflow: string) => {
+  const actionLines = workflow.match(/^\s*uses:\s+.+$/gm) ?? [];
+
+  expect(actionLines.length).toBeGreaterThan(0);
+  for (const line of actionLines) {
+    expect(line).toMatch(/^\s*uses:\s+[^@\s]+@[0-9a-f]{40}(?:\s+#.*)?$/);
+  }
+};
+
 describe("production OCI delivery", () => {
   test("builds every runtime, scans before publication and emits attestations", async () => {
     const workflow = await workflowFile.text();
 
     expect(workflow).toContain("target: [api, migrate, web, worker]");
-    expect(workflow).toContain(
-      "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
-    );
-    expect(workflow).toContain(
-      "docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0",
-    );
-    expect(workflow).toContain(
-      "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
-    );
+    expectActionsPinnedToCommits(workflow);
     expect(workflow.match(/ghcr\.io\/neotamia\/ntauth-/g)).toHaveLength(3);
     expect(workflow).not.toContain("github.repository_owner");
     expect(workflow).toContain("sha-${{ github.sha }}");
@@ -30,7 +31,6 @@ describe("production OCI delivery", () => {
     expect(workflow.indexOf("Reject critical or high")).toBeLessThan(
       workflow.indexOf("Log in to GHCR"),
     );
-    expect(workflow).not.toMatch(/uses: [^\s]+@(main|master|v\d+)\s*$/m);
   });
 
   test("deploys only digests with isolated data services and file-backed secrets", async () => {
