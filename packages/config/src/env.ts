@@ -63,6 +63,27 @@ const databaseEnvironmentSchema = z.object({
   DATABASE_URL: postgresUrl,
 });
 
+const bootstrapAdminEnvironmentSchema = databaseEnvironmentSchema
+  .extend({
+    NODE_ENV: z.enum(["development", "test", "production"]),
+    NTAUTH_BOOTSTRAP_ADMIN_EMAIL: z.string().trim().toLowerCase().pipe(z.email()),
+    NTAUTH_BOOTSTRAP_ADMIN_NAME: z.string().trim().min(1).max(120).default("NTAuth Administrator"),
+    NTAUTH_BOOTSTRAP_ADMIN_PASSWORD: z.string().min(12).max(128),
+    NTAUTH_BOOTSTRAP_CONFIRM: optionalString,
+  })
+  .superRefine((environment, context) => {
+    if (
+      environment.NODE_ENV === "production" &&
+      environment.NTAUTH_BOOTSTRAP_CONFIRM !== "create-first-platform-admin"
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Production bootstrap requires explicit confirmation",
+        path: ["NTAUTH_BOOTSTRAP_CONFIRM"],
+      });
+    }
+  });
+
 const apiEnvironmentSchema = sharedEnvironmentSchema.extend({
   API_HOST: z.string().trim().min(1),
   API_PORT: z.coerce.number().int().min(1).max(65_535),
@@ -203,6 +224,10 @@ export function parseDatabaseEnvironment(environment: unknown = process.env) {
   return parseEnvironment(databaseEnvironmentSchema, environment);
 }
 
+export function parseBootstrapAdminEnvironment(environment: unknown = process.env) {
+  return parseEnvironment(bootstrapAdminEnvironmentSchema, environment);
+}
+
 export function parseNtscoutSeedEnvironment(environment: unknown = process.env) {
   return parseEnvironment(ntscoutSeedEnvironmentSchema, environment);
 }
@@ -211,4 +236,5 @@ export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;
 export type WorkerEnvironment = z.infer<typeof workerEnvironmentSchema>;
 export type PublicWebEnvironment = z.infer<typeof publicWebEnvironmentSchema>;
 export type DatabaseEnvironment = z.infer<typeof databaseEnvironmentSchema>;
+export type BootstrapAdminEnvironment = z.infer<typeof bootstrapAdminEnvironmentSchema>;
 export type NtscoutSeedEnvironment = z.infer<typeof ntscoutSeedEnvironmentSchema>;

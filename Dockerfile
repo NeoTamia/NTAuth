@@ -13,7 +13,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 FROM workspace AS migrate-build
-RUN bun build packages/db/src/migrate.ts --outdir /app/migrate-dist --target bun
+RUN bun build packages/db/src/migrate.ts packages/db/src/bootstrap-admin-cli.ts \
+  --outdir /app/migrate-dist --target bun
 
 FROM runtime AS migrate
 WORKDIR /app

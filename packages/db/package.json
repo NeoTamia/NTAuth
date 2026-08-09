@@ -9,6 +9,7 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
+    "db:bootstrap-admin": "bun src/bootstrap-admin-cli.ts",
     "db:migrate": "bun src/migrate.ts up",
     "db:rollback": "bun src/migrate.ts down",
     "db:seed:ntscout": "bun src/seed-ntscout.ts",
@@ -16,8 +17,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clack/prompts": "1.7.0",
     "@neotamia/config": "workspace:*",
     "@neotamia/permissions": "workspace:*",
+    "better-auth": "1.6.26",
     "drizzle-orm": "0.45.2",
     "postgres": "3.4.9"
   },

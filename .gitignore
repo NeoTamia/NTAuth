@@ -5,6 +5,7 @@ dist/
 .turbo/
 coverage/
 release-artifacts/
+deploy/secrets/
 .env
 .env.*
 !.env.example

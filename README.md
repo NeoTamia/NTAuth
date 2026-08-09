@@ -45,6 +45,21 @@ bun run db:migrate
 bun run db:rollback
 ```
 
+Public sign-up is disabled, so a fresh environment must bootstrap its first platform administrator
+after migrations. For local development, run the interactive bootstrap after starting PostgreSQL
+and applying migrations:
+
+```bash
+bun run db:bootstrap-admin
+```
+
+The prompt collects and confirms the credentials without displaying the password. Environment
+variables remain available for non-interactive development automation. The command creates a
+verified credential identity only when no platform administrator exists. It does not reset the
+password when repeated and refuses to promote a different identity. Production uses the same
+command through the one-shot Compose profile and a file-backed secret; see the
+[deployment runbook](./docs/operations/deployment.md#premier-administrateur-de-plateforme).
+
 The worker exposes liveness and database readiness on `http://localhost:3002/health` and `/ready`. Enqueue a persistent test job with `bun --filter @neotamia/ntauth-worker enqueue:test`; pass a number from `1` to `4` to exercise retries, for example `enqueue:test 2`.
 
 Application emails use the PostgreSQL outbox and are committed in the same transaction as their business mutation. A deduplication key returns the existing job, SMTP retries use bounded exponential backoff, stable `Message-ID` values make attempts identifiable, and exhausted messages remain visible as `failed` without persisting the SMTP error or credentials.

@@ -4,6 +4,7 @@ import {
   materializeSecretFiles,
   EnvironmentValidationError,
   parseApiEnvironment,
+  parseBootstrapAdminEnvironment,
   parseDatabaseEnvironment,
   parseNtscoutSeedEnvironment,
   parsePublicWebEnvironment,
@@ -57,6 +58,26 @@ describe("runtime environment validation", () => {
   test("validates database tooling without requiring another service", () => {
     expect(parseDatabaseEnvironment({ DATABASE_URL: sharedEnvironment.DATABASE_URL })).toEqual({
       DATABASE_URL: sharedEnvironment.DATABASE_URL,
+    });
+  });
+
+  test("requires explicit confirmation for a production administrator bootstrap", () => {
+    const input = {
+      DATABASE_URL: sharedEnvironment.DATABASE_URL,
+      NODE_ENV: "production",
+      NTAUTH_BOOTSTRAP_ADMIN_EMAIL: " Admin@Example.COM ",
+      NTAUTH_BOOTSTRAP_ADMIN_PASSWORD: "a-local-password-with-12-characters",
+    };
+
+    expect(() => parseBootstrapAdminEnvironment(input)).toThrow(EnvironmentValidationError);
+    expect(
+      parseBootstrapAdminEnvironment({
+        ...input,
+        NTAUTH_BOOTSTRAP_CONFIRM: "create-first-platform-admin",
+      }),
+    ).toMatchObject({
+      NTAUTH_BOOTSTRAP_ADMIN_EMAIL: "admin@example.com",
+      NTAUTH_BOOTSTRAP_ADMIN_NAME: "NTAuth Administrator",
     });
   });
 

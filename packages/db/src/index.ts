@@ -1,5 +1,10 @@
 export { createDatabase, type DatabaseConnection } from "./client";
 export {
+  bootstrapPlatformAdmin,
+  BootstrapAdminConflictError,
+  type BootstrapAdminInput,
+} from "./bootstrap-admin";
+export {
   AUDIT_PAGE_MAX_SIZE,
   AUDIT_RETENTION_DAYS,
   AuditEventAuthorizationError,

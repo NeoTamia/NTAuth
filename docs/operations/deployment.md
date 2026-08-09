@@ -14,6 +14,40 @@ Le script archive l’environnement de digests précédent, produit une sauvegar
 dépendances, exécute une migration unique, recrée les applications puis sonde `/ready` pendant
 deux minutes. Il n’effectue jamais de push Git et n’imprime aucun secret.
 
+## Premier administrateur de plateforme
+
+L’inscription publique est désactivée. Après les migrations du premier déploiement, amorcer une
+seule fois l’administrateur de plateforme avec l’image `migrate` déjà validée par digest.
+
+1. Remplacer `NTAUTH_BOOTSTRAP_ADMIN_EMAIL` et `NTAUTH_BOOTSTRAP_ADMIN_NAME` dans
+   `deploy/production.env`.
+2. Conserver exactement
+   `NTAUTH_BOOTSTRAP_CONFIRM=create-first-platform-admin` pendant cette opération.
+3. Générer le mot de passe dans `deploy/secrets/bootstrap-admin-password`, puis limiter son accès :
+
+```sh
+umask 077
+openssl rand -base64 32 > deploy/secrets/bootstrap-admin-password
+chmod 0600 deploy/secrets/bootstrap-admin-password
+```
+
+4. Exécuter le job isolé après le démarrage de PostgreSQL et les migrations :
+
+```sh
+docker compose --env-file deploy/production.env -f compose.production.yaml up -d postgres
+docker compose --env-file deploy/production.env -f compose.production.yaml run --rm migrate up
+docker compose --profile bootstrap --env-file deploy/production.env \
+  -f compose.production.yaml run --rm bootstrap-admin
+```
+
+La commande prend un verrou transactionnel, crée une identité vérifiée avec un credential hashé,
+attribue `platform_admin` et écrit un événement d’audit sans secret. Une nouvelle exécution pour le
+même email est sans effet ; un email différent est refusé dès qu’un administrateur existe.
+
+Après une connexion et un enrôlement MFA réussis, supprimer immédiatement le fichier en clair et
+retirer les variables `NTAUTH_BOOTSTRAP_*` du fichier d’environnement. La récupération de mot de
+passe authentifiée remplace ensuite tout besoin de conserver ce secret d’amorçage.
+
 ## Rollback applicatif
 
 En cas de readiness non conforme, utiliser le snapshot d’environnement annoncé par le script :

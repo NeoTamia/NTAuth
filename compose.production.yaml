@@ -53,7 +53,7 @@ services:
     mem_limit: 384m
     cpus: 0.75
 
-  migrate:
+  migrate: &migration-job
     <<: *runtime
     image: ${IMAGE_REGISTRY:-ghcr.io/neotamia}/ntauth-migrate@${MIGRATE_IMAGE_DIGEST:?set MIGRATE_IMAGE_DIGEST}
     command: ["up"]
@@ -69,6 +69,22 @@ services:
     restart: "no"
     mem_limit: 256m
     cpus: 0.5
+
+  bootstrap-admin:
+    <<: *migration-job
+    profiles: ["bootstrap"]
+    entrypoint: ["bun", "dist/bootstrap-admin-cli.js"]
+    command: []
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      NODE_ENV: production
+      NTAUTH_BOOTSTRAP_ADMIN_EMAIL: ${NTAUTH_BOOTSTRAP_ADMIN_EMAIL:-}
+      NTAUTH_BOOTSTRAP_ADMIN_NAME: ${NTAUTH_BOOTSTRAP_ADMIN_NAME:-NTAuth Administrator}
+      NTAUTH_BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/bootstrap_admin_password
+      NTAUTH_BOOTSTRAP_CONFIRM: ${NTAUTH_BOOTSTRAP_CONFIRM:-}
+    secrets:
+      - bootstrap_admin_password
+      - database_url
 
   api:
     <<: *runtime
@@ -268,6 +284,8 @@ networks:
     name: ${EDGE_NETWORK:-proxy}
 
 secrets:
+  bootstrap_admin_password:
+    file: ${NTAUTH_BOOTSTRAP_ADMIN_PASSWORD_FILE:-./deploy/secrets/bootstrap-admin-password}
   better_auth_secret:
     file: ${BETTER_AUTH_SECRET_FILE:-./deploy/secrets/better-auth-secret}
   database_url:

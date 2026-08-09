@@ -11,6 +11,7 @@
     "build": "turbo run build",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
     "db:migrate": "bun --env-file=.env --filter @neotamia/db db:migrate",
+    "db:bootstrap-admin": "bun --env-file=.env --filter @neotamia/db db:bootstrap-admin",
     "db:rollback": "bun --env-file=.env --filter @neotamia/db db:rollback",
     "db:seed:ntscout": "bun --env-file=.env --filter @neotamia/db db:seed:ntscout",
     "dev": "bun --env-file=.env turbo run dev --filter='./apps/*' --env-mode=loose",

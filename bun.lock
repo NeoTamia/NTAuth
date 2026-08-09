@@ -110,8 +110,10 @@
       "name": "@neotamia/db",
       "version": "0.0.0",
       "dependencies": {
+        "@clack/prompts": "1.7.0",
         "@neotamia/config": "workspace:*",
         "@neotamia/permissions": "workspace:*",
+        "better-auth": "1.6.26",
         "drizzle-orm": "0.45.2",
         "postgres": "3.4.9",
       },

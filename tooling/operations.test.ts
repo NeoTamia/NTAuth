@@ -38,4 +38,26 @@ describe("production operations", () => {
     expect(rollback).toContain("--no-deps api worker web");
     expect(rollback).not.toContain("down -v");
   });
+
+  test("bootstraps only the first administrator through a one-shot secret-backed job", async () => {
+    const bootstrap = await read("packages/db/src/bootstrap-admin.ts");
+    const bootstrapCli = await read("packages/db/src/bootstrap-admin-cli.ts");
+    const compose = await read("compose.production.yaml");
+    const dockerfile = await read("Dockerfile");
+    const runbook = await read("docs/operations/deployment.md");
+
+    expect(bootstrap).toContain("pg_advisory_xact_lock");
+    expect(bootstrap).toContain("A platform administrator already exists");
+    expect(bootstrap).toContain("platform_admin.bootstrap");
+    expect(bootstrapCli).toContain("NTAUTH_BOOTSTRAP_ADMIN_PASSWORD_FILE");
+    expect(bootstrapCli).toContain('from "@clack/prompts"');
+    expect(bootstrapCli).toContain("process.stdin.isTTY");
+    expect(bootstrapCli).not.toContain("environment.NTAUTH_BOOTSTRAP_ADMIN_PASSWORD}`");
+    expect(compose).toContain('profiles: ["bootstrap"]');
+    expect(compose).toContain("/run/secrets/bootstrap_admin_password");
+    expect(dockerfile).toContain("packages/db/src/bootstrap-admin-cli.ts");
+    expect(runbook).toContain("run --rm bootstrap-admin");
+    expect(runbook).toContain("supprimer immédiatement le fichier en clair");
+    expect(await read(".gitignore")).toContain("deploy/secrets/");
+  });
 });
