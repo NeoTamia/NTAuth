@@ -103,6 +103,8 @@ function safeError(error: unknown, fallback: string) {
     return "Cette policy a changé depuis son ouverture. Rechargez son historique avant de réessayer.";
   if (candidate.data?.code === "invalid_policy")
     return "Le serveur a refusé le document : vérifiez le catalogue et les erreurs inline.";
+  if (candidate.data?.code === "catalogue_not_found")
+    return "Aucun catalogue actif ne correspond à cette clé. Créez d’abord le service et ses actions ou ressources.";
   if (candidate.status === 401 || candidate.statusCode === 401)
     return "Votre session a expiré. Reconnectez-vous puis réessayez.";
   if (candidate.status === 403 || candidate.statusCode === 403)

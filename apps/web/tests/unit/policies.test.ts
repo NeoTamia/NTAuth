@@ -80,6 +80,8 @@ describe("policy editor", () => {
     ])
       expect(page).toContain(path);
     expect(page.match(/challengeHeaders/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(page).toContain("catalogue_not_found");
+    expect(page).toContain("Aucun catalogue actif ne correspond à cette clé");
     expect(page).toContain("policy_conflict");
     expect(page).toContain("validateEditablePolicy");
     expect(page).toContain('aria-live="polite"');
