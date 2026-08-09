@@ -17,6 +17,9 @@ bun run db:migrate
 bun run dev
 ```
 
+Run `bun run dev` from the repository root. It loads the root `.env` file and starts only the API,
+worker, and web application; executable examples are launched separately from their workspace.
+
 To run the complete stack in containers instead, use `docker compose up --build -d`. Compose waits for PostgreSQL, applies migrations once, waits for Redis and Mailpit, then starts the API, worker, and web application in dependency order. Inspect it with `docker compose ps` and `docker compose logs --tail=100 <service>`.
 
 PostgreSQL is exposed on `localhost:5432`, Redis on `localhost:6379`, and the Mailpit inbox is available at [http://localhost:8025](http://localhost:8025). Their data is persisted in named Docker volumes. The host ports can be changed with `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `SMTP_HOST_PORT`, and `MAILPIT_HTTP_PORT`; keep the corresponding application URLs and ports aligned.

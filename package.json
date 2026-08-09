@@ -14,7 +14,7 @@
     "db:migrate": "bun --env-file=.env --filter @neotamia/db db:migrate",
     "db:rollback": "bun --env-file=.env --filter @neotamia/db db:rollback",
     "db:seed:ntscout": "bun --env-file=.env --filter @neotamia/db db:seed:ntscout",
-    "dev": "turbo run dev",
+    "dev": "bun --env-file=.env turbo run dev --filter='./apps/*' --env-mode=loose",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",

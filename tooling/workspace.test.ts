@@ -79,10 +79,13 @@ describe("monorepo workspaces", () => {
     expect(root.workspaces).toEqual(["apps/*", "examples/*", "packages/*"]);
     expect(root.scripts).toMatchObject({
       build: "turbo run build",
-      dev: "turbo run dev",
       lint: "oxlint .",
       typecheck: "turbo run typecheck",
     });
+    expect(root.scripts.dev).toContain("--env-file=.env");
+    expect(root.scripts.dev).toContain("turbo run dev");
+    expect(root.scripts.dev).toContain("--filter='./apps/*'");
+    expect(root.scripts.dev).toContain("--env-mode=loose");
   });
 
   it("has unique names and valid versions for every workspace", async () => {
