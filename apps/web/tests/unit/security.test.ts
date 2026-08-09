@@ -11,6 +11,8 @@ describe("browser security boundary", () => {
     const source = await cspPlugin.text();
 
     expect(source).toContain("default-src 'self'");
+    expect(source).toContain("httpOrigin(apiBaseUrl)");
+    expect(source).toContain("config.public.apiBaseUrl");
     expect(source).toContain("frame-ancestors 'none'");
     expect(source).toContain("object-src 'none'");
     expect(source).toContain("script-src 'self'");
