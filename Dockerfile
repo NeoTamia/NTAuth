@@ -43,7 +43,7 @@ USER bun
 EXPOSE 3002
 CMD ["bun", "dist/index.js"]
 
-FROM node:24.6.0-bookworm-slim AS web-build
+FROM node:24.19.0-bookworm-slim AS web-build
 WORKDIR /app
 COPY --from=workspace /app /app
 WORKDIR /app/apps/web

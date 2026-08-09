@@ -35,9 +35,9 @@ configuration de production achevée.
 Valider la syntaxe et les règles depuis les images exactes utilisées en production :
 
 ```sh
-docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/observability:/etc/prometheus:ro" prom/prometheus:v3.7.3 check config /etc/prometheus/prometheus.yml
-docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/observability:/etc/prometheus:ro" prom/prometheus:v3.7.3 check rules /etc/prometheus/alerts.yml
-docker run --rm --entrypoint /bin/amtool -v "$PWD/deploy/observability:/etc/alertmanager:ro" prom/alertmanager:v0.30.1 check-config /etc/alertmanager/alertmanager.yml
+docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/observability:/etc/prometheus:ro" prom/prometheus:v3.13.2 check config /etc/prometheus/prometheus.yml
+docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/observability:/etc/prometheus:ro" prom/prometheus:v3.13.2 check rules /etc/prometheus/alerts.yml
+docker run --rm --entrypoint /bin/amtool -v "$PWD/deploy/observability:/etc/alertmanager:ro" prom/alertmanager:v0.33.1 check-config /etc/alertmanager/alertmanager.yml
 ```
 
 ## Runbooks
