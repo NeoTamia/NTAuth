@@ -26,9 +26,12 @@ describe("local infrastructure", () => {
   test("builds every application from exact slim runtimes", async () => {
     const source = await dockerfile.text();
 
-    expect(source.match(/FROM oven\/bun:1\.3\.14-slim(?:\s|$)/gm)).toHaveLength(5);
+    expect(source.match(/FROM oven\/bun:1\.3\.14-slim(?:\s|$)/gm)).toHaveLength(2);
+    expect(source.match(/^FROM runtime AS (api|migrate|web|worker)$/gm)).toHaveLength(4);
     expect(source).toContain("FROM node:24.6.0-bookworm-slim AS web-build");
     expect(source).not.toMatch(/^FROM .+alpine/im);
+    expect(source).toContain("libcap2=1:2.75-10+deb13u1+b1");
+    expect(source.match(/3\.5\.6-1~deb13u2/g)).toHaveLength(2);
     expect(source).toContain("bun install --frozen-lockfile");
     expect(source).toContain("bun --filter @neotamia/permissions build");
     expect(source).toContain("AS api");
