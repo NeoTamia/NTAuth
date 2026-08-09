@@ -25,7 +25,8 @@ describe("production OCI delivery", () => {
     expect(workflow).toContain('exit-code: "1"');
     expect(workflow).toContain("sbom: true");
     expect(workflow).toContain("provenance: mode=max");
-    expect(workflow).toContain("cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}");
+    expect(workflow).toContain("cancel-in-progress: true");
+    expect(workflow).not.toContain('- "v*"');
     expect(workflow).toContain("paths:");
     expect(workflow).not.toContain('"docs/**"');
     expect(workflow.indexOf("Reject critical or high")).toBeLessThan(

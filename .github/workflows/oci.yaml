@@ -16,8 +16,6 @@ on:
       - "packages/**"
       - "tsconfig.json"
       - "turbo.json"
-    tags:
-      - "v*"
 
 permissions:
   contents: read
@@ -26,7 +24,7 @@ permissions:
 
 concurrency:
   group: oci-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  cancel-in-progress: true
 
 jobs:
   publish:

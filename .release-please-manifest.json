@@ -1,0 +1,5 @@
+{
+  "packages/elysia-auth": "0.0.0",
+  "packages/nuxt-auth": "0.0.0",
+  "packages/permissions": "0.0.0"
+}

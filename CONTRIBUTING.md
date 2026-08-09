@@ -192,16 +192,17 @@ Une revue vérifie au minimum :
 - compatibilité API et packages ;
 - observabilité ;
 - tests couvrant le comportement, pas seulement les lignes ;
-- changeset lorsque nécessaire.
+- impact SemVer correctement exprimé par le Conventional Commit.
 
-## Changesets
+## Versions publiées
 
-Ajoutez un changeset lorsqu’un package public change :
+Release Please analyse les Conventional Commits fusionnés dans `dev` et maintient un PR de release
+unique pour les packages publics réellement affectés. Utilisez `feat`, `fix` et `perf` selon
+l’impact consommateur, et ajoutez un pied de message `BREAKING CHANGE:` pour une incompatibilité.
 
-```bash
-bun run changeset
-```
-
-Choisissez `patch`, `minor` ou `major` selon SemVer. Les applications privées ne sont pas versionnées par Changesets.
+Les versions de `@neotamia/permissions`, `@neotamia/elysia-auth` et `@neotamia/nuxt-auth` restent
+indépendantes. Un package inchangé n’est pas versionné. Le plugin `node-workspace` ajoute toutefois
+un bump patch à un package consommateur lorsqu’une nouvelle version de sa dépendance interne doit
+être publiée.
 
 Le processus complet est décrit dans `docs/releases.md`.

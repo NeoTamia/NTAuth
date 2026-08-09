@@ -1,0 +1,32 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    uses: NeoTamia/actions/.github/workflows/release-please.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+    secrets: inherit
+
+  gitflow-release:
+    name: Gitflow release
+    needs: release-please
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    uses: NeoTamia/actions/.github/workflows/gitflow-release.yml@main
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      tag-name: ${{ fromJSON(needs.release-please.outputs.outputs)['packages/permissions--tag_name'] || fromJSON(needs.release-please.outputs.outputs)['packages/elysia-auth--tag_name'] || fromJSON(needs.release-please.outputs.outputs)['packages/nuxt-auth--tag_name'] }}
+      version: ${{ fromJSON(needs.release-please.outputs.outputs)['packages/permissions--version'] || fromJSON(needs.release-please.outputs.outputs)['packages/elysia-auth--version'] || fromJSON(needs.release-please.outputs.outputs)['packages/nuxt-auth--version'] }}

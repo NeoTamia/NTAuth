@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "changelog-sections": [
+    { "type": "feat", "section": "✨ Features" },
+    { "type": "fix", "section": "🐛 Bug Fixes" },
+    { "type": "perf", "section": "⚡ Performance Improvements" },
+    { "type": "revert", "section": "⏪️ Reverts" },
+    { "type": "docs", "section": "📚 Documentation" },
+    { "type": "refactor", "section": "♻️ Code Refactoring" },
+    { "type": "style", "section": "♻️ Code Refactoring" },
+    { "type": "test", "section": "🧪 Tests" },
+    { "type": "build", "section": "🔧 Build System" },
+    { "type": "deps", "section": "🔗 Dependencies" },
+    { "type": "ci", "section": "👷 Continuous Integration" },
+    { "type": "chore", "section": "🔧 Other", "hidden": true }
+  ],
+  "include-v-in-tag": true,
+  "packages": {
+    "packages/elysia-auth": {
+      "component": "elysia-auth",
+      "include-component-in-tag": true,
+      "release-type": "node"
+    },
+    "packages/nuxt-auth": {
+      "component": "nuxt-auth",
+      "include-component-in-tag": true,
+      "release-type": "node"
+    },
+    "packages/permissions": {
+      "component": "permissions",
+      "include-component-in-tag": true,
+      "release-type": "node"
+    }
+  },
+  "plugins": [{ "type": "node-workspace" }, "sentence-case"],
+  "separate-pull-requests": false,
+  "skip-github-release": false
+}

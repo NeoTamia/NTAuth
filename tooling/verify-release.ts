@@ -1,7 +1,8 @@
 import { resolve } from "node:path";
 
+import { selectedReleasePackages } from "./release-packages";
+
 const root = resolve(import.meta.dir, "..");
-const packageDirectories = ["packages/permissions", "packages/elysia-auth", "packages/nuxt-auth"];
 const publishReady = process.argv.includes("--publish");
 const semverPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const credentialPattern = /NPM_TOKEN|NODE_AUTH_TOKEN|GITHUB_TOKEN|BEGIN (?:RSA |EC )?PRIVATE KEY/;
@@ -28,17 +29,6 @@ async function verifyPackage(relativeDirectory: string) {
   if (publishReady && manifest.version === "0.0.0") {
     throw new Error(`${manifest.name} must be versioned before publication`);
   }
-  const dependencies = {
-    ...manifest.dependencies,
-    ...manifest.peerDependencies,
-  } as Record<string, string>;
-  if (
-    publishReady &&
-    Object.values(dependencies).some((version) => version.startsWith("workspace:"))
-  ) {
-    throw new Error(`${manifest.name} still contains a workspace protocol`);
-  }
-
   await command(["bun", "run", "build"], directory);
   const exportContract = manifest.exports?.["."];
   const exportPaths = [exportContract?.import, exportContract?.types];
@@ -67,5 +57,7 @@ async function verifyPackage(relativeDirectory: string) {
   return `${manifest.name}@${manifest.version}`;
 }
 
-const verified = await Promise.all(packageDirectories.map(verifyPackage));
+const verified = await Promise.all(
+  selectedReleasePackages().map(({ directory }) => verifyPackage(directory)),
+);
 console.log(`Verified npm packages: ${verified.join(", ")}`);

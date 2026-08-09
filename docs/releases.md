@@ -19,47 +19,37 @@ Les versions `0.x` restent traitées strictement : tout changement incompatible 
 
 ## Préparer un changement
 
-```bash
-bun run changeset
-```
+Chaque changement utilise un Conventional Commit. `fix` produit un patch, `feat` une version
+mineure et un pied `BREAKING CHANGE:` signale une incompatibilité. Tant que la version reste en
+`0.x`, une incompatibilité incrémente la version mineure.
 
-Le fichier généré doit :
-
-- citer les packages réellement affectés ;
-- utiliser le bon niveau SemVer ;
-- décrire l’impact consommateur ;
-- signaler migration et incompatibilité.
+Release Please analyse les fichiers touchés et ne versionne que les packages publics concernés.
+Les trois packages gardent des versions indépendantes. Le plugin `node-workspace` suit les
+dépendances locales : si `@neotamia/permissions` change, `@neotamia/elysia-auth` reçoit aussi le
+bump patch nécessaire pour publier sa nouvelle référence.
 
 ## Préparer les versions
 
-```bash
-bun install --frozen-lockfile
-bun run format:check
-bun run lint
-bun run typecheck
-bun run test
-bun run build
-bun run version-packages
-```
+À chaque push sur `dev`, `.github/workflows/release-please.yaml` met à jour un PR de release agrégé.
+Ce PR contient uniquement les versions et changelogs des packages à publier. Sa fusion crée un tag
+par composant (`permissions-vX.Y.Z`, `elysia-auth-vX.Y.Z` ou `nuxt-auth-vX.Y.Z`) puis le workflow
+Gitflow fusionne le même commit dans `main` et resynchronise `dev`.
 
-`version-packages` met à jour versions, dépendances internes et changelogs. Le résultat est relu et committé avec :
-
-```text
-chore(release): version packages
-```
+Le manifest `.release-please-manifest.json` est la source de vérité des dernières versions. Il ne
+doit pas être modifié manuellement en dehors d’un bootstrap ou d’une réparation documentée.
 
 ## Publication npm
 
-La CI publie avec provenance depuis un tag ou une branche protégée après toutes les validations :
+La CI publie avec provenance depuis les tags par composant. Le workflow
+`.github/workflows/npm-release.yaml` sélectionne le package correspondant au tag ; un package
+inchangé n’est ni reconstruit ni publié. Son lancement manuel exécute un dry-run des trois packages
+sans accès au token npm.
 
-```bash
-bun run release
-```
-
-Le workflow `.github/workflows/npm-release.yaml` ne publie que depuis un tag `v*`. Son lancement
-manuel exécute un dry-run complet sans accès au token npm. Avant publication, `release:verify`
-reconstruit chaque package, vérifie ses exports ESM/types, inspecte le contenu du tarball, recherche
-du matériel d’authentification et refuse `0.0.0` ou tout protocole `workspace:*` résiduel.
+Avant publication, `release:verify` reconstruit le package sélectionné, vérifie ses exports
+ESM/types, inspecte le contenu déclaré du tarball, recherche du matériel d’authentification et
+refuse une version `0.0.0`. Le protocole `workspace:*` reste autorisé dans les sources : `bun pm
+pack` le remplace par la version locale exacte. `release:prepare` extrait ensuite le
+`package.json` du tarball et refuse toute dépendance non exacte avant publication.
 
 Conditions :
 
@@ -67,8 +57,8 @@ Conditions :
 - provenance npm signée via OIDC avec la permission minimale `id-token: write` ;
 - aucun token dans les logs ;
 - version absente du registre avant publication ;
-- contenu du tarball inspecté avec `npm pack --dry-run` ;
-- tag Git correspondant créé seulement après publication réussie.
+- contenu du tarball inspecté avec `bun pm pack --dry-run` ;
+- tag Git correspondant créé par Release Please depuis le commit de release validé.
 
 ## Miroir GitHub Packages
 
@@ -94,8 +84,11 @@ La release échoue si :
 Les applications publient des images GHCR identifiées par :
 
 - le SHA Git complet ;
-- un tag de release lorsque pertinent ;
 - jamais uniquement `latest` pour un déploiement.
+
+Le passage d’une release dans `main` déclenche une construction OCI, mais les images restent
+adressées par leur SHA immuable afin de ne pas coupler les versions indépendantes des packages npm
+à une version artificielle de toute l’application.
 
 Les migrations sont exécutées par une étape dédiée avant le remplacement des conteneurs applicatifs.
 
@@ -118,4 +111,5 @@ Si npm réussit et GitHub Packages échoue :
 
 ## Responsabilité
 
-Une release nécessite une validation humaine tant que le pipeline complet n’a pas été éprouvé sur une prerelease. L’automatisation ne contourne jamais les protections des registries.
+Le PR Release Please nécessite une validation humaine tant que le pipeline complet n’a pas été
+éprouvé sur une prerelease. L’automatisation ne contourne jamais les protections des registries.

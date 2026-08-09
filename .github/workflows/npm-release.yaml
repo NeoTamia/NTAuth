@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - "*-v*"
 
 permissions:
   contents: read
@@ -46,6 +46,18 @@ jobs:
 
       - name: Install exact dependencies
         run: bun install --frozen-lockfile
+
+      - name: Select released package
+        if: github.event_name == 'push'
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          case "$TAG_NAME" in
+            permissions-v*) echo "RELEASE_PACKAGE=@neotamia/permissions" >> "$GITHUB_ENV" ;;
+            elysia-auth-v*) echo "RELEASE_PACKAGE=@neotamia/elysia-auth" >> "$GITHUB_ENV" ;;
+            nuxt-auth-v*) echo "RELEASE_PACKAGE=@neotamia/nuxt-auth" >> "$GITHUB_ENV" ;;
+            *) echo "Unsupported release tag: $TAG_NAME" >&2; exit 1 ;;
+          esac
 
       - name: Validate repository
         run: bun run check

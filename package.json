@@ -10,7 +10,6 @@
   "scripts": {
     "build": "turbo run build",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
-    "changeset": "changeset",
     "db:migrate": "bun --env-file=.env --filter @neotamia/db db:migrate",
     "db:rollback": "bun --env-file=.env --filter @neotamia/db db:rollback",
     "db:seed:ntscout": "bun --env-file=.env --filter @neotamia/db db:seed:ntscout",
@@ -19,17 +18,13 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "load:test": "bun tooling/load-test.ts",
-    "release": "changeset publish",
     "release:prepare": "bun tooling/prepare-release-artifacts.ts",
     "release:publish": "bun tooling/publish-release-artifacts.ts",
     "release:verify": "bun tooling/verify-release.ts",
     "test": "bun test tooling && turbo run test --concurrency=1",
-    "typecheck": "turbo run typecheck",
-    "version-packages": "changeset version"
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "0.7.0",
-    "@changesets/cli": "2.31.1",
     "@types/bun": "1.3.14",
     "oxfmt": "0.62.0",
     "oxlint": "1.77.0",
