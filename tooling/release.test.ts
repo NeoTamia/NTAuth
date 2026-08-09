@@ -65,6 +65,7 @@ describe("npm public release", () => {
       Object.values(manifest).every((version) => /^\d+\.\d+\.\d+$/.test(String(version))),
     ).toBe(true);
     expect(configuration["initial-version"]).toBe("0.1.0");
+    expect(formatter.ignorePatterns).toContain(".release-please-manifest.json");
     expect(formatter.ignorePatterns).toContain("packages/*/CHANGELOG.md");
     expect(configuration["separate-pull-requests"]).toBe(false);
     expect(configuration.plugins).toContainEqual({ type: "node-workspace" });
