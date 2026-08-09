@@ -10,6 +10,7 @@ const routes = [
   "app/pages/admin/index.vue",
   "app/pages/admin/security/mfa.vue",
   "app/pages/admin/organizations.vue",
+  "app/pages/admin/catalogue.vue",
   "app/pages/admin/policies.vue",
   "app/pages/admin/users.vue",
   "app/pages/admin/service-grants.vue",
@@ -29,5 +30,13 @@ describe("Nuxt shell", () => {
   test("keeps the admin route on its dedicated layout", async () => {
     const page = await Bun.file(new URL("../../app/pages/admin/index.vue", import.meta.url)).text();
     expect(page).toContain('definePageMeta({ layout: "admin" })');
+  });
+
+  test("exposes a deterministic browser readiness signal after hydration", async () => {
+    const plugin = await Bun.file(
+      new URL("../../app/plugins/browser-ready.client.ts", import.meta.url),
+    ).text();
+    expect(plugin).toContain('dataset.ntauthReady = "true"');
+    expect(plugin).toContain('nuxtApp.hook("app:mounted"');
   });
 });

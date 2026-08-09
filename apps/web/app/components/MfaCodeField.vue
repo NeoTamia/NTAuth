@@ -8,10 +8,12 @@ defineProps<{
 }>();
 const { isElevated } = useMfaChallenge();
 
-function keepDigits(event: Event) {
-  const target = event.target as HTMLInputElement;
-  model.value = target.value.replace(/\D/g, "").slice(0, 6);
-}
+const normalizedCode = computed({
+  get: () => model.value,
+  set: (value: string) => {
+    model.value = value.replace(/\D/g, "").slice(0, 6);
+  },
+});
 </script>
 
 <template>
@@ -23,7 +25,7 @@ function keepDigits(event: Event) {
     <label :for="id">{{ label ?? "Code à 6 chiffres" }}</label>
     <input
       :id="id"
-      :value="model"
+      v-model="normalizedCode"
       name="totp-code"
       type="text"
       autocomplete="one-time-code"
@@ -33,7 +35,6 @@ function keepDigits(event: Event) {
       required
       :aria-describedby="describedBy"
       :disabled="disabled"
-      @input="keepDigits"
     />
   </div>
 </template>

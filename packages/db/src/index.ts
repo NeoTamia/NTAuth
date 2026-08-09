@@ -56,6 +56,7 @@ export {
   IamCatalogConflictError,
   IamCatalogNotFoundError,
   listAvailableServices,
+  listIamCatalogueAdministration,
   setIamCatalogEntryStatus,
   updateService,
 } from "./iam-catalog";

@@ -12,6 +12,7 @@ import {
   IamCatalogAuthorizationError,
   IamCatalogConflictError,
   IamCatalogNotFoundError,
+  listIamCatalogueAdministration,
   setIamCatalogEntryStatus,
   updateService,
 } from "@/iam-catalog";
@@ -103,6 +104,21 @@ describeWithDatabase("IAM service catalogue", () => {
     );
     expect(action.kind).toBe("action");
     expect(resource.kind).toBe("resource");
+    await expect(
+      listIamCatalogueAdministration(connection, actor(adminId, "catalogue-list")),
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        entries: expect.arrayContaining([
+          expect.objectContaining({ id: action.id, status: "active" }),
+          expect.objectContaining({ id: resource.id, status: "active" }),
+        ]),
+        key: "ntscout-test",
+        ownerUserId: ownerId,
+      }),
+    );
+    await expect(
+      listIamCatalogueAdministration(connection, actor(outsiderId, "catalogue-list-denied")),
+    ).rejects.toBeInstanceOf(IamCatalogAuthorizationError);
     await expect(
       createIamCatalogEntry(
         connection,

@@ -52,6 +52,7 @@ const service = ref("");
 const workspaceCode = ref("");
 const workspaceState = ref<LoadState>("locked");
 const workspaceError = ref("");
+const workspaceNeedsCatalogue = ref(false);
 const catalogue = ref<Catalogue | null>(null);
 const policies = ref<PolicySummary[]>([]);
 
@@ -139,6 +140,7 @@ function changeOrganization() {
   selectedPolicy.value = null;
   historyState.value = "locked";
   workspaceError.value = "";
+  workspaceNeedsCatalogue.value = false;
 }
 
 async function loadWorkspace() {
@@ -146,6 +148,7 @@ async function loadWorkspace() {
   if (!challengeReady(workspaceCode.value)) return;
   workspaceState.value = "loading";
   workspaceError.value = "";
+  workspaceNeedsCatalogue.value = false;
   selectedPolicy.value = null;
   historyState.value = "locked";
   try {
@@ -163,7 +166,12 @@ async function loadWorkspace() {
     policies.value = loadedPolicies ?? [];
     workspaceState.value = policies.value.length ? "ready" : "empty";
   } catch (error) {
-    const candidate = error as { status?: number; statusCode?: number };
+    const candidate = error as {
+      data?: { code?: string };
+      status?: number;
+      statusCode?: number;
+    };
+    workspaceNeedsCatalogue.value = candidate.data?.code === "catalogue_not_found";
     workspaceState.value =
       candidate.status === 403 || candidate.statusCode === 403 ? "forbidden" : "error";
     workspaceError.value = safeError(error, "L’espace de policies ne peut pas être chargé.");
@@ -443,7 +451,12 @@ async function savePolicy() {
       >
         <h2>{{ workspaceState === "forbidden" ? "Portée interdite" : "Espace indisponible" }}</h2>
         <p>{{ workspaceError }}</p>
-        <button type="button" @click="workspaceState = 'locked'">Réessayer</button>
+        <div class="button-row">
+          <NuxtLink v-if="workspaceNeedsCatalogue" class="button" to="/admin/catalogue">
+            Ouvrir le Catalogue IAM
+          </NuxtLink>
+          <button type="button" @click="workspaceState = 'locked'">Réessayer</button>
+        </div>
       </div>
 
       <section

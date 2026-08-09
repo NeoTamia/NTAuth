@@ -47,6 +47,7 @@ async function signOut() {
           </small>
         </NuxtLink>
         <NuxtLink to="/admin/organizations">Organisations</NuxtLink>
+        <NuxtLink to="/admin/catalogue">Catalogue IAM</NuxtLink>
         <NuxtLink to="/admin/policies">Policies IAM</NuxtLink>
         <NuxtLink to="/admin/oauth-clients">Applications OAuth</NuxtLink>
         <NuxtLink to="/admin/users">Utilisateurs</NuxtLink>

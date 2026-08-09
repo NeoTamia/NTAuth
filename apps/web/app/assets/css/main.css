@@ -1010,6 +1010,231 @@ button:not(:disabled):hover,
 .policy-admin {
   width: min(100%, 76rem);
 }
+.catalogue-admin {
+  width: min(100%, 80rem);
+}
+.catalogue-admin__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: end;
+  padding-bottom: clamp(2rem, 5vw, 4rem);
+  border-bottom: 1px solid #c3cbc5;
+}
+.catalogue-admin__header h1 {
+  max-width: 10ch;
+  margin: 0 0 1rem;
+  font-size: clamp(3rem, 7vw, 6.25rem);
+  line-height: 0.92;
+  letter-spacing: -0.065em;
+}
+.catalogue-admin__header p,
+.catalogue-gate p,
+.catalogue-toolbar p,
+.catalogue-creation p,
+.catalogue-entry-creation p,
+.catalogue-empty p {
+  color: #536158;
+}
+.catalogue-gate {
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.65fr) minmax(22rem, 1.35fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: start;
+  margin-top: 3rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.catalogue-gate h2,
+.catalogue-toolbar h2,
+.catalogue-register h2,
+.catalogue-detail h2,
+.catalogue-detail h3,
+.catalogue-empty h2 {
+  margin: 0;
+}
+.catalogue-gate form,
+.catalogue-creation form,
+.catalogue-settings form,
+.catalogue-entry-creation form {
+  display: grid;
+  gap: 1rem;
+}
+.catalogue-creation {
+  margin-top: 3rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.catalogue-creation > header,
+.catalogue-toolbar,
+.catalogue-detail > header,
+.catalogue-entry-creation > header,
+.catalogue-entry-columns section > header {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.catalogue-creation > header {
+  margin-bottom: 1.5rem;
+}
+.catalogue-creation > header h2 {
+  margin: 0;
+}
+.catalogue-creation > header p,
+.catalogue-toolbar p,
+.catalogue-entry-creation > header p {
+  margin: 0.3rem 0 0;
+}
+.catalogue-toolbar {
+  align-items: end;
+  margin-top: 3rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #aab5ad;
+}
+.catalogue-workspace {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.62fr) minmax(0, 1.38fr);
+  gap: 1.5rem;
+  align-items: start;
+  margin-top: 1.5rem;
+}
+.catalogue-register,
+.catalogue-detail {
+  border: 1px solid #aab5ad;
+  background: #eef1ed;
+}
+.catalogue-register {
+  position: sticky;
+  top: 1rem;
+}
+.catalogue-register > header,
+.catalogue-detail > header {
+  padding: 1.25rem;
+  border-bottom: 1px solid #aab5ad;
+}
+.catalogue-service-list,
+.catalogue-entry-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalogue-service-list li + li,
+.catalogue-entry-list li + li {
+  border-top: 1px solid #c3cbc5;
+}
+.catalogue-service-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+.catalogue-service-list button:hover,
+.catalogue-service-list button[aria-current="true"] {
+  background: #dde5df;
+}
+.catalogue-service-list strong,
+.catalogue-service-list small,
+.catalogue-entry-list strong,
+.catalogue-entry-list small {
+  display: block;
+}
+.catalogue-service-list small,
+.catalogue-entry-list small {
+  margin-top: 0.2rem;
+  color: #536158;
+  overflow-wrap: anywhere;
+}
+.catalogue-status {
+  color: #176b43;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: right;
+}
+.catalogue-status--inactive {
+  color: #755a4a;
+}
+.catalogue-detail {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+.catalogue-detail > header {
+  margin: calc(clamp(1.25rem, 3vw, 2rem) * -1);
+  margin-bottom: 0;
+}
+.catalogue-detail > header p {
+  margin: 0 0 0.3rem;
+  color: #6c4736;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+.catalogue-settings,
+.catalogue-entry-creation,
+.catalogue-entry-columns {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #aab5ad;
+}
+.catalogue-settings form,
+.catalogue-entry-creation form {
+  margin-top: 1.25rem;
+}
+.catalogue-entry-creation code {
+  color: #6c4736;
+}
+.catalogue-entry-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  background: #aab5ad;
+}
+.catalogue-entry-columns > section {
+  min-width: 0;
+  background: #eef1ed;
+}
+.catalogue-entry-columns section > header {
+  align-items: baseline;
+  padding: 1rem;
+  border-bottom: 1px solid #aab5ad;
+}
+.catalogue-entry-columns section > header span {
+  color: #536158;
+  font-weight: 800;
+}
+.catalogue-entry-list li {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+.catalogue-entry-list strong {
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+.catalogue-entry-list .text-button {
+  justify-self: start;
+  min-height: 2.75rem;
+  padding-block: 0.5rem;
+}
+.catalogue-entry-columns .empty-line {
+  padding: 1rem;
+}
+.catalogue-empty {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  margin-top: 1.5rem;
+  padding-block: 3rem;
+  border-bottom: 1px solid #aab5ad;
+}
 .policy-admin__header {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
@@ -2014,6 +2239,10 @@ button:not(:disabled):hover,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .organization-workspace,
+  .catalogue-admin__header,
+  .catalogue-gate,
+  .catalogue-workspace,
+  .catalogue-entry-columns,
   .policy-admin__header,
   .policy-scope,
   .policy-workspace,
@@ -2031,6 +2260,22 @@ button:not(:disabled):hover,
   .audit-workspace,
   .inline-fields {
     grid-template-columns: 1fr;
+  }
+  .catalogue-admin__header h1 {
+    font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+  .catalogue-register {
+    position: static;
+  }
+  .catalogue-creation > header,
+  .catalogue-toolbar,
+  .catalogue-detail > header,
+  .catalogue-entry-creation > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .catalogue-status {
+    text-align: left;
   }
   .policy-admin__header h1 {
     font-size: clamp(3rem, 15vw, 4.6rem);

@@ -204,6 +204,39 @@ describeWithDatabase("IAM catalogue API", () => {
     );
     expect(resource.status).toBe(201);
 
+    const administration = await request(
+      "/api/v1/iam/catalog",
+      {},
+      { cookie: adminCookie, suffix: "catalogue-administration" },
+    );
+    expect(administration.status).toBe(200);
+    expect(await administration.json()).toContainEqual(
+      expect.objectContaining({
+        entries: expect.arrayContaining([
+          expect.objectContaining({
+            identifier: "api-catalog:report:read",
+            kind: "action",
+            status: "active",
+          }),
+          expect.objectContaining({
+            identifier: "api-catalog:report:*",
+            kind: "resource",
+            status: "active",
+          }),
+        ]),
+        key: "api-catalog",
+        ownerUserId: ownerId,
+        status: "active",
+      }),
+    );
+
+    const unauthorizedAdministration = await request(
+      "/api/v1/iam/catalog",
+      {},
+      { cookie: ownerCookie, suffix: "catalogue-administration-denied" },
+    );
+    expect(unauthorizedAdministration.status).toBe(403);
+
     const publicCatalogue = await application().handle(
       new Request("http://localhost/api/v1/iam/catalog/api-catalog"),
     );

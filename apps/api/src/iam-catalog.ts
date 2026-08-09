@@ -8,6 +8,7 @@ import {
   IamCatalogConflictError,
   IamCatalogNotFoundError,
   listAvailableServices,
+  listIamCatalogueAdministration,
   setIamCatalogEntryStatus,
   updateService,
   type DatabaseConnection,
@@ -129,6 +130,15 @@ export function createIamCatalogRoutes(options: {
           },
           access.actor!,
         );
+      } catch (error) {
+        return catalogueProblem(error);
+      }
+    })
+    .get("/api/v1/iam/catalog", async ({ request }) => {
+      const access = await actor(request);
+      if (access.response) return access.response;
+      try {
+        return await listIamCatalogueAdministration(options.database, access.actor!);
       } catch (error) {
         return catalogueProblem(error);
       }

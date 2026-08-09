@@ -45,6 +45,78 @@ export async function listAvailableServices(connection: DatabaseConnection) {
     .orderBy(asc(services.name), asc(services.key));
 }
 
+export async function listIamCatalogueAdministration(connection: DatabaseConnection, actor: Actor) {
+  const result = await connection.db.transaction(async (transaction) => {
+    if (!(await isPlatformAdmin(transaction, actor.userId))) {
+      await transaction.insert(auditEvents).values({
+        action: "iam.catalog.list",
+        actorUserId: actor.userId,
+        metadata: {},
+        outcome: "denied",
+        requestId: actor.requestId,
+        resourceType: "service",
+      });
+      return { kind: "denied" as const };
+    }
+
+    const serviceRows = await transaction
+      .select({
+        createdAt: services.createdAt,
+        key: services.key,
+        name: services.name,
+        ownerEmail: user.email,
+        ownerName: user.name,
+        ownerUserId: services.ownerUserId,
+        status: services.status,
+        updatedAt: services.updatedAt,
+      })
+      .from(services)
+      .innerJoin(user, eq(user.id, services.ownerUserId))
+      .orderBy(asc(services.name), asc(services.key));
+    const entries = await transaction
+      .select({
+        createdAt: iamCatalogEntries.createdAt,
+        description: iamCatalogEntries.description,
+        id: iamCatalogEntries.id,
+        identifier: iamCatalogEntries.identifier,
+        kind: iamCatalogEntries.kind,
+        service: iamCatalogEntries.service,
+        status: iamCatalogEntries.status,
+        updatedAt: iamCatalogEntries.updatedAt,
+      })
+      .from(iamCatalogEntries)
+      .orderBy(
+        asc(iamCatalogEntries.service),
+        asc(iamCatalogEntries.kind),
+        asc(iamCatalogEntries.identifier),
+      );
+    const entriesByService = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      const serviceEntries = entriesByService.get(entry.service) ?? [];
+      serviceEntries.push(entry);
+      entriesByService.set(entry.service, serviceEntries);
+    }
+
+    await transaction.insert(auditEvents).values({
+      action: "iam.catalog.list",
+      actorUserId: actor.userId,
+      metadata: { entries: entries.length, services: serviceRows.length },
+      outcome: "success",
+      requestId: actor.requestId,
+      resourceType: "service",
+    });
+    return {
+      kind: "success" as const,
+      services: serviceRows.map((service) =>
+        Object.assign(service, { entries: entriesByService.get(service.key) ?? [] }),
+      ),
+    };
+  });
+
+  if (result.kind === "denied") throw new IamCatalogAuthorizationError();
+  return result.services;
+}
+
 async function isPlatformAdmin(transaction: Transaction, userId: string) {
   const [assignment] = await transaction
     .select({ userId: platformRoleAssignments.userId })

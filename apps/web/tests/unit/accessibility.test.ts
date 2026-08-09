@@ -4,6 +4,7 @@ import { contrastRatio, meetsWcagAa } from "@/utils/accessibility";
 const adminPages = [
   "security/mfa.vue",
   "organizations.vue",
+  "catalogue.vue",
   "policies.vue",
   "users.vue",
   "service-grants.vue",
@@ -59,7 +60,7 @@ describe("accessibility contracts", () => {
       expect(page).not.toMatch(/tabindex=["'](?:[1-9]|\+)[^"']*["']/);
     }
 
-    const recoverablePages = ["security/mfa.vue", "policies.vue", "users.vue"];
+    const recoverablePages = ["security/mfa.vue", "catalogue.vue", "policies.vue", "users.vue"];
     const recoverableSources = await Promise.all(
       recoverablePages.map((page) => read(`app/pages/admin/${page}`)),
     );
