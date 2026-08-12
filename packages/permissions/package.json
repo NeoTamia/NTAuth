@@ -1,6 +1,6 @@
 {
   "name": "@neotamia/permissions",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Framework-independent IAM contracts, validation, and deny-first evaluation for NeoTamia services.",
   "license": "UNLICENSED",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@neotamia/nuxt-auth",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "SSR-safe NTAuth PKCE session composables and middleware for Nuxt.",
   "license": "UNLICENSED",
   "repository": {
