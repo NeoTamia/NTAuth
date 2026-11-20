@@ -2,7 +2,7 @@ name: ntauth
 
 services:
   postgres:
-    image: postgres:18.4-trixie@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+    image: postgres:18.7-trixie@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a
     environment:
       POSTGRES_DB: ntauth
       POSTGRES_PASSWORD: ntauth
